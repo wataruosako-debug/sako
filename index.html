@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f7fb">
+  <title>GymLog - かんたん筋トレ記録</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <main id="app" class="app" aria-live="polite">
+      <section id="homeScreen" class="screen screen--active" aria-labelledby="homeTitle">
+        <header class="topbar">
+          <div class="brand-wrap">
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 9v6m3-8v10m10-10v10m3-8v6M7 12h10"/></svg>
+            </span>
+            <div>
+              <p class="eyebrow">YOUR FITNESS LOG</p>
+              <h1 id="homeTitle">GymLog</h1>
+            </div>
+          </div>
+          <button id="settingsButton" class="icon-button" type="button" aria-label="プロフィール設定">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.55V21h-4v-.08A1.7 1.7 0 0 0 9 19.37a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.63 15 1.7 1.7 0 0 0 3.08 14H3v-4h.08A1.7 1.7 0 0 0 4.63 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.63 1.7 1.7 0 0 0 10 3.08V3h4v.08A1.7 1.7 0 0 0 15 4.63a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.37 9 1.7 1.7 0 0 0 20.92 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+          </button>
+        </header>
+
+        <button id="profileNudge" class="profile-nudge hidden" type="button">
+          <span class="nudge-icon" aria-hidden="true">i</span>
+          <span><strong>プロフィールを設定</strong><small>消費カロリーの計算に使います</small></span>
+          <span aria-hidden="true">›</span>
+        </button>
+
+        <section class="stats-grid" aria-label="今月の記録">
+          <article class="stat-card stat-card--blue">
+            <div class="stat-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M7 3v3m10-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"/><path d="m8.5 14 2 2 4-5"/></svg>
+            </div>
+            <div><span class="stat-value"><strong id="monthlyVisits">0</strong><small>回</small></span><p>今月の運動</p></div>
+          </article>
+          <article class="stat-card stat-card--orange">
+            <div class="stat-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 22c4 0 7-2.8 7-6.7 0-2.6-1.4-5.1-4.2-7.5.1 2.2-.7 3.6-2.1 4.5.2-3.7-1.8-7-5.2-10.3.3 3.9-2.5 6.7-2.5 10.8C5 18.1 8.1 22 12 22Z"/><path d="M9.5 18.3c0 1.6 1.1 2.7 2.5 2.7s2.5-1.1 2.5-2.7c0-1.3-.7-2.5-2.2-3.8.1 1.1-.3 1.8-1 2.3.1-1.8-.8-3.4-2.2-5 .1 2-1.1 3.5.4 6.5Z"/></svg>
+            </div>
+            <div><span class="stat-value"><strong id="monthlyCalories">0</strong><small>kcal</small></span><p>概算消費カロリー</p></div>
+          </article>
+        </section>
+
+        <section class="calendar-card" aria-labelledby="calendarHeading">
+          <div class="calendar-head">
+            <div>
+              <p class="section-kicker">WORKOUT CALENDAR</p>
+              <h2 id="calendarHeading"><span id="calendarYear"></span>年 <span id="calendarMonth"></span>月</h2>
+            </div>
+            <div class="calendar-nav">
+              <button id="prevMonth" class="mini-icon-button" type="button" aria-label="前の月">‹</button>
+              <button id="todayMonth" class="today-button" type="button">今月</button>
+              <button id="nextMonth" class="mini-icon-button" type="button" aria-label="次の月">›</button>
+            </div>
+          </div>
+          <div class="weekdays" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
+          <div id="calendarGrid" class="calendar-grid" role="grid" aria-label="トレーニングカレンダー"></div>
+          <div class="legend"><span><i class="legend-dot legend-dot--gym"></i>ジム</span><span><i class="legend-dot legend-dot--home"></i>自宅</span><span><i class="today-ring"></i>今日</span></div>
+        </section>
+
+        <button id="openProgressButton" class="progress-action" type="button">
+          <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/><path d="m4 9 6-4 6 7 4-4"/></svg></span>
+          <span><strong>成長を見る</strong><small>種目ごとの伸びを確認</small></span>
+          <span class="action-arrow" aria-hidden="true">›</span>
+        </button>
+
+        <section class="home-actions" aria-label="トレーニングを記録">
+          <button class="primary-action primary-action--gym" type="button" data-start-workout="gym">
+            <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 9v6m3-8v10m10-10v10m3-8v6M7 12h10"/></svg></span>
+            <span><strong>ジムトレーニングを記録</strong><small>マシン・フリーウェイト</small></span>
+            <span class="action-arrow" aria-hidden="true">›</span>
+          </button>
+          <button class="primary-action primary-action--home" type="button" data-start-workout="home">
+            <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10M9 20v-6h6v6"/></svg></span>
+            <span><strong>自宅トレーニングを記録</strong><small>自重・ダンベル</small></span>
+            <span class="action-arrow" aria-hidden="true">›</span>
+          </button>
+        </section>
+      </section>
+
+      <section id="progressScreen" class="screen" aria-labelledby="progressTitle">
+        <header class="sub-header">
+          <button id="backFromProgressButton" class="icon-button icon-button--back" type="button" aria-label="ホームへ戻る">‹</button>
+          <div class="sub-header-title"><span class="location-badge">成長</span><h1 id="progressTitle">成長を見る</h1></div>
+          <span class="header-spacer" aria-hidden="true"></span>
+        </header>
+
+        <div class="progress-body">
+          <section class="progress-hero">
+            <div class="progress-hero-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 18 10 12l4 4 6-8"/><path d="M15 8h5v5"/></svg></div>
+            <div><p class="section-kicker">これまでの成長</p><h2 id="progressHeroTitle">扱える重さを振り返ろう</h2><p id="progressHeroDescription">昔と比べて、どれくらい重くできるようになったかを確認できます。</p></div>
+          </section>
+
+          <div class="progress-tabs" role="tablist" aria-label="分析する運動の種類">
+            <button id="strengthProgressTab" class="is-active" type="button" role="tab" aria-selected="true" data-progress-tab="strength">筋トレ</button>
+            <button id="cardioProgressTab" type="button" role="tab" aria-selected="false" data-progress-tab="cardio">有酸素</button>
+          </div>
+
+          <section class="progress-controls" aria-label="分析内容を選択">
+            <label><span id="progressExerciseLabel">種目</span><select id="progressExerciseSelect"></select></label>
+            <label><span>見たい成長</span><select id="progressMetricSelect"></select></label>
+            <p id="progressMetricHelp" class="metric-help"></p>
+          </section>
+
+          <section id="progressSummary" class="progress-summary" aria-label="成長サマリー">
+            <article class="progress-summary-card"><span id="progressFirstLabel">初回重量</span><strong id="progressFirstValue">--</strong><small id="progressFirstDate">--</small></article>
+            <article class="progress-summary-card progress-summary-card--latest"><span id="progressLatestLabel">最新重量</span><strong id="progressLatestValue">--</strong><small id="progressLatestDate">--</small></article>
+            <article class="progress-summary-card progress-summary-card--growth"><span id="progressGrowthLabel">伸び幅</span><strong id="progressGrowthValue">--</strong><small>初回との比較</small></article>
+            <article class="progress-summary-card progress-summary-card--best"><span id="progressBestLabel">自己ベスト</span><strong id="progressBestValue">--</strong><small id="progressBestDate">--</small></article>
+          </section>
+
+          <div id="progressMessage" class="progress-message"></div>
+
+          <section class="progress-chart-card" aria-labelledby="progressChartTitle">
+            <div class="progress-chart-head"><div><p class="section-kicker">これまでの記録</p><h2 id="progressChartTitle">記録の推移</h2><p id="progressChartMeta" class="progress-chart-meta">単位：kg</p></div><span id="progressPointCount" class="count-badge">0回</span></div>
+            <div id="progressChart" class="progress-chart"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="workoutScreen" class="screen" aria-labelledby="workoutTitle">
+        <header class="sub-header">
+          <button id="backHomeButton" class="icon-button icon-button--back" type="button" aria-label="ホームへ戻る">‹</button>
+          <div class="sub-header-title"><span id="locationBadge" class="location-badge">GYM</span><h1 id="workoutTitle">トレーニング記録</h1></div>
+          <button id="finishTopButton" class="text-button" type="button">完了</button>
+        </header>
+
+        <div class="workout-body">
+          <label class="date-field"><span>記録日</span><input id="sessionDate" type="date"></label>
+
+          <section class="flow-card exercise-section">
+            <div class="flow-step-head"><span class="step-number">1</span><div><p>種目を選ぶ</p><small>最近使った種目からすばやく選択</small></div></div>
+            <button id="exercisePickerButton" class="exercise-select-button" type="button">
+              <span id="selectedExerciseIcon" class="exercise-letter">+</span>
+              <span><strong id="selectedExerciseName">種目を選択</strong><small id="selectedExerciseMeta">タップして一覧を開く</small></span>
+              <span aria-hidden="true">›</span>
+            </button>
+          </section>
+
+          <section id="setEditorCard" class="flow-card hidden">
+            <div class="flow-step-head"><span class="step-number">2</span><div><p><span id="currentSetLabel">セット1</span>を入力</p><small>タップ中心でかんたん記録</small></div></div>
+
+            <div id="weightBlock" class="input-block">
+              <div class="label-row"><label for="weightInput">重量</label><small id="weightStepLabel">1.0kg刻み</small></div>
+              <div class="counter-control">
+                <button id="weightMinus" type="button" aria-label="重量を減らす">−</button>
+                <div class="counter-value"><input id="weightInput" type="number" min="0" step="1" inputmode="decimal"><span>kg</span></div>
+                <button id="weightPlus" type="button" aria-label="重量を増やす">＋</button>
+              </div>
+            </div>
+
+            <div class="input-block">
+              <div class="label-row"><label for="repsInput">回数</label><small>よく使う回数</small></div>
+              <div id="repsQuick" class="choice-grid choice-grid--five">
+                <button type="button" data-reps="6">6</button><button type="button" data-reps="8">8</button><button type="button" data-reps="10">10</button><button type="button" data-reps="12">12</button><button type="button" data-reps="15">15</button>
+              </div>
+              <label class="inline-input">その他<input id="repsInput" type="number" min="1" max="999" inputmode="numeric" placeholder="10"><span>回</span></label>
+            </div>
+
+            <fieldset class="input-block">
+              <legend>あと何回できそう？</legend>
+              <div id="rirChoices" class="stacked-choices">
+                <button type="button" data-rir="0"><strong>0回</strong><span>限界！</span></button>
+                <button type="button" data-rir="1"><strong>1回</strong><span>かなりキツい</span></button>
+                <button type="button" data-rir="2-3"><strong>2〜3回</strong><span>結構キツい</span></button>
+                <button type="button" data-rir="4+"><strong>4回以上</strong><span>まだ余裕</span></button>
+                <button type="button" data-rir=""><strong>未入力</strong><span>あとで振り返る</span></button>
+              </div>
+            </fieldset>
+
+            <fieldset class="input-block">
+              <legend>インターバル</legend>
+              <div id="restChoices" class="choice-grid choice-grid--five choice-grid--small">
+                <button type="button" data-rest="30">30秒</button><button type="button" data-rest="60">60秒</button><button type="button" data-rest="90" class="is-selected">90秒</button><button type="button" data-rest="120">120秒</button><button type="button" data-rest="180">180秒</button>
+              </div>
+            </fieldset>
+
+            <label class="memo-field"><span>セットメモ <small>任意</small></span><input id="setMemo" type="text" maxlength="80" placeholder="フォームや感覚をメモ"></label>
+            <button id="saveSetButton" class="save-set-button" type="button">このセットを保存</button>
+            <p class="copy-hint">保存すると重量・回数・インターバルを次セットへコピーします</p>
+          </section>
+
+          <section id="savedSetsSection" class="flow-card hidden">
+            <div class="section-title-row"><div><p class="section-kicker">SAVED SETS</p><h2>保存したセット</h2></div><span id="setCountBadge" class="count-badge">0セット</span></div>
+            <div id="savedSetsList" class="saved-list"></div>
+            <button id="chooseAnotherExercise" class="outline-button" type="button">＋ 別の種目を追加</button>
+          </section>
+
+          <section class="flow-card cardio-section">
+            <button id="toggleCardioButton" class="cardio-toggle" type="button" aria-expanded="false">
+              <span class="cardio-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 17h3l2-6 3 8 2-5h4"/><path d="M4 4h16v16H4z"/></svg></span>
+              <span><strong>有酸素運動も記録</strong><small>時間・距離・傾斜から自動計算</small></span><span aria-hidden="true">＋</span>
+            </button>
+            <div id="cardioForm" class="cardio-form hidden">
+              <label><span>種目</span><select id="cardioType"><option>ウォーキング</option><option>ジョギング</option><option>ランニング</option><option>バイク</option><option>クロストレーナー</option><option>階段</option></select></label>
+              <div class="two-column-inputs">
+                <label><span>時間 <small>必須</small></span><div class="numeric-stepper"><button type="button" data-number-target="cardioDuration" data-number-direction="-1" aria-label="時間を減らす">−</button><div class="numeric-stepper-value"><input id="cardioDuration" type="number" min="0" step="1" inputmode="numeric" placeholder="30"><b>分</b></div><button type="button" data-number-target="cardioDuration" data-number-direction="1" aria-label="時間を増やす">＋</button></div></label>
+                <label><span>距離 <small>任意</small></span><div class="numeric-stepper"><button type="button" data-number-target="cardioDistance" data-number-direction="-1" aria-label="距離を減らす">−</button><div class="numeric-stepper-value"><input id="cardioDistance" type="number" min="0" step="0.1" inputmode="decimal" placeholder="3.0"><b>km</b></div><button type="button" data-number-target="cardioDistance" data-number-direction="1" aria-label="距離を増やす">＋</button></div></label>
+              </div>
+              <label><span>傾斜 <small>任意</small></span><div class="numeric-stepper numeric-stepper--wide"><button type="button" data-number-target="cardioIncline" data-number-direction="-1" aria-label="傾斜を減らす">−</button><div class="numeric-stepper-value"><input id="cardioIncline" type="number" min="0" max="40" step="0.5" inputmode="decimal" placeholder="0"><b>%</b></div><button type="button" data-number-target="cardioIncline" data-number-direction="1" aria-label="傾斜を増やす">＋</button></div></label>
+              <label><span>メモ <small>任意</small></span><input id="cardioMemo" type="text" maxlength="100" placeholder="ペースや体調など"></label>
+              <div id="cardioPreview" class="calorie-preview"><span>速度 <strong>--</strong></span><span>概算消費カロリー <strong>--</strong></span></div>
+              <button id="saveCardioButton" class="outline-button outline-button--blue" type="button">有酸素記録を追加</button>
+              <div id="savedCardioList" class="saved-list"></div>
+            </div>
+          </section>
+
+          <label class="session-memo"><span>今日のメモ <small>任意</small></span><textarea id="sessionMemo" rows="2" maxlength="200" placeholder="体調やトレーニング全体の感想"></textarea></label>
+          <section class="total-card"><span>今回の概算消費カロリー</span><strong><span id="sessionCalories">0</span> kcal</strong></section>
+          <button id="finishWorkoutButton" class="finish-button" type="button">トレーニングを保存</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <div id="profileModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="profileModal"></div>
+    <section class="modal-sheet modal-sheet--center" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+      <div class="modal-handle"></div>
+      <button class="modal-close" type="button" data-close-modal="profileModal" aria-label="閉じる">×</button>
+      <p class="section-kicker">PROFILE</p><h2 id="profileTitle">プロフィール設定</h2>
+      <p class="modal-lead">概算消費カロリーの計算に使います。毎日の入力は必要ありません。</p>
+      <form id="profileForm" class="profile-form">
+        <div class="two-column-inputs">
+          <label><span>体重 <small>必須</small></span><div><input id="profileWeight" type="number" min="20" max="300" step="0.1" inputmode="decimal" required><b>kg</b></div></label>
+          <label><span>身長</span><div><input id="profileHeight" type="number" min="100" max="250" step="0.1" inputmode="decimal"><b>cm</b></div></label>
+        </div>
+        <div class="two-column-inputs">
+          <label><span>年齢</span><div><input id="profileAge" type="number" min="10" max="120" inputmode="numeric"><b>歳</b></div></label>
+          <label><span>性別</span><select id="profileGender"><option value="">未選択</option><option value="male">男性</option><option value="female">女性</option><option value="other">その他・回答しない</option></select></label>
+        </div>
+        <button class="finish-button" type="submit">プロフィールを保存</button>
+      </form>
+      <div class="data-actions"><button id="resetDataButton" type="button">すべての記録を削除</button></div>
+    </section>
+  </div>
+
+  <div id="exerciseModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="exerciseModal"></div>
+    <section class="modal-sheet modal-sheet--tall" role="dialog" aria-modal="true" aria-labelledby="exerciseModalTitle">
+      <div class="modal-handle"></div>
+      <button class="modal-close" type="button" data-close-modal="exerciseModal" aria-label="閉じる">×</button>
+      <p class="section-kicker">EXERCISE</p><h2 id="exerciseModalTitle">種目を選ぶ</h2>
+      <label class="search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="exerciseSearch" type="search" placeholder="種目名を検索"></label>
+      <div id="exerciseList" class="exercise-list"></div>
+      <button id="openAddExercise" class="outline-button" type="button">＋ 新しい種目を追加</button>
+    </section>
+  </div>
+
+  <div id="addExerciseModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="addExerciseModal"></div>
+    <section class="modal-sheet modal-sheet--center" role="dialog" aria-modal="true" aria-labelledby="addExerciseTitle">
+      <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="addExerciseModal" aria-label="閉じる">×</button>
+      <p class="section-kicker">NEW EXERCISE</p><h2 id="addExerciseTitle">種目を追加</h2>
+      <form id="addExerciseForm" class="profile-form">
+        <label><span>種目名</span><input id="newExerciseName" type="text" maxlength="40" required placeholder="例：ヒップスラスト"></label>
+        <label><span>種類</span><select id="newExerciseCategory"><option value="MACHINE">マシン（1.0kg刻み）</option><option value="BARBELL">バーベル（2.5kg刻み）</option><option value="DUMBBELL">ダンベル（0.5kg刻み）</option><option value="BODYWEIGHT">自重（重量なし）</option></select></label>
+        <button class="finish-button" type="submit">追加して選択</button>
+      </form>
+    </section>
+  </div>
+
+  <div id="dayModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="dayModal"></div>
+    <section class="modal-sheet modal-sheet--tall" role="dialog" aria-modal="true" aria-labelledby="dayModalTitle">
+      <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="dayModal" aria-label="閉じる">×</button>
+      <p class="section-kicker">DAILY SUMMARY</p><h2 id="dayModalTitle">日別記録</h2>
+      <div id="daySummaryContent"></div>
+      <div id="daySummaryActions" class="modal-actions"></div>
+    </section>
+  </div>
+
+  <div id="confirmModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="confirmModal"></div>
+    <section class="modal-sheet modal-sheet--confirm" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="modal-handle"></div><h2 id="confirmTitle">確認</h2><p id="confirmMessage"></p>
+      <div class="confirm-actions"><button id="confirmCancel" class="outline-button" type="button">キャンセル</button><button id="confirmAccept" class="danger-button" type="button">削除する</button></div>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
