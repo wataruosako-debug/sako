@@ -1,7 +1,21 @@
 (function () {
   "use strict";
 
+  window.GymLog = window.GymLog || {};
+
+  /* Configuration and shared UI helpers */
   var STORAGE_KEY = "gymlog-data-v1";
+  var DRAFT_STORAGE_KEY = "gymlog-draft-v1";
+  var PRE_RESTORE_STORAGE_KEY = "gymlog-pre-restore-v1";
+  var UI_SETTINGS_KEY = "gymlog-ui-settings-v1";
+  var DEFAULT_UI_SETTINGS = { appearance: "system", colorTheme: "urban-blue" };
+  var APPEARANCE_OPTIONS = ["system", "light", "dark"];
+  var COLOR_THEME_OPTIONS = ["urban-blue", "midnight", "graphite-lime"];
+  var APPEARANCE_LABELS = { system: "端末に合わせる", light: "ライト", dark: "ダーク" };
+  var COLOR_THEME_LABELS = { "urban-blue": "Urban Blue", midnight: "Midnight", "graphite-lime": "Graphite Lime" };
+  var systemColorSchemeQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  var systemAppearanceListenerBound = false;
+  var CURRENT_DATA_VERSION = 2;
   var CATEGORY_LABELS = {
     BARBELL: "バーベル",
     DUMBBELL: "ダンベル",
@@ -83,6 +97,94 @@
 
   var $ = function (selector, root) { return (root || document).querySelector(selector); };
   var $$ = function (selector, root) { return Array.prototype.slice.call((root || document).querySelectorAll(selector)); };
+  function normalizeUiSettings(candidate) {
+    var settings = candidate && typeof candidate === "object" ? candidate : {};
+    var appearance = APPEARANCE_OPTIONS.indexOf(settings.appearance) >= 0 ? settings.appearance : DEFAULT_UI_SETTINGS.appearance;
+    var colorTheme = COLOR_THEME_OPTIONS.indexOf(settings.colorTheme) >= 0 ? settings.colorTheme : DEFAULT_UI_SETTINGS.colorTheme;
+    return { appearance: appearance, colorTheme: colorTheme };
+  }
+  function loadUiSettings() {
+    try {
+      return normalizeUiSettings(JSON.parse(localStorage.getItem(UI_SETTINGS_KEY) || "null"));
+    } catch (error) {
+      console.error("Failed to load UI settings", error);
+      return normalizeUiSettings(null);
+    }
+  }
+  var uiSettings = loadUiSettings();
+  function saveUiSettings(settings) {
+    try {
+      localStorage.setItem(UI_SETTINGS_KEY, JSON.stringify(normalizeUiSettings(settings)));
+      return true;
+    } catch (error) {
+      console.error("Failed to save UI settings", error);
+      showToast("外観設定を保存できませんでした");
+      return false;
+    }
+  }
+  function resolveAppearance(appearance) {
+    if (appearance === "light" || appearance === "dark") return appearance;
+    return systemColorSchemeQuery && systemColorSchemeQuery.matches ? "dark" : "light";
+  }
+  function updateThemeColorMeta(resolvedAppearance) {
+    var meta = $("#themeColorMeta");
+    if (!meta) return;
+    var lightColors = { "urban-blue": "#F1F3F6", midnight: "#F4F6F9", "graphite-lime": "#EEF0F3" };
+    var darkColors = { "urban-blue": "#0B0F14", midnight: "#070B12", "graphite-lime": "#0A0D10" };
+    meta.setAttribute("content", resolvedAppearance === "dark" ? (darkColors[uiSettings.colorTheme] || "#0B0F14") : (lightColors[uiSettings.colorTheme] || "#F1F3F6"));
+  }
+  function renderAppearanceSettings() {
+    var summary = $("#settingsAppearanceSummary");
+    if (summary) summary.textContent = APPEARANCE_LABELS[uiSettings.appearance] + "・" + COLOR_THEME_LABELS[uiSettings.colorTheme];
+    $$("[data-appearance-option]").forEach(function (button) {
+      var isSelected = button.dataset.appearanceOption === uiSettings.appearance;
+      button.classList.toggle("is-selected", isSelected);
+      button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+    });
+    $$("[data-color-theme-option]").forEach(function (button) {
+      var isSelected = button.dataset.colorThemeOption === uiSettings.colorTheme;
+      button.classList.toggle("is-selected", isSelected);
+      button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+    });
+  }
+  function applyUiSettings(settings) {
+    uiSettings = normalizeUiSettings(settings);
+    var resolvedAppearance = resolveAppearance(uiSettings.appearance);
+    var root = document.documentElement;
+    if (root && root.dataset) {
+      root.dataset.appearance = resolvedAppearance;
+      root.dataset.appearanceSetting = uiSettings.appearance;
+      root.dataset.colorTheme = uiSettings.colorTheme;
+    }
+    updateThemeColorMeta(resolvedAppearance);
+    renderAppearanceSettings();
+  }
+  function setAppearanceSetting(appearance) {
+    applyUiSettings({ appearance: appearance, colorTheme: uiSettings.colorTheme });
+    if (saveUiSettings(uiSettings)) showToast("外観を変更しました");
+  }
+  function setColorTheme(colorTheme) {
+    applyUiSettings({ appearance: uiSettings.appearance, colorTheme: colorTheme });
+    if (saveUiSettings(uiSettings)) showToast("テーマを変更しました");
+  }
+  function handleSystemAppearanceChange() {
+    if (uiSettings.appearance === "system") applyUiSettings(uiSettings);
+  }
+  function bindSystemAppearanceListener() {
+    if (!systemColorSchemeQuery || systemAppearanceListenerBound) return;
+    systemAppearanceListenerBound = true;
+    if (systemColorSchemeQuery.addEventListener) systemColorSchemeQuery.addEventListener("change", handleSystemAppearanceChange);
+    else if (systemColorSchemeQuery.addListener) systemColorSchemeQuery.addListener(handleSystemAppearanceChange);
+  }
+  function on(selector, eventName, handler) {
+    var element = $(selector);
+    if (!element) {
+      console.warn("Element not found:", selector);
+      return null;
+    }
+    element.addEventListener(eventName, handler);
+    return element;
+  }
   var nowIso = function () { return new Date().toISOString(); };
   var makeId = function (prefix) {
     var random = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -158,6 +260,137 @@
   }
 
   var exerciseMigrationChanged = false;
+  var dataMigrationChanged = false;
+  var dataLoadWarning = "";
+  var dataRecoveryRequired = false;
+  var corruptDataRaw = null;
+  var corruptDataKey = null;
+
+  function cloneData(value) {
+    if (typeof structuredClone === "function") return structuredClone(value);
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function normalizeVersion2Data(source) {
+    var normalized = cloneData(source || {});
+    var arrays = ["exercises", "sessions", "records", "sets", "cardios", "recentExerciseIds", "routines", "scheduledRoutines"];
+    arrays.forEach(function (key) { if (!Array.isArray(normalized[key])) normalized[key] = []; });
+    normalized.profile = normalized.profile && typeof normalized.profile === "object" && !Array.isArray(normalized.profile) ? normalized.profile : null;
+    normalized.exercises = normalized.exercises.filter(function (exercise) { return exercise && exercise.id && exercise.name && exercise.category; }).map(function (exercise) {
+      exercise.bodyPart = exercise.bodyPart || inferBodyPart(exercise.name, exercise.category);
+      exercise.defaultWeightStep = Number.isFinite(Number(exercise.defaultWeightStep)) ? Number(exercise.defaultWeightStep) : (WEIGHT_STEPS[exercise.category] || 0);
+      exercise.isFavorite = !!exercise.isFavorite;
+      return exercise;
+    });
+    var exerciseIds = {};
+    normalized.exercises.forEach(function (exercise) { exerciseIds[exercise.id] = true; });
+    normalized.sessions = normalized.sessions.filter(function (session) { return session && session.id && /^\d{4}-\d{2}-\d{2}$/.test(session.date || "") && (session.locationType === "gym" || session.locationType === "home"); });
+    var sessionIds = {};
+    normalized.sessions.forEach(function (session) { sessionIds[session.id] = true; });
+    normalized.records = normalized.records.filter(function (record) { return record && record.id && sessionIds[record.sessionId] && exerciseIds[record.exerciseId]; });
+    var recordsBySession = {};
+    normalized.records.forEach(function (record) { (recordsBySession[record.sessionId] || (recordsBySession[record.sessionId] = [])).push(record); });
+    Object.keys(recordsBySession).forEach(function (sessionId) {
+      recordsBySession[sessionId].sort(function (a, b) { return Number(a.orderIndex || 0) - Number(b.orderIndex || 0); }).forEach(function (record, index) { record.orderIndex = index; });
+    });
+    var recordIds = {};
+    normalized.records.forEach(function (record) { recordIds[record.id] = true; });
+    normalized.sets = normalized.sets.filter(function (set) { return set && set.id && recordIds[set.recordId] && Number.isFinite(Number(set.weight)) && Number.isFinite(Number(set.reps)); });
+    var setsByRecord = {};
+    normalized.sets.forEach(function (set) { (setsByRecord[set.recordId] || (setsByRecord[set.recordId] = [])).push(set); });
+    Object.keys(setsByRecord).forEach(function (recordId) {
+      setsByRecord[recordId].sort(function (a, b) { return Number(a.setNumber || 0) - Number(b.setNumber || 0); }).forEach(function (set, index) {
+        set.setNumber = index + 1;
+        set.weight = Math.max(0, Number(set.weight || 0));
+        set.reps = Math.max(0, Number(set.reps || 0));
+        set.rir = set.rir == null ? "" : set.rir;
+        set.restSeconds = Math.max(0, Number(set.restSeconds || 90));
+        set.memo = set.memo || "";
+      });
+    });
+    var recordSequence = {};
+    normalized.records.forEach(function (record, index) { recordSequence[record.id] = index; });
+    normalized.sets.sort(function (a, b) {
+      var recordDifference = recordSequence[a.recordId] - recordSequence[b.recordId];
+      return recordDifference || Number(a.setNumber) - Number(b.setNumber);
+    });
+    normalized.cardios = normalized.cardios.filter(function (cardio) { return cardio && cardio.id && sessionIds[cardio.sessionId] && cardio.type; }).map(function (cardio) {
+      cardio.distanceKm = Math.max(0, Number(cardio.distanceKm || 0));
+      cardio.durationMinutes = Math.max(0, Number(cardio.durationMinutes || 0));
+      cardio.inclinePercent = Math.max(0, Number(cardio.inclinePercent || 0));
+      cardio.memo = cardio.memo || "";
+      return cardio;
+    });
+    var exerciseByName = {};
+    normalized.exercises.forEach(function (exercise) { exerciseByName[exercise.name] = exercise.id; });
+    normalized.routines = normalized.routines.filter(function (routine) { return routine && routine.id; }).map(function (routine) {
+      var entries = Array.isArray(routine.exercises) ? routine.exercises : [];
+      if (!entries.length && Array.isArray(routine.records)) entries = routine.records.map(function (record) { return { exerciseId: record.exerciseId }; });
+      if (Array.isArray(routine.cardios)) routine.cardios.forEach(function (cardio) { if (exerciseByName[cardio.type]) entries.push({ exerciseId: exerciseByName[cardio.type] }); });
+      var used = {};
+      routine.exercises = entries.map(function (entry) { return typeof entry === "string" ? entry : entry && entry.exerciseId; }).filter(function (exerciseId) {
+        if (!exerciseIds[exerciseId] || used[exerciseId]) return false;
+        used[exerciseId] = true;
+        return true;
+      }).map(function (exerciseId, index) { return { exerciseId: exerciseId, orderIndex: index }; });
+      delete routine.records;
+      delete routine.cardios;
+      routine.locationType = routine.locationType === "home" ? "home" : "gym";
+      routine.name = routine.name || "ルーティーン";
+      return routine;
+    });
+    var routineIds = {};
+    normalized.routines.forEach(function (routine) { routineIds[routine.id] = true; });
+    normalized.scheduledRoutines = normalized.scheduledRoutines.filter(function (schedule) { return schedule && schedule.id && routineIds[schedule.routineId] && /^\d{4}-\d{2}-\d{2}$/.test(schedule.date || ""); });
+    normalized.recentExerciseIds = normalized.recentExerciseIds.filter(function (id, index, ids) { return exerciseIds[id] && ids.indexOf(id) === index; });
+    normalized.version = CURRENT_DATA_VERSION;
+    delete normalized.exportedAt;
+    return normalized;
+  }
+
+  function migrateVersion1To2(source) { return normalizeVersion2Data(source); }
+
+  function migrateDataToCurrentVersion(source) {
+    var migrated = cloneData(source);
+    var version = Number(migrated.version || 1);
+    if (version > CURRENT_DATA_VERSION || version < 1) throw new Error("Unsupported data version");
+    while (version < CURRENT_DATA_VERSION) {
+      if (version === 1) {
+        migrated = migrateVersion1To2(migrated);
+        version = 2;
+      } else throw new Error("Unsupported data version");
+    }
+    return normalizeVersion2Data(migrated);
+  }
+
+  function validateCurrentData(candidate) {
+    if (!candidate || Number(candidate.version) !== CURRENT_DATA_VERSION) return false;
+    var keys = ["exercises", "sessions", "records", "sets", "cardios", "recentExerciseIds", "routines", "scheduledRoutines"];
+    if (!keys.every(function (key) { return Array.isArray(candidate[key]); })) return false;
+    var exerciseIds = {}, sessionIds = {}, recordIds = {};
+    candidate.exercises.forEach(function (exercise) { if (exercise && exercise.id) exerciseIds[exercise.id] = true; });
+    candidate.sessions.forEach(function (session) { if (session && session.id) sessionIds[session.id] = true; });
+    candidate.records.forEach(function (record) { if (record && record.id) recordIds[record.id] = true; });
+    return candidate.records.every(function (record) { return sessionIds[record.sessionId] && exerciseIds[record.exerciseId]; }) && candidate.sets.every(function (set) { return recordIds[set.recordId]; }) && candidate.cardios.every(function (cardio) { return sessionIds[cardio.sessionId]; });
+  }
+
+  function isPlausibleDataRoot(candidate) {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return false;
+    var knownKeys = ["profile", "exercises", "sessions", "records", "sets", "cardios", "recentExerciseIds", "routines", "scheduledRoutines"];
+    return knownKeys.some(function (key) { return Object.prototype.hasOwnProperty.call(candidate, key); });
+  }
+
+  function corruptStorageTimestamp() {
+    var date = new Date();
+    return date.getFullYear() + String(date.getMonth() + 1).padStart(2, "0") + String(date.getDate()).padStart(2, "0") + "-" + String(date.getHours()).padStart(2, "0") + String(date.getMinutes()).padStart(2, "0") + String(date.getSeconds()).padStart(2, "0");
+  }
+
+  function quarantineCorruptData(raw) {
+    corruptDataRaw = raw;
+    corruptDataKey = "gymlog-data-corrupt-" + corruptStorageTimestamp();
+    try { localStorage.setItem(corruptDataKey, raw); }
+    catch (error) { console.error("Failed to quarantine corrupt data", error); }
+  }
 
   function migrateExercises(exercises) {
     var result = Array.isArray(exercises) ? exercises : [];
@@ -189,26 +422,79 @@
   }
 
   function blankData() {
-    return { version: 1, profile: null, exercises: seedExercises(), sessions: [], records: [], sets: [], cardios: [], recentExerciseIds: [], routines: [], scheduledRoutines: [] };
+    return { version: CURRENT_DATA_VERSION, profile: null, exercises: seedExercises(), sessions: [], records: [], sets: [], cardios: [], recentExerciseIds: [], routines: [], scheduledRoutines: [] };
   }
 
   function loadData() {
+    var saved = null;
     try {
-      var saved = localStorage.getItem(STORAGE_KEY);
+      saved = localStorage.getItem(STORAGE_KEY);
       if (!saved) return blankData();
       var parsed = JSON.parse(saved);
-      var base = blankData();
-      Object.keys(base).forEach(function (key) {
-        if (typeof parsed[key] !== "undefined") base[key] = parsed[key];
-      });
-      base.exercises = migrateExercises(base.exercises);
-      return base;
+      if (!isPlausibleDataRoot(parsed)) throw new Error("Invalid root data");
+      var originalVersion = Number(parsed.version || 1);
+      var migrated = migrateDataToCurrentVersion(parsed);
+      if (!validateCurrentData(migrated)) throw new Error("Invalid migrated data");
+      migrated.exercises = migrateExercises(migrated.exercises);
+      if (!validateCurrentData(migrated)) throw new Error("Invalid catalog data");
+      if (originalVersion !== CURRENT_DATA_VERSION) dataMigrationChanged = true;
+      return migrated;
     } catch (error) {
+      console.error("Failed to load saved data", error);
+      if (saved) {
+        quarantineCorruptData(saved);
+        dataRecoveryRequired = true;
+      }
+      dataLoadWarning = "保存データを正常に読み込めませんでした";
       return blankData();
     }
   }
 
   var data = loadData();
+  var dataIndexes = null;
+
+  /* In-memory data access indexes; localStorage data remains the source of truth. */
+  function rebuildDataIndexes() {
+    try {
+      var indexes = {
+        sessionsByDate: Object.create(null), sessionById: Object.create(null),
+        recordsBySessionId: Object.create(null), recordById: Object.create(null), recordsByExerciseId: Object.create(null),
+        setsByRecordId: Object.create(null), cardiosBySessionId: Object.create(null),
+        routineById: Object.create(null), scheduledRoutinesByDate: Object.create(null), exerciseById: Object.create(null)
+      };
+      data.exercises.forEach(function (exercise) { indexes.exerciseById[exercise.id] = exercise; });
+      data.sessions.forEach(function (session) {
+        indexes.sessionById[session.id] = session;
+        (indexes.sessionsByDate[session.date] || (indexes.sessionsByDate[session.date] = [])).push(session);
+      });
+      Object.keys(indexes.sessionsByDate).forEach(function (date) {
+        indexes.sessionsByDate[date].sort(function (a, b) { return String(b.createdAt || b.updatedAt || "").localeCompare(String(a.createdAt || a.updatedAt || "")); });
+      });
+      data.records.forEach(function (record) {
+        indexes.recordById[record.id] = record;
+        (indexes.recordsBySessionId[record.sessionId] || (indexes.recordsBySessionId[record.sessionId] = [])).push(record);
+        (indexes.recordsByExerciseId[record.exerciseId] || (indexes.recordsByExerciseId[record.exerciseId] = [])).push(record);
+      });
+      Object.keys(indexes.recordsBySessionId).forEach(function (sessionId) {
+        indexes.recordsBySessionId[sessionId].sort(function (a, b) { return Number(a.orderIndex || 0) - Number(b.orderIndex || 0); });
+      });
+      data.sets.forEach(function (set) { (indexes.setsByRecordId[set.recordId] || (indexes.setsByRecordId[set.recordId] = [])).push(set); });
+      Object.keys(indexes.setsByRecordId).forEach(function (recordId) {
+        indexes.setsByRecordId[recordId].sort(function (a, b) { return Number(a.setNumber || 0) - Number(b.setNumber || 0); });
+      });
+      data.cardios.forEach(function (cardio) { (indexes.cardiosBySessionId[cardio.sessionId] || (indexes.cardiosBySessionId[cardio.sessionId] = [])).push(cardio); });
+      data.routines.forEach(function (routine) { indexes.routineById[routine.id] = routine; });
+      data.scheduledRoutines.forEach(function (schedule) { (indexes.scheduledRoutinesByDate[schedule.date] || (indexes.scheduledRoutinesByDate[schedule.date] = [])).push(schedule); });
+      dataIndexes = indexes;
+      return true;
+    } catch (error) {
+      console.error("Failed to build data indexes", error);
+      dataIndexes = null;
+      return false;
+    }
+  }
+
+  rebuildDataIndexes();
   var calendarCursor = new Date();
   calendarCursor.setDate(1);
   var draft = null;
@@ -221,24 +507,400 @@
   var pendingExerciseId = null;
   var activeExerciseBodyPart = "chest";
   var exercisePickerMode = "workout";
-  var progressState = { tab: "strength", exerciseId: null, cardioType: "ウォーキング", metric: "maxWeight" };
+  var progressState = { tab: "strength", exerciseId: null, cardioType: "ウォーキング", metric: "maxWeight", range: "6m" };
   var toastTimer = null;
   var confirmCallback = null;
+  var confirmCancelCallback = null;
   var copySourceSessionId = null;
   var routineEditingId = null;
   var routineEditorState = null;
   var routinePendingExerciseIds = [];
   var routineTargetDate = null;
   var routineListMode = "use";
+  var pendingRestoreData = null;
+  var pendingCopyConflict = null;
+  var pendingSaveConflict = null;
+  var pendingSavedDraft = null;
+  var draftSaveTimer = null;
+  var nextSetExerciseId = null;
 
-  function persist() {
+  function writeDataToStorage() {
+    if (dataRecoveryRequired) {
+      console.warn("Persist blocked while data recovery is required");
+      return false;
+    }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       return true;
     } catch (error) {
+      console.error("Failed to save data", error);
       showToast("保存できませんでした。ブラウザの保存設定を確認してください");
       return false;
     }
+  }
+
+  function persist() {
+    rebuildDataIndexes();
+    return writeDataToStorage();
+  }
+
+  function runDataTransaction(mutator) {
+    var beforeData = cloneData(data);
+    try {
+      mutator(data);
+      rebuildDataIndexes();
+      if (!writeDataToStorage()) throw new Error("persist failed");
+      return true;
+    } catch (error) {
+      console.error("Transaction failed", error);
+      data = beforeData;
+      rebuildDataIndexes();
+      showToast("保存できませんでした");
+      return false;
+    }
+  }
+
+  function runButtonLocked(button, action) {
+    if (!button || button.disabled) return;
+    button.disabled = true;
+    try { action(); }
+    catch (error) {
+      console.error("Conflict action failed", error);
+      showToast("保存処理に失敗しました");
+    }
+    finally { button.disabled = false; }
+  }
+
+  function backupPayload() {
+    var payload = JSON.parse(JSON.stringify(data));
+    payload.exportedAt = nowIso();
+    return payload;
+  }
+
+  function downloadBackupData(prefix) {
+    try {
+      var blob = new Blob([JSON.stringify(backupPayload(), null, 2)], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement("a");
+      link.href = url;
+      link.download = (prefix || "gymlog-backup") + "-" + todayString() + ".json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+      return true;
+    } catch (error) {
+      console.error("Failed to create backup", error);
+      showToast("バックアップを保存できませんでした");
+      return false;
+    }
+  }
+
+  function validateBackupData(candidate) {
+    try {
+      if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return false;
+      var version = Number(candidate.version || 1);
+      if (!Number.isFinite(version) || version < 1 || version > CURRENT_DATA_VERSION) return false;
+      var requiredArrays = ["exercises", "sessions", "records", "sets", "cardios"];
+      if (!requiredArrays.every(function (key) { return Array.isArray(candidate[key]); })) return false;
+      return validateCurrentData(migrateDataToCurrentVersion(candidate));
+    }
+    catch (error) { console.error("Backup validation failed", error); return false; }
+  }
+
+  function normalizeBackupData(candidate) {
+    var restored = migrateDataToCurrentVersion(candidate);
+    restored.exercises = migrateExercises(restored.exercises);
+    if (!validateCurrentData(restored)) throw new Error("Invalid backup data");
+    return restored;
+  }
+
+  function savePreRestoreSnapshot() {
+    try {
+      localStorage.setItem(PRE_RESTORE_STORAGE_KEY, JSON.stringify({ savedAt: nowIso(), data: cloneData(data) }));
+      return true;
+    } catch (error) {
+      console.error("Failed to save pre-restore snapshot", error);
+      return false;
+    }
+  }
+
+  function applyPendingRestore(skipSnapshot) {
+    if (!pendingRestoreData) return;
+    if (skipSnapshot !== true && !savePreRestoreSnapshot()) {
+      askConfirm("現在のデータを退避できませんでした。バックアップなしで復元を続けると、現在の記録を元に戻せない可能性があります。", "バックアップなしで続ける", function () { applyPendingRestore(true); }, "復元を中止", function () { pendingRestoreData = null; });
+      return;
+    }
+    downloadBackupData("gymlog-before-restore");
+    var restored = cloneData(pendingRestoreData);
+    var recoveryWasRequired = dataRecoveryRequired;
+    dataRecoveryRequired = false;
+    if (!runDataTransaction(function () { data = restored; })) { dataRecoveryRequired = recoveryWasRequired; return; }
+    pendingRestoreData = null;
+    draft = null;
+    clearSavedDraft();
+    calendarCursor = new Date();
+    calendarCursor.setDate(1);
+    renderHome();
+    renderRoutineList();
+    closeModal("settingsMenuModal");
+    closeModal("dataRecoveryModal");
+    showScreen("home");
+    showToast("バックアップから復元しました");
+  }
+
+  function readBackupFile(file) {
+    if (!file) return;
+    pendingRestoreData = null;
+    var input = $("#restoreDataInput");
+    if (input) input.disabled = true;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var parsed = JSON.parse(String(reader.result || ""));
+        if (!validateBackupData(parsed)) throw new Error("invalid");
+        pendingRestoreData = normalizeBackupData(parsed);
+        askConfirm("バックアップからデータを復元します。現在のデータは上書きされます。", "復元する", applyPendingRestore, "キャンセル", function () { pendingRestoreData = null; });
+      } catch (error) {
+        console.error("Failed to read backup", error);
+        pendingRestoreData = null;
+        showToast("このバックアップファイルは読み込めません");
+      } finally {
+        if (input) input.disabled = false;
+      }
+    };
+    reader.onerror = function (error) {
+      console.error("Failed to read backup file", error);
+      pendingRestoreData = null;
+      if (input) input.disabled = false;
+      showToast("バックアップファイルを読み込めませんでした");
+    };
+    reader.readAsText(file, "UTF-8");
+  }
+
+  function restorePreRestoreSnapshot() {
+    try {
+      var saved = localStorage.getItem(PRE_RESTORE_STORAGE_KEY);
+      if (!saved) { showToast("復元前データはありません"); return; }
+      var parsed = JSON.parse(saved);
+      pendingRestoreData = normalizeBackupData(parsed.data);
+      askConfirm("直前の復元前データに戻します。現在のデータは上書きされます。", "元に戻す", applyPendingRestore, "キャンセル", function () { pendingRestoreData = null; });
+    } catch (error) {
+      console.error("Failed to restore snapshot", error);
+      pendingRestoreData = null;
+      showToast("復元前データを読み込めませんでした");
+    }
+  }
+
+  function downloadCorruptData() {
+    if (!corruptDataRaw) { showToast("書き出せる破損データはありません"); return; }
+    try {
+      var blob = new Blob([corruptDataRaw], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement("a");
+      link.href = url;
+      link.download = (corruptDataKey || "gymlog-corrupt-data") + ".json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+    } catch (error) { console.error("Failed to export corrupt data", error); showToast("破損データを書き出せませんでした"); }
+  }
+
+  function startWithFreshData() {
+    var previousData = data;
+    data = blankData();
+    dataRecoveryRequired = false;
+    if (!persist()) { data = previousData; dataRecoveryRequired = true; rebuildDataIndexes(); return; }
+    clearSavedDraft();
+    closeModal("dataRecoveryModal");
+    renderHome();
+    showScreen("home");
+    showToast("新しいデータで開始しました");
+  }
+
+  function draftStoragePayload() {
+    var editorState = captureEditorState();
+    return {
+      draft: draft,
+      selectedExerciseId: selectedExerciseId,
+      editingSetTempId: editingSetTempId,
+      isAddingSet: isAddingSet,
+      editingCardioTempId: editingCardioTempId,
+      selectedRir: selectedRir,
+      selectedRest: selectedRest,
+      editorState: editorState,
+      savedAt: nowIso()
+    };
+  }
+
+  function editorInputValue(selector) {
+    var element = $(selector);
+    return element ? String(element.value == null ? "" : element.value) : "";
+  }
+
+  function captureEditorState() {
+    var exercise = getExercise(selectedExerciseId);
+    var mode = "none";
+    if (exercise && exercise.category === "CARDIO") mode = "cardio";
+    else if (editingSetTempId) mode = "editSet";
+    else if (isAddingSet && selectedExerciseId) mode = "addSet";
+    return {
+      mode: mode,
+      exerciseId: selectedExerciseId,
+      editingSetTempId: editingSetTempId,
+      editingCardioTempId: editingCardioTempId,
+      weightKg: editorInputValue("#weightInput"),
+      reps: editorInputValue("#repsInput"),
+      rir: selectedRir,
+      restSeconds: Number(selectedRest || 90),
+      setMemo: editorInputValue("#setMemo"),
+      cardioType: editorInputValue("#cardioType"),
+      durationMinutes: editorInputValue("#cardioDuration"),
+      distanceKm: editorInputValue("#cardioDistance"),
+      inclinePercent: editorInputValue("#cardioIncline"),
+      cardioMemo: editorInputValue("#cardioMemo")
+    };
+  }
+
+  function hasMeaningfulDraftContent(draftValue, editorState) {
+    if (!draftValue) return false;
+    if ((draftValue.records || []).length) return true;
+    if ((draftValue.cardios || []).length) return true;
+    if ((draftValue.pendingCardioTypes || []).length) return true;
+    if (String(draftValue.memo || "").trim()) return true;
+    if (!editorState || editorState.mode === "none") return false;
+    if (editorState.mode === "cardio") {
+      return !!(String(editorState.durationMinutes || "").trim() || String(editorState.distanceKm || "").trim() || String(editorState.inclinePercent || "").trim() || String(editorState.cardioMemo || "").trim());
+    }
+    return !!(
+      String(editorState.weightKg || "").trim() ||
+      String(editorState.reps || "").trim() ||
+      String(editorState.setMemo || "").trim() ||
+      editorState.rir !== null ||
+      Number(editorState.restSeconds || 90) !== 90
+    );
+  }
+
+  function saveDraftNow() {
+    clearTimeout(draftSaveTimer);
+    draftSaveTimer = null;
+    if (!draft) return false;
+    try {
+      var payload = draftStoragePayload();
+      if (!hasMeaningfulDraftContent(draft, payload.editorState)) {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+        return false;
+      }
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
+      return true;
+    } catch (error) {
+      console.error("Failed to save draft", error);
+      showToast("入力途中の内容を自動保存できませんでした");
+      return false;
+    }
+  }
+
+  function scheduleDraftSave() {
+    clearTimeout(draftSaveTimer);
+    draftSaveTimer = setTimeout(saveDraftNow, 400);
+  }
+
+  function clearSavedDraft() {
+    clearTimeout(draftSaveTimer);
+    draftSaveTimer = null;
+    try { localStorage.removeItem(DRAFT_STORAGE_KEY); }
+    catch (error) { console.error("Failed to clear saved draft", error); }
+    pendingSavedDraft = null;
+  }
+
+  function loadSavedDraft() {
+    try {
+      var saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!saved) return null;
+      var parsed = JSON.parse(saved);
+      if (!parsed || !parsed.draft || !Array.isArray(parsed.draft.records) || !Array.isArray(parsed.draft.cardios)) {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+        return null;
+      }
+      if (!hasMeaningfulDraftContent(parsed.draft, parsed.editorState || { mode: "none" })) {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+        return null;
+      }
+      return parsed;
+    } catch (error) {
+      console.error("Failed to load draft", error);
+      try { localStorage.removeItem(DRAFT_STORAGE_KEY); }
+      catch (removeError) { console.error("Failed to remove invalid draft", removeError); }
+      return null;
+    }
+  }
+
+  function showSavedDraftPrompt(savedState) {
+    if (!savedState || !savedState.draft) return;
+    pendingSavedDraft = savedState;
+    var savedDraft = savedState.draft;
+    var setCount = savedDraft.records.reduce(function (sum, record) { return sum + (Array.isArray(record.sets) ? record.sets.length : 0); }, 0);
+    var exerciseCount = savedDraft.records.length + savedDraft.cardios.length + (savedDraft.pendingCardioTypes || []).length;
+    var locationLabel = savedDraft.locationType === "home" ? "自宅トレーニング" : "ジムトレーニング";
+    $("#draftResumeSummary").textContent = formatDateJa(savedDraft.date) + "\n" + locationLabel + "\n" + exerciseCount + "種目・" + setCount + "セット";
+    openModal("draftResumeModal");
+  }
+
+  function resumeSavedDraft() {
+    if (!pendingSavedDraft || !pendingSavedDraft.draft) return;
+    var savedState = pendingSavedDraft;
+    var editorState = savedState.editorState || { mode: "none" };
+    draft = savedState.draft;
+    if (!Object.prototype.hasOwnProperty.call(draft, "originalSessionId")) {
+      draft.originalSessionId = draft.id || null;
+    }
+    resetCardioForm();
+    selectedExerciseId = null;
+    editingSetTempId = null;
+    isAddingSet = false;
+    editingCardioTempId = null;
+    selectedRir = null;
+    selectedRest = 90;
+    if (editorState.mode === "addSet" && getExercise(editorState.exerciseId)) {
+      selectedExerciseId = editorState.exerciseId;
+      isAddingSet = true;
+    } else if (editorState.mode === "editSet" && findDraftSet(editorState.editingSetTempId)) {
+      selectedExerciseId = editorState.exerciseId;
+      editingSetTempId = editorState.editingSetTempId;
+    } else if (editorState.mode === "cardio") {
+      var cardioExercise = getExercise(editorState.exerciseId) || data.exercises.find(function (exercise) { return exercise.category === "CARDIO" && exercise.name === editorState.cardioType; });
+      if (cardioExercise) selectedExerciseId = cardioExercise.id;
+      if ((draft.cardios || []).some(function (cardio) { return cardio.tempId === editorState.editingCardioTempId; })) editingCardioTempId = editorState.editingCardioTempId;
+    }
+    selectedRir = editorState.rir == null ? null : editorState.rir;
+    selectedRest = Number(editorState.restSeconds || 90);
+    pendingSavedDraft = null;
+    renderWorkout();
+    if (editorState.mode === "addSet" || editorState.mode === "editSet") {
+      $("#weightInput").value = editorState.weightKg;
+      $("#repsInput").value = editorState.reps;
+      $("#setMemo").value = editorState.setMemo || "";
+      selectedRir = editorState.rir == null ? null : editorState.rir;
+      selectedRest = Number(editorState.restSeconds || 90);
+      renderSetChoices();
+    } else if (editorState.mode === "cardio" && selectedExerciseId) {
+      $("#cardioType").value = editorState.cardioType || getExercise(selectedExerciseId).name;
+      $("#cardioDuration").value = editorState.durationMinutes;
+      $("#cardioDistance").value = editorState.distanceKm;
+      $("#cardioIncline").value = editorState.inclinePercent;
+      $("#cardioMemo").value = editorState.cardioMemo || "";
+      updateCardioPreview();
+    }
+    closeModal("draftResumeModal");
+    showScreen("workout");
+    saveDraftNow();
+  }
+
+  function discardSavedDraft() {
+    clearSavedDraft();
+    closeModal("draftResumeModal");
+    showToast("保存途中の内容を破棄しました");
   }
 
   function showToast(message) {
@@ -265,23 +927,60 @@
     if (!$(".modal.is-open")) document.body.classList.remove("modal-open");
   }
 
-  function askConfirm(message, actionLabel, callback) {
+  function askConfirm(message, actionLabel, callback, cancelLabel, cancelCallback) {
     $("#confirmMessage").textContent = message;
     $("#confirmAccept").textContent = actionLabel || "削除する";
+    $("#confirmCancel").textContent = cancelLabel || "キャンセル";
     confirmCallback = callback;
+    confirmCancelCallback = cancelCallback || null;
     openModal("confirmModal");
   }
 
-  function getExercise(id) { return data.exercises.find(function (exercise) { return exercise.id === id; }); }
+  function cancelConfirmModal() {
+    var callback = confirmCancelCallback;
+    confirmCallback = null;
+    confirmCancelCallback = null;
+    closeModal("confirmModal");
+    if (callback) callback();
+  }
+
+  function acceptConfirmModal(button) {
+    runButtonLocked(button, function () {
+      var callback = confirmCallback;
+      confirmCallback = null;
+      confirmCancelCallback = null;
+      closeModal("confirmModal");
+      if (callback) callback();
+    });
+  }
+
+  function getExercise(id) {
+    if (dataIndexes && dataIndexes.exerciseById[id]) return dataIndexes.exerciseById[id];
+    return data.exercises.find(function (exercise) { return exercise.id === id; });
+  }
+  function getSession(id) {
+    if (dataIndexes && dataIndexes.sessionById[id]) return dataIndexes.sessionById[id];
+    return data.sessions.find(function (session) { return session.id === id; });
+  }
+  function getRoutine(id) {
+    if (dataIndexes && dataIndexes.routineById[id]) return dataIndexes.routineById[id];
+    return data.routines.find(function (routine) { return routine.id === id; });
+  }
   function getSessionRecords(sessionId) {
+    if (dataIndexes) return (dataIndexes.recordsBySessionId[sessionId] || []).slice();
     return data.records.filter(function (record) { return record.sessionId === sessionId; }).sort(function (a, b) { return a.orderIndex - b.orderIndex; });
   }
   function getRecordSets(recordId) {
+    if (dataIndexes) return (dataIndexes.setsByRecordId[recordId] || []).slice();
     return data.sets.filter(function (set) { return set.recordId === recordId; }).sort(function (a, b) { return a.setNumber - b.setNumber; });
   }
-  function getSessionCardios(sessionId) { return data.cardios.filter(function (cardio) { return cardio.sessionId === sessionId; }); }
+  function getSessionCardios(sessionId) {
+    if (dataIndexes) return (dataIndexes.cardiosBySessionId[sessionId] || []).slice();
+    return data.cardios.filter(function (cardio) { return cardio.sessionId === sessionId; });
+  }
   function profileWeight() { return data.profile && Number(data.profile.weightKg) > 0 ? Number(data.profile.weightKg) : 60; }
 
+  /* Training calculations */
   function calculateStrengthCalories(sets) {
     if (!sets.length) return 0;
     var weight = profileWeight();
@@ -291,6 +990,22 @@
       var mets = RIR_METS[set.rir == null ? "" : set.rir] || 5;
       return total + mets * 3.5 * weight / 200 * ((activeSeconds + restSeconds) / 60);
     }, 0);
+  }
+
+  function calculateStrengthCaloriesForRecords(records) {
+    return (records || []).reduce(function (total, record) {
+      var sets = Array.isArray(record.sets) ? record.sets : getRecordSets(record.id);
+      return total + calculateStrengthCalories(sets);
+    }, 0);
+  }
+
+  function calculateSessionCalories(sessionId) {
+    var strength = calculateStrengthCaloriesForRecords(getSessionRecords(sessionId));
+    var cardio = getSessionCardios(sessionId).reduce(function (sum, item) {
+      var saved = Number(item.calories);
+      return sum + (item.calories !== null && item.calories !== undefined && item.calories !== "" && Number.isFinite(saved) ? saved : calculateCardio(item).calories);
+    }, 0);
+    return strength + cardio;
   }
 
   function calculateCardio(cardio) {
@@ -312,15 +1027,15 @@
 
   function draftCalories() {
     if (!draft) return 0;
-    var allSets = [];
-    draft.records.forEach(function (record) { allSets = allSets.concat(record.sets); });
     var cardioCalories = draft.cardios.reduce(function (sum, cardio) { return sum + calculateCardio(cardio).calories; }, 0);
-    return calculateStrengthCalories(allSets) + cardioCalories;
+    return calculateStrengthCaloriesForRecords(draft.records) + cardioCalories;
   }
 
   function getMonthlySummary(year, month) {
     var prefix = year + "-" + String(month + 1).padStart(2, "0");
-    var monthSessions = data.sessions.filter(function (session) { return session.date.indexOf(prefix) === 0; });
+    var monthSessions = dataIndexes ? Object.keys(dataIndexes.sessionsByDate).filter(function (date) { return date.indexOf(prefix) === 0; }).reduce(function (items, date) {
+      return items.concat(dataIndexes.sessionsByDate[date]);
+    }, []) : data.sessions.filter(function (session) { return session.date.indexOf(prefix) === 0; });
     var sessionIds = {};
     monthSessions.forEach(function (session) { sessionIds[session.id] = true; });
     var strengthCalories = 0;
@@ -333,7 +1048,7 @@
     data.records.forEach(function (record) {
       if (!sessionIds[record.sessionId]) return;
       var sets = getRecordSets(record.id);
-      strengthCalories += calculateStrengthCalories(sets);
+      strengthCalories += calculateStrengthCaloriesForRecords([record]);
       var exercise = getExercise(record.exerciseId);
       if (!exercise || (!upperBodyParts[exercise.bodyPart] && exercise.bodyPart !== "legs")) return;
       var volumeKg = sets.reduce(function (sum, set) {
@@ -352,7 +1067,7 @@
     });
 
     return {
-      totalVisits: monthSessions.length,
+      workoutDays: Object.keys(monthSessions.reduce(function (dates, session) { dates[session.date] = true; return dates; }, {})).length,
       gymVisits: monthSessions.filter(function (session) { return session.locationType === "gym"; }).length,
       homeVisits: monthSessions.filter(function (session) { return session.locationType === "home"; }).length,
       totalCalories: strengthCalories + cardioCalories,
@@ -373,7 +1088,7 @@
     var formatVolume = function (value) {
       return Number(value || 0).toLocaleString("ja-JP", { maximumFractionDigits: 1 });
     };
-    $("#monthlyVisits").textContent = summary.totalVisits;
+    $("#monthlyVisits").textContent = summary.workoutDays;
     $("#monthlyGymVisits").textContent = summary.gymVisits;
     $("#monthlyHomeVisits").textContent = summary.homeVisits;
     $("#monthlyCalories").textContent = Math.round(summary.totalCalories).toLocaleString("ja-JP");
@@ -383,9 +1098,11 @@
     $("#monthlyUpperVolume").textContent = formatVolume(summary.upperBodyVolumeKg);
     $("#monthlyLowerVolume").textContent = formatVolume(summary.lowerBodyVolumeKg);
     $("#monthlyCardioDistance").textContent = summary.cardioDistanceKm.toFixed(1);
-    $("#monthlySummaryLabel").textContent = monthLabel + " 運動";
-    $("#monthlyCaloriesLabel").textContent = monthLabel + " カロリー";
-    $("#monthlyVolumeLabel").textContent = monthLabel + " ボリューム";
+    var summaryMonth = $("#monthlySummaryMonth");
+    if (summaryMonth) summaryMonth.textContent = year + "年" + monthLabel;
+    $("#monthlySummaryLabel").textContent = "運動";
+    $("#monthlyCaloriesLabel").textContent = "カロリー";
+    $("#monthlyVolumeLabel").textContent = "ボリューム";
   }
 
   function renderHome() {
@@ -394,63 +1111,16 @@
   }
 
   function getSessionsForDate(dateValue) {
+    if (dataIndexes) return (dataIndexes.sessionsByDate[dateValue] || []).slice();
     return data.sessions.filter(function (session) { return session.date === dateValue; }).sort(function (a, b) {
       return String(b.createdAt || b.updatedAt || "").localeCompare(String(a.createdAt || a.updatedAt || ""));
     });
-  }
-
-  function exerciseSetSummary(exercise, sets) {
-    return sets.map(function (set) {
-      var weight = exercise && exercise.category === "BODYWEIGHT" ? "自重" : (Number(set.weight || 0) / 1000).toFixed(1) + "kg";
-      return weight + " × " + Number(set.reps || 0) + "回";
-    }).join(" / ");
   }
 
   function cardioExerciseId(type) {
     var normalizedType = type === "傾斜ウォーク" ? "ウォーキング" : type;
     var exercise = data.exercises.find(function (item) { return item.category === "CARDIO" && item.name === normalizedType; });
     return exercise ? exercise.id : "";
-  }
-
-  function renderHomeTodayMenu() {
-    var list = $("#homeTodayMenuList");
-    if (!list) return;
-    var sessions = getSessionsForDate(todayString());
-    if (!sessions.length) {
-      list.innerHTML = '<div class="home-menu-empty"><p>今日のメニューはまだありません</p><div class="home-menu-empty-actions"><button type="button" data-home-empty-add>種目を追加</button><button type="button" data-copy-latest-menu>過去メニューからコピー</button></div><small>前回のメニューをコピーすると、すぐ記録を始められます。</small></div>';
-      return;
-    }
-    list.innerHTML = sessions.map(function (session) {
-      var rows = [];
-      getSessionRecords(session.id).forEach(function (record) {
-        var exercise = getExercise(record.exerciseId);
-        var sets = getRecordSets(record.id);
-        if (!exercise || !sets.length) return;
-        rows.push('<button class="home-menu-exercise" type="button" data-home-session="' + session.id + '" data-home-exercise="' + exercise.id + '"><span><strong>' + escapeHtml(exercise.name) + '</strong><small>' + escapeHtml(exerciseSetSummary(exercise, sets)) + '</small></span><span class="home-menu-add-cue">セットを追加</span></button>');
-      });
-      getSessionCardios(session.id).forEach(function (cardio) {
-        var exerciseId = cardioExerciseId(cardio.type);
-        var detail = Number(cardio.durationMinutes || 0) + "分" + (Number(cardio.distanceKm || 0) > 0 ? " / " + formatNumberForInput(Number(cardio.distanceKm), 0.1) + "km" : "") + (Number(cardio.inclinePercent || 0) > 0 ? " / 傾斜" + formatNumberForInput(Number(cardio.inclinePercent), 0.5) + "%" : "");
-        rows.push('<button class="home-menu-exercise" type="button" data-home-session="' + session.id + '" data-home-exercise="' + exerciseId + '"><span><strong>' + escapeHtml(cardio.type) + '</strong><small>' + escapeHtml(detail) + '</small></span><span class="home-menu-add-cue">記録を追加</span></button>');
-      });
-      return '<article class="home-menu-session"><div class="home-menu-session-head"><b>' + (session.locationType === "home" ? "自宅トレーニング" : "ジムトレーニング") + '</b><span>' + Math.round(Number(session.totalCalories || 0)) + 'kcal</span></div>' + rows.join("") + '</article>';
-    }).join("");
-  }
-
-  function startAddingExerciseToToday() {
-    var sessions = getSessionsForDate(todayString());
-    if (sessions.length) loadDraft(sessions[0].id);
-    else {
-      var recentSession = data.sessions.slice().sort(function (a, b) { return String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")); })[0];
-      newDraft(recentSession ? recentSession.locationType : "gym", todayString());
-    }
-    openExercisePicker();
-  }
-
-  function addExerciseToSavedSession(sessionId, exerciseId) {
-    if (!sessionId || !exerciseId || !getExercise(exerciseId)) return;
-    loadDraft(sessionId);
-    chooseExercise(exerciseId);
   }
 
   function copyLatestPastMenu() {
@@ -463,6 +1133,7 @@
     openCopyDestination(latest.id);
   }
 
+  /* Routine management */
   function routineExerciseEntries(routine) {
     if (Array.isArray(routine.exercises)) {
       return routine.exercises.slice().sort(function (a, b) { return Number(a.orderIndex || 0) - Number(b.orderIndex || 0); });
@@ -525,7 +1196,7 @@
   }
 
   function openRoutineEditor(routineId) {
-    var routine = data.routines.find(function (item) { return item.id === routineId; });
+    var routine = getRoutine(routineId);
     if (!routine) return;
     routineEditingId = routineId;
     routineEditorState = {
@@ -545,16 +1216,6 @@
     exercisePickerMode = "workout";
     closeModal("exerciseModal");
     closeModal("routineSaveModal");
-  }
-
-  function addExerciseToRoutine(exerciseId) {
-    if (!routineEditorState || !getExercise(exerciseId)) return;
-    if (routineEditorState.exerciseIds.indexOf(exerciseId) >= 0) {
-      showToast("この種目は追加済みです");
-      return;
-    }
-    routineEditorState.exerciseIds.push(exerciseId);
-    renderRoutineEditor();
   }
 
   function openRoutineExercisePicker() {
@@ -590,12 +1251,14 @@
       createdAt: existing ? existing.createdAt : stamp,
       updatedAt: stamp
     };
-    if (existingIndex >= 0) data.routines[existingIndex] = routine;
-    else data.routines.push(routine);
     var wasEditing = !!existing;
+    var saved = runDataTransaction(function () {
+      if (existingIndex >= 0) data.routines[existingIndex] = routine;
+      else data.routines.push(routine);
+    });
+    if (!saved) return;
     routineEditingId = null;
     routineEditorState = null;
-    persist();
     closeModal("routineSaveModal");
     renderRoutineList();
     showToast(wasEditing ? "ルーティーンを更新しました" : "ルーティーンを保存しました");
@@ -626,7 +1289,7 @@
   }
 
   function draftFromRoutine(routine, dateValue, scheduleId) {
-    draft = { id: null, date: dateValue, locationType: routine.locationType, memo: "", records: [], cardios: [], pendingCardioTypes: [], createdAt: nowIso(), sourceScheduleId: scheduleId || null };
+    draft = { id: null, originalSessionId: null, date: dateValue, locationType: routine.locationType, memo: "", records: [], cardios: [], pendingCardioTypes: [], createdAt: nowIso(), sourceScheduleId: scheduleId || null };
     var legacyRecords = Array.isArray(routine.records) ? routine.records : [];
     legacyRecords.forEach(function (record, recordIndex) {
       draft.records.push({
@@ -665,10 +1328,11 @@
     closeModal("routineListModal");
     closeModal("dayModal");
     showScreen("workout");
+    saveDraftNow();
   }
 
   function useRoutineToday(routineId) {
-    var routine = data.routines.find(function (item) { return item.id === routineId; });
+    var routine = getRoutine(routineId);
     if (!routine) return;
     routineEditingId = null;
     draftFromRoutine(routine, routineTargetDate || todayString(), null);
@@ -680,13 +1344,12 @@
   }
 
   function scheduleRoutine(routineId, dateValue) {
-    var routine = data.routines.find(function (item) { return item.id === routineId; });
+    var routine = getRoutine(routineId);
     if (!routine || !dateValue) { showToast("追加先の日付を選んでください"); return; }
     var existing = data.scheduledRoutines.find(function (schedule) { return schedule.routineId === routineId && schedule.date === dateValue; });
     if (!existing) {
       var stamp = nowIso();
-      data.scheduledRoutines.push({ id: makeId("schedule"), routineId: routineId, date: dateValue, createdAt: stamp, updatedAt: stamp });
-      persist();
+      if (!runDataTransaction(function () { data.scheduledRoutines.push({ id: makeId("schedule"), routineId: routineId, date: dateValue, createdAt: stamp, updatedAt: stamp }); })) return;
     }
     renderCalendar();
     renderRoutineList();
@@ -696,28 +1359,30 @@
   function startScheduledRoutine(scheduleId) {
     var schedule = data.scheduledRoutines.find(function (item) { return item.id === scheduleId; });
     if (!schedule) return;
-    var routine = data.routines.find(function (item) { return item.id === schedule.routineId; });
+    var routine = getRoutine(schedule.routineId);
     if (!routine) return;
     routineEditingId = null;
     draftFromRoutine(routine, schedule.date, schedule.id);
   }
 
   function deleteSchedule(scheduleId) {
-    data.scheduledRoutines = data.scheduledRoutines.filter(function (item) { return item.id !== scheduleId; });
-    persist();
+    if (!runDataTransaction(function () { data.scheduledRoutines = data.scheduledRoutines.filter(function (item) { return item.id !== scheduleId; }); })) return;
     closeModal("dayModal");
     renderHome();
     showToast("予定を削除しました");
   }
 
   function deleteRoutine(routineId) {
-    data.routines = data.routines.filter(function (routine) { return routine.id !== routineId; });
-    persist();
+    if (!runDataTransaction(function () {
+      data.routines = data.routines.filter(function (routine) { return routine.id !== routineId; });
+      data.scheduledRoutines = data.scheduledRoutines.filter(function (schedule) { return schedule.routineId !== routineId; });
+    })) return;
     renderRoutineList();
     renderHome();
     showToast("ルーティーンを削除しました");
   }
 
+  /* Home calendar and monthly summaries */
   function renderCalendar() {
     var year = calendarCursor.getFullYear();
     var month = calendarCursor.getMonth();
@@ -747,10 +1412,9 @@
         cellDate = new Date(year, month, day);
       }
       var dateValue = cellDate.getFullYear() + "-" + String(cellDate.getMonth() + 1).padStart(2, "0") + "-" + String(cellDate.getDate()).padStart(2, "0");
-      var daySessions = data.sessions.filter(function (session) { return session.date === dateValue; });
-      var hasSchedule = data.scheduledRoutines.some(function (schedule) {
-        return schedule.date === dateValue && data.routines.some(function (routine) { return routine.id === schedule.routineId; });
-      });
+      var daySessions = getSessionsForDate(dateValue);
+      var daySchedules = dataIndexes ? (dataIndexes.scheduledRoutinesByDate[dateValue] || []) : data.scheduledRoutines.filter(function (schedule) { return schedule.date === dateValue; });
+      var hasSchedule = daySchedules.some(function (schedule) { return !!getRoutine(schedule.routineId); });
       var hasGym = daySessions.some(function (session) { return session.locationType === "gym"; });
       var hasHome = daySessions.some(function (session) { return session.locationType === "home"; });
       var classes = ["calendar-day"];
@@ -771,16 +1435,17 @@
     window.scrollTo(0, 0);
   }
 
+  /* Progress analysis and chart rendering */
   function getStrengthProgress(exerciseId, metric) {
     var daily = {};
-    data.sessions.forEach(function (session) {
-      getSessionRecords(session.id).forEach(function (record) {
-        if (record.exerciseId !== exerciseId) return;
-        var sets = getRecordSets(record.id);
-        if (!sets.length) return;
-        if (!daily[session.date]) daily[session.date] = [];
-        daily[session.date] = daily[session.date].concat(sets);
-      });
+    var records = dataIndexes ? (dataIndexes.recordsByExerciseId[exerciseId] || []) : data.records.filter(function (record) { return record.exerciseId === exerciseId; });
+    records.forEach(function (record) {
+      var session = getSession(record.sessionId);
+      if (!session) return;
+      var sets = getRecordSets(record.id);
+      if (!sets.length) return;
+      if (!daily[session.date]) daily[session.date] = [];
+      daily[session.date] = daily[session.date].concat(sets);
     });
     return Object.keys(daily).sort().map(function (date) {
       var sets = daily[date];
@@ -805,16 +1470,16 @@
 
   function getCardioProgress(cardioType, metric) {
     var daily = {};
-    data.sessions.forEach(function (session) {
-      getSessionCardios(session.id).forEach(function (cardio) {
-        var normalizedType = cardio.type === "傾斜ウォーク" ? "ウォーキング" : cardio.type;
-        if (normalizedType !== cardioType) return;
-        if (!daily[session.date]) daily[session.date] = { distance: 0, duration: 0, calories: 0 };
-        daily[session.date].distance += Number(cardio.distanceKm || 0);
-        daily[session.date].duration += Number(cardio.durationMinutes || 0);
-        var storedCalories = Number(cardio.calories);
-        daily[session.date].calories += Number.isFinite(storedCalories) ? storedCalories : calculateCardio(cardio).calories;
-      });
+    data.cardios.forEach(function (cardio) {
+      var normalizedType = cardio.type === "傾斜ウォーク" ? "ウォーキング" : cardio.type;
+      if (normalizedType !== cardioType) return;
+      var session = getSession(cardio.sessionId);
+      if (!session) return;
+      if (!daily[session.date]) daily[session.date] = { distance: 0, duration: 0, calories: 0 };
+      daily[session.date].distance += Number(cardio.distanceKm || 0);
+      daily[session.date].duration += Number(cardio.durationMinutes || 0);
+      var storedCalories = Number(cardio.calories);
+      daily[session.date].calories += Number.isFinite(storedCalories) ? storedCalories : calculateCardio(cardio).calories;
     });
     return Object.keys(daily).sort().map(function (date) {
       var totals = daily[date];
@@ -822,6 +1487,18 @@
       var values = { distance: totals.distance, duration: totals.duration, speed: speed, calories: totals.calories };
       return { date: date, value: values[metric] || 0 };
     });
+  }
+
+  function filterProgressPointsByRange(points, range) {
+    if (!points.length || range === "all") return points.slice();
+    var months = { "1m": 1, "3m": 3, "6m": 6, "1y": 12 }[range] || 6;
+    var latest = dateFromString(points[points.length - 1].date);
+    var targetMonthIndex = latest.getFullYear() * 12 + latest.getMonth() - months;
+    var targetYear = Math.floor(targetMonthIndex / 12);
+    var targetMonth = ((targetMonthIndex % 12) + 12) % 12;
+    var targetDay = Math.min(latest.getDate(), new Date(targetYear, targetMonth + 1, 0).getDate());
+    var startDate = new Date(targetYear, targetMonth, targetDay);
+    return points.filter(function (point) { return dateFromString(point.date) >= startDate; });
   }
 
   function progressDateLabel(dateValue) {
@@ -1072,6 +1749,8 @@
       points = getCardioProgress(progressState.cardioType, progressState.metric);
       $("#progressExerciseLabel").textContent = "有酸素種目";
     }
+    points = filterProgressPointsByRange(points, progressState.range);
+    $("#progressRangeSelect").value = progressState.range;
     var displayCopy = getProgressDisplayCopy(progressState.tab, progressState.metric);
     $("#progressHeroTitle").textContent = displayCopy.title;
     $("#progressHeroDescription").textContent = displayCopy.description;
@@ -1108,6 +1787,7 @@
     progressState.tab = "strength";
     progressState.metric = "maxWeight";
     progressState.exerciseId = null;
+    progressState.range = "6m";
     renderProgressPage();
     showScreen("progress");
   }
@@ -1154,11 +1834,13 @@
     $("#cardioEditorTitle").textContent = normalizedType + "を編集中";
     $("#saveCardioButton").textContent = "この有酸素記録を更新";
     updateCardioPreview();
+    saveDraftNow();
   }
 
+  /* Workout draft, editing, copy, and save flows */
   function newDraft(locationType, date) {
     routineEditingId = null;
-    draft = { id: null, date: date || todayString(), locationType: locationType, memo: "", records: [], cardios: [], createdAt: nowIso() };
+    draft = { id: null, originalSessionId: null, date: date || todayString(), locationType: locationType, memo: "", records: [], cardios: [], createdAt: nowIso() };
     selectedExerciseId = null;
     selectedRir = null;
     selectedRest = 90;
@@ -1167,14 +1849,32 @@
     resetCardioForm();
     renderWorkout();
     showScreen("workout");
+    saveDraftNow();
+  }
+
+  function startTodayLocation(locationType) {
+    var savedState = loadSavedDraft();
+    if (savedState && savedState.draft) {
+      if (savedState.draft.date === todayString() && savedState.draft.locationType === locationType) {
+        pendingSavedDraft = savedState;
+        resumeSavedDraft();
+      } else {
+        showSavedDraftPrompt(savedState);
+      }
+      return;
+    }
+    var existing = getSessionsForDate(todayString()).find(function (session) { return session.locationType === locationType; });
+    if (existing) loadDraft(existing.id);
+    else newDraft(locationType, todayString());
   }
 
   function loadDraft(sessionId) {
-    var session = data.sessions.find(function (item) { return item.id === sessionId; });
+    var session = getSession(sessionId);
     if (!session) return;
     routineEditingId = null;
     draft = {
       id: session.id,
+      originalSessionId: session.id,
       date: session.date,
       locationType: session.locationType,
       memo: session.memo || "",
@@ -1193,10 +1893,11 @@
     renderWorkout();
     closeModal("dayModal");
     showScreen("workout");
+    saveDraftNow();
   }
 
   function openCopyDestination(sessionId) {
-    var source = data.sessions.find(function (session) { return session.id === sessionId; });
+    var source = getSession(sessionId);
     if (!source) return;
     copySourceSessionId = sessionId;
     $("#copySourceLabel").textContent = formatDateJa(source.date) + "のメニューをコピーします。";
@@ -1206,36 +1907,38 @@
     openModal("copyDestinationModal");
   }
 
-  function copySessionToDate(sessionId, targetDate) {
-    var source = data.sessions.find(function (item) { return item.id === sessionId; });
-    if (!source || !targetDate) return;
-    routineEditingId = null;
-    draft = { id: null, date: targetDate, locationType: source.locationType, memo: "", records: [], cardios: [], createdAt: nowIso() };
-    var sourceRecords = getSessionRecords(sessionId);
-    sourceRecords.forEach(function (record, index) {
-      var previousSets = getRecordSets(record.id);
-      if (!previousSets.length) return;
-      draft.records.push({
-          tempId: makeId("draftrecord"), exerciseId: record.exerciseId, orderIndex: index,
-          sets: previousSets.map(function (previous, setIndex) {
-            return { tempId: makeId("draftset"), setNumber: setIndex + 1, weight: previous.weight, reps: previous.reps, rir: previous.rir || "", restSeconds: previous.restSeconds, memo: previous.memo || "" };
-          })
+  function appendRecordsAndCardiosToDraft(targetDraft, sourceRecords, sourceCardios) {
+    (sourceRecords || []).forEach(function (sourceRecord) {
+      var sourceSets = Array.isArray(sourceRecord.sets) ? sourceRecord.sets : getRecordSets(sourceRecord.id);
+      if (!sourceSets.length) return;
+      var targetRecord = targetDraft.records.find(function (record) { return record.exerciseId === sourceRecord.exerciseId; });
+      if (!targetRecord) {
+        targetRecord = { tempId: makeId("draftrecord"), exerciseId: sourceRecord.exerciseId, orderIndex: targetDraft.records.length, sets: [] };
+        targetDraft.records.push(targetRecord);
+      }
+      sourceSets.forEach(function (sourceSet) {
+        targetRecord.sets.push({ tempId: makeId("draftset"), setNumber: targetRecord.sets.length + 1, weight: Number(sourceSet.weight || 0), reps: Number(sourceSet.reps || 0), rir: sourceSet.rir || "", restSeconds: Number(sourceSet.restSeconds || 90), memo: sourceSet.memo || "" });
       });
     });
-    draft.cardios = getSessionCardios(sessionId).map(function (sourceCardio) {
-      var copiedCardio = {
-        tempId: makeId("draftcardio"),
-        type: sourceCardio.type,
-        durationMinutes: Number(sourceCardio.durationMinutes || 0),
-        distanceKm: Number(sourceCardio.distanceKm || 0),
-        inclinePercent: Number(sourceCardio.inclinePercent || 0),
-        memo: sourceCardio.memo || ""
-      };
+    (sourceCardios || []).forEach(function (sourceCardio) {
+      var copiedCardio = { tempId: makeId("draftcardio"), type: sourceCardio.type, durationMinutes: Number(sourceCardio.durationMinutes || 0), distanceKm: Number(sourceCardio.distanceKm || 0), inclinePercent: Number(sourceCardio.inclinePercent || 0), memo: sourceCardio.memo || "" };
       var result = calculateCardio(copiedCardio);
       copiedCardio.speedKmh = result.speedKmh;
       copiedCardio.calories = result.calories;
-      return copiedCardio;
+      targetDraft.cardios.push(copiedCardio);
     });
+  }
+
+  function createDraftFromSession(sessionId, targetDate, keepSessionId) {
+    var source = getSession(sessionId);
+    if (!source) return null;
+    var resultDraft = { id: keepSessionId ? source.id : null, originalSessionId: keepSessionId ? source.id : null, date: targetDate, locationType: source.locationType, memo: keepSessionId ? (source.memo || "") : "", records: [], cardios: [], createdAt: keepSessionId ? source.createdAt : nowIso() };
+    appendRecordsAndCardiosToDraft(resultDraft, getSessionRecords(source.id), getSessionCardios(source.id));
+    return resultDraft;
+  }
+
+  function finishCopiedDraft() {
+    if (!draft) return;
     selectedExerciseId = null;
     selectedRir = null;
     selectedRest = 90;
@@ -1247,7 +1950,172 @@
     closeModal("copyDestinationModal");
     copySourceSessionId = null;
     showScreen("workout");
+    saveDraftNow();
     showToast("メニューをコピーしました。保存するまで記録には反映されません");
+  }
+
+  function copySessionToDate(sessionId, targetDate) {
+    var source = getSession(sessionId);
+    if (!source || !targetDate) return;
+    var existing = getSessionsForDate(targetDate).find(function (session) { return session.locationType === source.locationType; });
+    if (existing) {
+      pendingSaveConflict = null;
+      pendingCopyConflict = { kind: "copy", sourceId: sessionId, targetDate: targetDate, existingId: existing.id };
+      $("#copyConflictMessage").textContent = "この日の" + (source.locationType === "home" ? "自宅" : "ジム") + "記録はすでにあります。";
+      $("#copyConflictCancel").textContent = "キャンセル";
+      closeModal("copyDestinationModal");
+      openModal("copyConflictModal");
+      return;
+    }
+    routineEditingId = null;
+    draft = createDraftFromSession(sessionId, targetDate, false);
+    finishCopiedDraft();
+  }
+
+  function resolveCopyConflict(mode) {
+    if (!pendingCopyConflict) {
+      if (pendingSaveConflict) {
+        if (mode === "append") appendToExistingAndSave();
+        else replaceExistingAndSave();
+        return;
+      }
+      showToast("保存処理の状態を確認できませんでした");
+      closeModal("copyConflictModal");
+      return;
+    }
+    var conflict = pendingCopyConflict;
+    var existing = getSession(conflict.existingId);
+    if (!existing) {
+      pendingCopyConflict = null;
+      copySourceSessionId = null;
+      closeModal("copyConflictModal");
+      showToast("対象の記録が見つかりませんでした");
+      return;
+    }
+    if (mode === "append") {
+      draft = createDraftFromSession(existing.id, conflict.targetDate, true);
+      appendRecordsAndCardiosToDraft(draft, getSessionRecords(conflict.sourceId), getSessionCardios(conflict.sourceId));
+    } else {
+      draft = createDraftFromSession(conflict.sourceId, conflict.targetDate, false);
+      draft.id = existing.id;
+      draft.originalSessionId = existing.id;
+      draft.createdAt = existing.createdAt;
+    }
+    pendingCopyConflict = null;
+    routineEditingId = null;
+    closeModal("copyConflictModal");
+    finishCopiedDraft();
+  }
+
+  function cancelPendingCopyConflict() {
+    var conflictKind = pendingCopyConflict && pendingCopyConflict.kind;
+    pendingCopyConflict = null;
+    if (conflictKind === "copy") copySourceSessionId = null;
+    closeModal("copyConflictModal");
+  }
+
+  function returnToWorkoutDateInput() {
+    pendingSaveConflict = null;
+    closeModal("copyConflictModal");
+    var scheduleFocus = window.requestAnimationFrame || function (callback) { setTimeout(callback, 40); };
+    scheduleFocus(function () {
+      var input = document.getElementById("sessionDate");
+      if (!input) return;
+      input.focus();
+      input.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }
+
+  function handleConflictModalAction(mode) {
+    if (pendingSaveConflict) {
+      if (mode === "append") appendToExistingAndSave();
+      else replaceExistingAndSave();
+      return;
+    }
+    if (pendingCopyConflict) {
+      resolveCopyConflict(mode);
+      return;
+    }
+    showToast("保存処理の状態を確認できませんでした");
+    closeModal("copyConflictModal");
+  }
+
+  function handleConflictModalCancel() {
+    if (pendingSaveConflict) {
+      returnToWorkoutDateInput();
+      return;
+    }
+    if (pendingCopyConflict) {
+      cancelPendingCopyConflict();
+      return;
+    }
+    showToast("保存処理の状態を確認できませんでした");
+    closeModal("copyConflictModal");
+  }
+
+  function cancelPendingConflict() {
+    handleConflictModalCancel();
+  }
+
+  function appendToExistingAndSave() {
+    if (!pendingSaveConflict || !draft) return;
+    var existing = getSession(pendingSaveConflict.existingSessionId);
+    if (!existing) {
+      showToast("追加先の記録が見つかりません");
+      return;
+    }
+    var incomingDraft = cloneData(draft);
+    var mergedDraft = createDraftFromSession(existing.id, draft.date, true);
+    appendRecordsAndCardiosToDraft(mergedDraft, incomingDraft.records, incomingDraft.cardios);
+    mergedDraft.memo = incomingDraft.memo || mergedDraft.memo;
+    mergedDraft.originalSessionId = existing.id;
+    if (incomingDraft.sourceScheduleId) mergedDraft.sourceScheduleId = incomingDraft.sourceScheduleId;
+    var incomingOriginalSessionId = incomingDraft.originalSessionId || incomingDraft.id || null;
+    if (incomingOriginalSessionId && incomingOriginalSessionId !== existing.id) {
+      mergedDraft.previousSessionIdToRemove = incomingOriginalSessionId;
+    }
+    draft = mergedDraft;
+    $("#sessionMemo").value = draft.memo || "";
+    var warningConfirmed = pendingSaveConflict.warningConfirmed;
+    pendingSaveConflict = null;
+    closeModal("copyConflictModal");
+    commitWorkoutSave({ warningConfirmed: warningConfirmed, skipConflictCheck: true });
+  }
+
+  function replaceExistingAndSave() {
+    if (!pendingSaveConflict || !draft) return;
+    var existing = getSession(pendingSaveConflict.existingSessionId);
+    if (!existing) {
+      showToast("置き換え先の記録が見つかりません");
+      return;
+    }
+    var originalSessionId = draft.originalSessionId || draft.id || null;
+    draft.id = existing.id;
+    draft.originalSessionId = existing.id;
+    draft.createdAt = existing.createdAt;
+    if (originalSessionId && originalSessionId !== existing.id) {
+      draft.previousSessionIdToRemove = originalSessionId;
+    }
+    var warningConfirmed = pendingSaveConflict.warningConfirmed;
+    pendingSaveConflict = null;
+    closeModal("copyConflictModal");
+    commitWorkoutSave({ warningConfirmed: warningConfirmed, skipConflictCheck: true });
+  }
+
+  function mergeDraftWithExistingSession(existingSession) {
+    if (!draft || !existingSession) return;
+    var sourceSessionId = draft.originalSessionId || draft.id || null;
+    var previousSessionId = sourceSessionId && sourceSessionId !== existingSession.id ? sourceSessionId : null;
+    var incomingRecords = draft.records;
+    var incomingCardios = draft.cardios;
+    var incomingMemo = draft.memo;
+    var incomingSourceScheduleId = draft.sourceScheduleId;
+    var mergedDraft = createDraftFromSession(existingSession.id, draft.date, true);
+    appendRecordsAndCardiosToDraft(mergedDraft, incomingRecords, incomingCardios);
+    mergedDraft.memo = incomingMemo || mergedDraft.memo;
+    if (incomingSourceScheduleId) mergedDraft.sourceScheduleId = incomingSourceScheduleId;
+    if (previousSessionId) mergedDraft.previousSessionIdToRemove = previousSessionId;
+    draft = mergedDraft;
   }
 
   function renderWorkout() {
@@ -1266,11 +2134,6 @@
     updateDraftCalories();
   }
 
-  function currentDraftRecord() {
-    if (!draft || !selectedExerciseId) return null;
-    return draft.records.find(function (record) { return record.exerciseId === selectedExerciseId; });
-  }
-
   function ensureDraftRecord(exerciseId) {
     var record = draft.records.find(function (item) { return item.exerciseId === exerciseId; });
     if (!record) {
@@ -1281,9 +2144,9 @@
   }
 
   function getLastHistoricalRecord(exerciseId) {
-    var records = data.records.filter(function (record) { return record.exerciseId === exerciseId; }).sort(function (a, b) {
-      var sessionA = data.sessions.find(function (session) { return session.id === a.sessionId; }) || {};
-      var sessionB = data.sessions.find(function (session) { return session.id === b.sessionId; }) || {};
+    var records = (dataIndexes ? (dataIndexes.recordsByExerciseId[exerciseId] || []).slice() : data.records.filter(function (record) { return record.exerciseId === exerciseId; })).sort(function (a, b) {
+      var sessionA = getSession(a.sessionId) || {};
+      var sessionB = getSession(b.sessionId) || {};
       var dateOrder = String(sessionB.date || "").localeCompare(String(sessionA.date || ""));
       if (dateOrder) return dateOrder;
       return String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || ""));
@@ -1361,7 +2224,7 @@
     $("#setEditorCard").classList.toggle("is-editing", !!editingRef);
     $("#saveSetButton").textContent = editingRef ? "このセットを更新" : "このセットを保存";
     $("#cancelSetEditButton").classList.toggle("hidden", !editingRef);
-    $("#setSaveHint").textContent = editingRef ? "このセットを上書きします" : "保存後、次のセットへ進みます";
+    $("#setSaveHint").textContent = editingRef ? "このセットを上書きします" : "保存後、次のセットを確認します";
     $("#weightBlock").classList.toggle("hidden", exercise.category === "BODYWEIGHT");
     $("#weightStepLabel").textContent = WEIGHT_STEPS[exercise.category].toFixed(1) + "kg刻み";
     $("#weightInput").step = WEIGHT_STEPS[exercise.category] || 1;
@@ -1400,6 +2263,7 @@
     renderSelectedExercise();
     renderSavedSets();
     renderSavedCardios();
+    saveDraftNow();
     setTimeout(function () {
       $(exercise.category === "CARDIO" ? "#cardioEditorCard" : "#setEditorCard").scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
@@ -1465,18 +2329,111 @@
     chooseExercise(exerciseId);
   }
 
-  function saveCurrentSet() {
+  function setValueIssue(weightKg, reps, restSeconds) {
+    if (![weightKg, reps, restSeconds].every(function (value) { return Number.isFinite(value) && value >= 0; })) return { invalid: "重量・回数・休憩時間には0以上の数値を入力してください" };
+    if (weightKg >= 500) return { warning: "重量が" + weightKg + "kgになっています。入力内容に間違いはありませんか？" };
+    if (reps >= 200) return { warning: "回数が" + reps + "回になっています。入力内容に間違いはありませんか？" };
+    if (restSeconds >= 1800) return { warning: "休憩時間が" + restSeconds + "秒になっています。入力内容に間違いはありませんか？" };
+    return {};
+  }
+
+  function cardioValueIssue(cardio) {
+    var values = [cardio.durationMinutes, cardio.distanceKm, cardio.inclinePercent];
+    if (!values.every(function (value) { return Number.isFinite(value) && value >= 0; })) return { invalid: "時間・距離・傾斜には0以上の数値を入力してください" };
+    var result = calculateCardio(cardio);
+    if (!Number.isFinite(result.speedKmh) || !Number.isFinite(result.calories)) return { invalid: "有酸素記録を正しく計算できません" };
+    if (cardio.durationMinutes >= 600) return { warning: "運動時間が" + cardio.durationMinutes + "分になっています。入力内容に間違いはありませんか？" };
+    if (cardio.distanceKm >= 200) return { warning: "距離が" + cardio.distanceKm + "kmになっています。入力内容に間違いはありませんか？" };
+    if (cardio.inclinePercent > 40) return { warning: "傾斜が" + cardio.inclinePercent + "%になっています。入力内容に間違いはありませんか？" };
+    if (result.speedKmh >= 50) return { warning: "平均速度が" + result.speedKmh.toFixed(1) + "km/hになっています。入力内容に間違いはありませんか？" };
+    return {};
+  }
+
+  function draftValueIssue() {
+    for (var recordIndex = 0; recordIndex < draft.records.length; recordIndex += 1) {
+      var record = draft.records[recordIndex];
+      for (var setIndex = 0; setIndex < record.sets.length; setIndex += 1) {
+        var set = record.sets[setIndex];
+        var setIssue = setValueIssue(Number(set.weight) / 1000, Number(set.reps), Number(set.restSeconds));
+        if (setIssue.invalid || setIssue.warning) return setIssue;
+      }
+    }
+    for (var cardioIndex = 0; cardioIndex < draft.cardios.length; cardioIndex += 1) {
+      var cardioIssue = cardioValueIssue({
+        type: draft.cardios[cardioIndex].type,
+        durationMinutes: Number(draft.cardios[cardioIndex].durationMinutes),
+        distanceKm: Number(draft.cardios[cardioIndex].distanceKm || 0),
+        inclinePercent: Number(draft.cardios[cardioIndex].inclinePercent || 0)
+      });
+      if (cardioIssue.invalid || cardioIssue.warning) return cardioIssue;
+    }
+    return {};
+  }
+
+  function showNextSetConfirmation(exerciseId, completedSetNumber, wasUpdate) {
+    if (nextSetExerciseId || !draft) return;
+    var exercise = getExercise(exerciseId);
+    var record = draft.records.find(function (item) { return item.exerciseId === exerciseId; });
+    if (!exercise || !record) return;
+    nextSetExerciseId = exerciseId;
+    $("#nextSetConfirmTitle").textContent = exercise.name + "のセット" + completedSetNumber + (wasUpdate ? "を更新しました" : "を保存しました");
+    $("#nextSetConfirmMessage").textContent = "続けて" + exercise.name + "のセット" + (record.sets.length + 1) + "を入力しますか？";
+    openModal("nextSetConfirmModal");
+  }
+
+  function startConfirmedNextSet() {
+    var exerciseId = nextSetExerciseId;
+    nextSetExerciseId = null;
+    closeModal("nextSetConfirmModal");
+    if (!draft || !getExercise(exerciseId)) return;
+    selectedExerciseId = exerciseId;
+    editingSetTempId = null;
+    isAddingSet = true;
+    editingCardioTempId = null;
+    selectedRir = null;
+    renderSelectedExercise();
+    renderSavedSets();
+    updateDraftCalories();
+    saveDraftNow();
+    setTimeout(function () { $("#setEditorCard").scrollIntoView({ behavior: "smooth", block: "start" }); }, 50);
+  }
+
+  function closeNextSetInput() {
+    nextSetExerciseId = null;
+    closeModal("nextSetConfirmModal");
+    selectedExerciseId = null;
+    editingSetTempId = null;
+    isAddingSet = false;
+    editingCardioTempId = null;
+    selectedRir = null;
+    renderSelectedExercise();
+    renderSavedSets();
+    updateDraftCalories();
+    saveDraftNow();
+    setTimeout(function () { $("#savedSetsSection").scrollIntoView({ behavior: "smooth", block: "start" }); }, 50);
+  }
+
+  function saveCurrentSet(skipWarning) {
     var exercise = getExercise(selectedExerciseId);
     if (!exercise) return;
     if (!editingSetTempId && !isAddingSet) return;
-    var reps = Math.round(numberValue("#repsInput"));
+    var rawReps = Number($("#repsInput").value);
+    var rawWeight = exercise.category === "BODYWEIGHT" ? 0 : Number($("#weightInput").value);
+    var rawRest = Number(selectedRest);
+    var issue = setValueIssue(rawWeight, rawReps, rawRest);
+    if (issue.invalid) { showToast(issue.invalid); return; }
+    if (issue.warning && options.warningConfirmed !== true) {
+      askConfirm(issue.warning, "このまま保存", function () { saveCurrentSet(true); }, "入力に戻る");
+      return;
+    }
+    var reps = Math.round(rawReps);
     if (reps < 1) { showToast("回数を入力してください"); $("#repsInput").focus(); return; }
-    var weightKg = exercise.category === "BODYWEIGHT" ? 0 : Math.max(0, numberValue("#weightInput"));
+    var weightKg = rawWeight;
     var setValues = {
       weight: Math.round(weightKg * 1000),
       reps: reps,
       rir: selectedRir == null ? "" : selectedRir,
-      restSeconds: selectedRest,
+      restSeconds: rawRest,
       memo: $("#setMemo").value.trim()
     };
     var editingRef = findDraftSet(editingSetTempId);
@@ -1490,13 +2447,16 @@
       editingRef.set.rir = setValues.rir;
       editingRef.set.restSeconds = setValues.restSeconds;
       editingRef.set.memo = setValues.memo;
+      var updatedSetNumber = editingRef.set.setNumber;
       editingSetTempId = null;
       isAddingSet = false;
       selectedExerciseId = null;
+      selectedRir = null;
       renderSelectedExercise();
       renderSavedSets();
       updateDraftCalories();
-      showToast("セットを更新しました");
+      saveDraftNow();
+      showNextSetConfirmation(exercise.id, updatedSetNumber, true);
       return;
     }
     editingSetTempId = null;
@@ -1505,10 +2465,16 @@
       tempId: makeId("draftset"), setNumber: record.sets.length + 1, weight: setValues.weight, reps: setValues.reps,
       rir: setValues.rir, restSeconds: setValues.restSeconds, memo: setValues.memo
     });
+    var savedSetNumber = record.sets.length;
+    editingSetTempId = null;
+    isAddingSet = false;
+    selectedExerciseId = null;
+    selectedRir = null;
     renderSelectedExercise();
     renderSavedSets();
     updateDraftCalories();
-    showToast("セット" + record.sets.length + "を保存しました");
+    saveDraftNow();
+    showNextSetConfirmation(exercise.id, savedSetNumber, false);
   }
 
   function startEditSet(tempId) {
@@ -1530,6 +2496,7 @@
     $("#cancelSetEditButton").classList.remove("hidden");
     renderSetChoices();
     renderSavedSets();
+    saveDraftNow();
     setTimeout(function () { $("#setEditorCard").scrollIntoView({ behavior: "smooth", block: "start" }); }, 50);
   }
 
@@ -1588,6 +2555,7 @@
     renderSelectedExercise();
     renderSavedSets();
     updateDraftCalories();
+    saveDraftNow();
   }
 
   function cardioFormValue() {
@@ -1632,11 +2600,18 @@
 
   function handleCardioInputChange() {
     updateCardioPreview();
+    scheduleDraftSave();
   }
 
-  function saveCardio() {
+  function saveCardio(skipWarning) {
     var cardio = cardioFormValue();
+    var issue = cardioValueIssue(cardio);
+    if (issue.invalid) { showToast(issue.invalid); return; }
     if (cardio.durationMinutes < 1) { showToast("運動時間を入力してください"); $("#cardioDuration").focus(); return; }
+    if (issue.warning && options.warningConfirmed !== true) {
+      askConfirm(issue.warning, "このまま保存", function () { saveCardio(true); }, "入力に戻る");
+      return;
+    }
     if (editingCardioTempId) {
       syncEditingCardioFromForm();
       editingCardioTempId = null;
@@ -1650,6 +2625,7 @@
       updateCardioPreview();
       renderSavedCardios();
       updateDraftCalories();
+      saveDraftNow();
       showToast("有酸素記録を更新しました");
       return;
     }
@@ -1666,6 +2642,7 @@
     updateCardioPreview();
     renderSavedCardios();
     updateDraftCalories();
+    saveDraftNow();
     showToast("有酸素運動を追加しました");
   }
 
@@ -1703,49 +2680,116 @@
     }
     renderSavedCardios();
     updateDraftCalories();
+    saveDraftNow();
   }
 
   function updateDraftCalories() { $("#sessionCalories").textContent = Math.round(draftCalories()); }
 
-  function saveWorkout() {
+  function removeSessionData(sessionId) {
+    if (!sessionId) return;
+    var recordIds = data.records.filter(function (record) { return record.sessionId === sessionId; }).map(function (record) { return record.id; });
+    data.sets = data.sets.filter(function (set) { return recordIds.indexOf(set.recordId) < 0; });
+    data.records = data.records.filter(function (record) { return record.sessionId !== sessionId; });
+    data.cardios = data.cardios.filter(function (cardio) { return cardio.sessionId !== sessionId; });
+    data.sessions = data.sessions.filter(function (session) { return session.id !== sessionId; });
+  }
+
+  function warnDuplicateSameDateLocationSessions(dateValue, locationType) {
+    var duplicateSessions = getSessionsForDate(dateValue).filter(function (session) {
+      return session.locationType === locationType;
+    });
+    if (duplicateSessions.length > 1) {
+      console.warn("Duplicate same-date same-location sessions", duplicateSessions);
+    }
+  }
+
+  function findSaveConflictSession() {
+    if (!draft) return null;
+    warnDuplicateSameDateLocationSessions(draft.date, draft.locationType);
+    return getSessionsForDate(draft.date).find(function (session) {
+      var isSameLocation = session.locationType === draft.locationType;
+      var isCurrentEditingSession = session.id === draft.id || session.id === draft.originalSessionId;
+      return isSameLocation && !isCurrentEditingSession;
+    }) || null;
+  }
+
+  function openSaveConflictModal(existingSession, warningConfirmed) {
+    if (!draft || !existingSession) return;
+    pendingCopyConflict = null;
+    pendingSaveConflict = {
+      existingSessionId: existingSession.id,
+      originalSessionId: draft.originalSessionId || draft.id || null,
+      targetDate: draft.date,
+      locationType: draft.locationType,
+      warningConfirmed: warningConfirmed === true
+    };
+    var conflictDate = dateFromString(draft.date);
+    var locationLabel = draft.locationType === "home" ? "自宅" : "ジム";
+    $("#copyConflictMessage").textContent = (conflictDate.getMonth() + 1) + "月" + conflictDate.getDate() + "日の" + locationLabel + "記録はすでにあります。";
+    $("#copyConflictCancel").textContent = "日付入力に戻る";
+    openModal("copyConflictModal");
+  }
+
+  function saveWorkout(skipWarning) {
+    requestWorkoutSave({ warningConfirmed: skipWarning === true });
+  }
+
+  function requestWorkoutSave(options) {
+    options = options || {};
     if (!draft) return;
     var setCount = draft.records.reduce(function (sum, record) { return sum + record.sets.length; }, 0);
     if (!setCount && !draft.cardios.length) { showToast("セットまたは有酸素運動を1件以上記録してください"); return; }
     draft.date = $("#sessionDate").value || todayString();
     draft.memo = $("#sessionMemo").value.trim();
+    var issue = draftValueIssue();
+    if (issue.invalid) { showToast(issue.invalid); return; }
+    if (issue.warning && options.warningConfirmed !== true) {
+      askConfirm(issue.warning, "このまま保存", function () { requestWorkoutSave({ warningConfirmed: true, skipConflictCheck: options.skipConflictCheck === true }); }, "入力に戻る");
+      return;
+    }
+    var conflictSession = options.skipConflictCheck === true ? null : findSaveConflictSession();
+    if (conflictSession) {
+      openSaveConflictModal(conflictSession, options.warningConfirmed === true);
+      return;
+    }
+    commitWorkoutSave({ warningConfirmed: options.warningConfirmed === true, skipConflictCheck: true });
+  }
+
+  function commitWorkoutSave(options) {
+    options = options || {};
+    if (!draft) return;
+    draft.date = $("#sessionDate").value || draft.date || todayString();
+    draft.memo = $("#sessionMemo").value.trim();
     var stamp = nowIso();
     var sessionId = draft.id || makeId("session");
-    var oldSession = data.sessions.find(function (session) { return session.id === sessionId; });
-    if (oldSession) {
-      var oldRecordIds = data.records.filter(function (record) { return record.sessionId === sessionId; }).map(function (record) { return record.id; });
-      data.sets = data.sets.filter(function (set) { return oldRecordIds.indexOf(set.recordId) < 0; });
-      data.records = data.records.filter(function (record) { return record.sessionId !== sessionId; });
-      data.cardios = data.cardios.filter(function (cardio) { return cardio.sessionId !== sessionId; });
-      data.sessions = data.sessions.filter(function (session) { return session.id !== sessionId; });
-    }
-    var allSetsForCalories = [];
+    var oldSession = getSession(sessionId);
     var validRecords = draft.records.filter(function (record) { return record.sets.length > 0; });
-    validRecords.forEach(function (record, recordIndex) {
-      var recordId = makeId("record");
-      data.records.push({ id: recordId, sessionId: sessionId, exerciseId: record.exerciseId, orderIndex: recordIndex, createdAt: stamp, updatedAt: stamp });
-      record.sets.forEach(function (set, setIndex) {
-        var storedSet = { id: makeId("set"), recordId: recordId, setNumber: setIndex + 1, weight: Math.round(Number(set.weight || 0)), reps: Number(set.reps), rir: set.rir || "", restSeconds: Number(set.restSeconds || 90), memo: set.memo || "", createdAt: stamp, updatedAt: stamp };
-        data.sets.push(storedSet);
-        allSetsForCalories.push(storedSet);
-      });
-    });
     var cardioTotal = 0;
-    draft.cardios.forEach(function (cardio) {
-      var result = calculateCardio(cardio);
-      cardioTotal += result.calories;
-      data.cardios.push({ id: makeId("cardio"), sessionId: sessionId, type: cardio.type, distanceKm: Number(cardio.distanceKm || 0), durationMinutes: Number(cardio.durationMinutes), speedKmh: result.speedKmh, inclinePercent: Number(cardio.inclinePercent || 0), calories: result.calories, memo: cardio.memo || "", createdAt: stamp, updatedAt: stamp });
-    });
-    var totalCalories = calculateStrengthCalories(allSetsForCalories) + cardioTotal;
-    data.sessions.push({ id: sessionId, date: draft.date, locationType: draft.locationType, totalCalories: totalCalories, memo: draft.memo, createdAt: oldSession ? oldSession.createdAt : stamp, updatedAt: stamp });
-    if (draft.sourceScheduleId) data.scheduledRoutines = data.scheduledRoutines.filter(function (schedule) { return schedule.id !== draft.sourceScheduleId; });
+    var preparedCardios = draft.cardios.map(function (cardio) { var result = calculateCardio(cardio); cardioTotal += result.calories; return { cardio: cardio, result: result }; });
+    var totalCalories = calculateStrengthCaloriesForRecords(validRecords) + cardioTotal;
     var usedExerciseIds = validRecords.map(function (record) { return record.exerciseId; });
-    data.recentExerciseIds = usedExerciseIds.concat(data.recentExerciseIds.filter(function (id) { return usedExerciseIds.indexOf(id) < 0; })).slice(0, 12);
-    if (!persist()) return;
+    var previousSessionIdToRemove = draft.previousSessionIdToRemove;
+    var saved = runDataTransaction(function () {
+      if (oldSession) removeSessionData(sessionId);
+      if (previousSessionIdToRemove && previousSessionIdToRemove !== sessionId) removeSessionData(previousSessionIdToRemove);
+      validRecords.forEach(function (record, recordIndex) {
+        var recordId = makeId("record");
+        data.records.push({ id: recordId, sessionId: sessionId, exerciseId: record.exerciseId, orderIndex: recordIndex, createdAt: stamp, updatedAt: stamp });
+        record.sets.forEach(function (set, setIndex) {
+          data.sets.push({ id: makeId("set"), recordId: recordId, setNumber: setIndex + 1, weight: Math.round(Number(set.weight || 0)), reps: Number(set.reps), rir: set.rir || "", restSeconds: Number(set.restSeconds || 90), memo: set.memo || "", createdAt: stamp, updatedAt: stamp });
+        });
+      });
+      preparedCardios.forEach(function (prepared) {
+        var cardio = prepared.cardio, result = prepared.result;
+        data.cardios.push({ id: makeId("cardio"), sessionId: sessionId, type: cardio.type, distanceKm: Number(cardio.distanceKm || 0), durationMinutes: Number(cardio.durationMinutes), speedKmh: result.speedKmh, inclinePercent: Number(cardio.inclinePercent || 0), calories: result.calories, memo: cardio.memo || "", createdAt: stamp, updatedAt: stamp });
+      });
+      data.sessions.push({ id: sessionId, date: draft.date, locationType: draft.locationType, totalCalories: totalCalories, memo: draft.memo, createdAt: oldSession ? oldSession.createdAt : stamp, updatedAt: stamp });
+      if (draft.sourceScheduleId) data.scheduledRoutines = data.scheduledRoutines.filter(function (schedule) { return schedule.id !== draft.sourceScheduleId; });
+      data.recentExerciseIds = usedExerciseIds.concat(data.recentExerciseIds.filter(function (id) { return usedExerciseIds.indexOf(id) < 0; })).slice(0, 12);
+    });
+    if (!saved) return;
+    pendingSaveConflict = null;
+    clearSavedDraft();
     var savedSessionDate = draft.date;
     draft = null;
     routineEditingId = null;
@@ -1770,7 +2814,7 @@
     }
     var html = "";
     if (sessions.length) {
-      var dayTotal = sessions.reduce(function (sum, session) { return sum + Number(session.totalCalories || 0); }, 0);
+      var dayTotal = sessions.reduce(function (sum, session) { return sum + calculateSessionCalories(session.id); }, 0);
       html += '<div class="day-total"><span>概算消費カロリー</span><strong>' + Math.round(dayTotal) + ' kcal</strong></div><p class="day-section-label">実績</p>';
     }
     sessions.forEach(function (session) {
@@ -1785,20 +2829,19 @@
         lines.push('<div class="summary-line"><strong>' + escapeHtml(cardio.type) + '</strong><span>' + cardio.durationMinutes + '分' + (cardio.distanceKm ? '・' + cardio.distanceKm + 'km' : '') + '</span></div>');
       });
       if (session.memo) lines.push('<div class="summary-line"><strong>メモ</strong><span>' + escapeHtml(session.memo) + '</span></div>');
-      var sessionEditButton = sessions.length > 1 ? '<button class="summary-session-edit" type="button" data-edit-session="' + session.id + '">編集</button>' : '';
-      html += '<section class="summary-session"><div class="summary-session-head"><strong>' + (session.locationType === "gym" ? "ジムトレーニング" : "自宅トレーニング") + '</strong><div class="summary-session-head-actions"><span>' + Math.round(session.totalCalories || 0) + ' kcal</span>' + sessionEditButton + '</div></div><div class="summary-lines">' + (lines.length ? lines.join("") : '<div class="summary-line"><span>記録内容なし</span></div>') + '</div></section>';
+      var sessionLabel = session.locationType === "gym" ? "ジムトレーニング" : "自宅トレーニング";
+      var sessionActions = '<div class="summary-session-actions"><button type="button" data-copy-session="' + session.id + '">コピーして開始</button><button type="button" data-edit-session="' + session.id + '">編集</button><button class="danger-text" type="button" data-delete-session="' + session.id + '">削除</button></div>';
+      html += '<section class="summary-session"><div class="summary-session-head"><strong>' + sessionLabel + '</strong><div class="summary-session-head-actions"><span>' + Math.round(calculateSessionCalories(session.id)) + ' kcal</span></div></div><div class="summary-lines">' + (lines.length ? lines.join("") : '<div class="summary-line"><span>記録内容なし</span></div>') + '</div>' + sessionActions + '</section>';
     });
     if (schedules.length) html += '<p class="day-section-label day-section-label--planned">予定メニュー</p>';
     schedules.forEach(function (schedule) {
-      var routine = data.routines.find(function (item) { return item.id === schedule.routineId; });
+      var routine = getRoutine(schedule.routineId);
       if (!routine) return;
       html += '<article class="planned-routine"><div><strong>' + escapeHtml(routine.name) + '</strong><small>' + (routine.locationType === "home" ? "自宅" : "ジム") + '・' + routineItemCount(routine) + '種目</small></div><button type="button" data-start-schedule="' + schedule.id + '">この予定で記録を始める</button><button type="button" data-delete-schedule="' + schedule.id + '">予定を削除</button></article>';
     });
     $("#daySummaryContent").innerHTML = html;
     if (sessions.length) {
-      var latest = sessions[0];
-      var editAction = sessions.length === 1 ? '<button class="outline-button" type="button" data-edit-session="' + latest.id + '">編集</button>' : '';
-      $("#daySummaryActions").innerHTML = '<button class="finish-button" type="button" data-copy-session="' + latest.id + '">この内容で開始</button><div class="secondary-actions' + (sessions.length > 1 ? ' secondary-actions--single' : '') + '">' + editAction + '<button class="outline-button danger-text" type="button" data-delete-session="' + latest.id + '">削除</button></div><button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
+      $("#daySummaryActions").innerHTML = '<button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
     } else {
       $("#daySummaryActions").innerHTML = '<button class="finish-button" type="button" data-day-start="gym" data-day-date="' + dateValue + '">ジムトレーニングを記録</button><button class="outline-button" type="button" data-day-start="home" data-day-date="' + dateValue + '">自宅トレーニングを記録</button><button class="outline-button outline-button--blue" type="button" data-day-routine-date="' + dateValue + '">ルーティーンから登録</button><button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
     }
@@ -1806,26 +2849,44 @@
   }
 
   function deleteSession(sessionId) {
-    var recordIds = data.records.filter(function (record) { return record.sessionId === sessionId; }).map(function (record) { return record.id; });
-    data.sets = data.sets.filter(function (set) { return recordIds.indexOf(set.recordId) < 0; });
-    data.records = data.records.filter(function (record) { return record.sessionId !== sessionId; });
-    data.cardios = data.cardios.filter(function (cardio) { return cardio.sessionId !== sessionId; });
-    data.sessions = data.sessions.filter(function (session) { return session.id !== sessionId; });
-    persist();
+    if (!runDataTransaction(function () { removeSessionData(sessionId); })) return;
     closeModal("dayModal");
     renderHome();
     showToast("記録を削除しました");
   }
 
   function bindEvents() {
-    $("#homeSettingsButton").addEventListener("click", function () { openModal("settingsMenuModal"); });
-    $("#homeRoutineCreateButton").addEventListener("click", function () { openRoutineCreator(false); });
-    $("#homeGymStartButton").addEventListener("click", function () { newDraft("gym", todayString()); });
-    $("#homeHomeStartButton").addEventListener("click", function () { newDraft("home", todayString()); });
-    $("#settingsProfileButton").addEventListener("click", function () { closeModal("settingsMenuModal"); openProfile(); });
-    $("#settingsRoutineButton").addEventListener("click", function () { closeModal("settingsMenuModal"); openRoutineList(todayString(), "manage"); });
-    $("#openProgressButton").addEventListener("click", openProgressPage);
-    $("#backFromProgressButton").addEventListener("click", function () { renderHome(); showScreen("home"); });
+    on("#homeSettingsButton", "click", function () { openModal("settingsMenuModal"); });
+    on("#homeRoutineMenuButton", "click", function () { openModal("routineMenuModal"); });
+    on("#homeRecordMenuButton", "click", function () { openModal("recordMenuModal"); });
+    on("#homeRoutineCreateButton", "click", function () { closeModal("routineMenuModal"); openRoutineCreator(false); });
+    on("#homeGymStartButton", "click", function () { closeModal("recordMenuModal"); startTodayLocation("gym"); });
+    on("#homeHomeStartButton", "click", function () { closeModal("recordMenuModal"); startTodayLocation("home"); });
+    on("#settingsProfileButton", "click", function () { closeModal("settingsMenuModal"); openProfile(); });
+    on("#settingsAppearanceButton", "click", function () { closeModal("settingsMenuModal"); renderAppearanceSettings(); openModal("appearanceSettingsModal"); });
+    on("#appearanceSettingsModal", "click", function (event) {
+      var appearanceButton = event.target.closest("[data-appearance-option]");
+      if (appearanceButton) {
+        setAppearanceSetting(appearanceButton.dataset.appearanceOption);
+        return;
+      }
+      var themeButton = event.target.closest("[data-color-theme-option]");
+      if (themeButton) setColorTheme(themeButton.dataset.colorThemeOption);
+    });
+    on("#settingsRoutineButton", "click", function () { closeModal("routineMenuModal"); openRoutineList(todayString(), "manage"); });
+    on("#backupDataButton", "click", function () { var button = this; runButtonLocked(button, function () { downloadBackupData("gymlog-backup"); }); });
+    on("#restoreDataButton", "click", function () { $("#restoreDataInput").value = ""; $("#restoreDataInput").click(); });
+    on("#restoreSnapshotButton", "click", restorePreRestoreSnapshot);
+    on("#restoreDataInput", "change", function () { readBackupFile(this.files && this.files[0]); });
+    on("#exportCorruptDataButton", "click", downloadCorruptData);
+    on("#recoveryRestoreButton", "click", function () { $("#restoreDataInput").value = ""; $("#restoreDataInput").click(); });
+    on("#startFreshDataButton", "click", function () { var button = this; runButtonLocked(button, startWithFreshData); });
+    on("#discardSavedDraft", "click", discardSavedDraft);
+    on("#resumeSavedDraft", "click", resumeSavedDraft);
+    on("#nextSetYesButton", "click", function () { var button = this; runButtonLocked(button, startConfirmedNextSet); });
+    on("#nextSetNoButton", "click", function () { var button = this; runButtonLocked(button, closeNextSetInput); });
+    on("#openProgressButton", "click", openProgressPage);
+    on("#backFromProgressButton", "click", function () { renderHome(); showScreen("home"); });
     $$('[data-progress-tab]').forEach(function (button) {
       button.addEventListener("click", function () {
         progressState.tab = button.dataset.progressTab;
@@ -1833,86 +2894,96 @@
         renderProgressPage();
       });
     });
-    $("#progressExerciseSelect").addEventListener("change", function () {
+    on("#progressExerciseSelect", "change", function () {
       if (progressState.tab === "strength") progressState.exerciseId = this.value;
       else progressState.cardioType = this.value;
       renderProgressPage();
     });
-    $("#progressMetricSelect").addEventListener("change", function () { progressState.metric = this.value; renderProgressPage(); });
-    $("#progressChart").addEventListener("pointerover", function (event) {
+    on("#progressMetricSelect", "change", function () { progressState.metric = this.value; renderProgressPage(); });
+    on("#progressRangeSelect", "change", function () { progressState.range = this.value; renderProgressPage(); });
+    on("#progressChart", "pointerover", function (event) {
       var point = event.target.closest("[data-chart-point]");
       if (point) showProgressChartTooltip(point);
     });
-    $("#progressChart").addEventListener("pointerout", function (event) {
+    on("#progressChart", "pointerout", function (event) {
       var point = event.target.closest("[data-chart-point]");
       if (point) hideProgressChartTooltip();
     });
-    $("#progressChart").addEventListener("click", function (event) {
+    on("#progressChart", "click", function (event) {
       var point = event.target.closest("[data-chart-point]");
       if (point) { event.stopPropagation(); showProgressChartTooltip(point); }
       else hideProgressChartTooltip();
     });
-    $("#progressChart").addEventListener("focusin", function (event) {
+    on("#progressChart", "focusin", function (event) {
       var point = event.target.closest("[data-chart-point]");
       if (point) showProgressChartTooltip(point);
     });
-    $("#progressChart").addEventListener("focusout", hideProgressChartTooltip);
-    $("#openRoutineListButton").addEventListener("click", function () { openRoutineList(draft ? draft.date : todayString(), "use"); });
-    $("#saveRoutineButton").addEventListener("click", openRoutineSaveModal);
-    $("#confirmRoutineSave").addEventListener("click", saveRoutineFromDraft);
-    $("#routineAddExerciseButton").addEventListener("click", openRoutineExercisePicker);
-    $("#routineNameInput").addEventListener("input", function () { if (routineEditorState) routineEditorState.name = this.value; });
-    $("#routineLocationType").addEventListener("change", function () { if (routineEditorState) routineEditorState.locationType = this.value === "home" ? "home" : "gym"; });
-    $("#emptyAddExerciseButton").addEventListener("click", openExercisePicker);
-    $("#emptyCopyPastButton").addEventListener("click", copyLatestPastMenu);
-    $("#prevMonth").addEventListener("click", function () { calendarCursor.setMonth(calendarCursor.getMonth() - 1); renderHome(); });
-    $("#nextMonth").addEventListener("click", function () { calendarCursor.setMonth(calendarCursor.getMonth() + 1); renderHome(); });
-    $("#todayMonth").addEventListener("click", function () { calendarCursor = new Date(); calendarCursor.setDate(1); renderHome(); });
-    $("#calendarGrid").addEventListener("click", function (event) { var button = event.target.closest("[data-calendar-date]"); if (button) renderDaySummary(button.dataset.calendarDate); });
-    $("#copyToTodayButton").addEventListener("click", function () {
+    on("#progressChart", "focusout", hideProgressChartTooltip);
+    on("#openRoutineListButton", "click", function () { openRoutineList(draft ? draft.date : todayString(), "use"); });
+    on("#saveRoutineButton", "click", openRoutineSaveModal);
+    on("#confirmRoutineSave", "click", function () { var button = this; runButtonLocked(button, saveRoutineFromDraft); });
+    on("#routineAddExerciseButton", "click", openRoutineExercisePicker);
+    on("#routineNameInput", "input", function () { if (routineEditorState) routineEditorState.name = this.value; });
+    on("#routineLocationType", "change", function () { if (routineEditorState) routineEditorState.locationType = this.value === "home" ? "home" : "gym"; });
+    on("#emptyAddExerciseButton", "click", openExercisePicker);
+    on("#emptyCopyPastButton", "click", copyLatestPastMenu);
+    on("#prevMonth", "click", function () { calendarCursor.setMonth(calendarCursor.getMonth() - 1); renderHome(); });
+    on("#nextMonth", "click", function () { calendarCursor.setMonth(calendarCursor.getMonth() + 1); renderHome(); });
+    on("#todayMonth", "click", function () { calendarCursor = new Date(); calendarCursor.setDate(1); renderHome(); });
+    on("#calendarGrid", "click", function (event) { var button = event.target.closest("[data-calendar-date]"); if (button) renderDaySummary(button.dataset.calendarDate); });
+    on("#copyToTodayButton", "click", function () {
       if (copySourceSessionId) copySessionToDate(copySourceSessionId, todayString());
     });
-    $("#copyToSelectedDateButton").addEventListener("click", function () {
+    on("#copyToSelectedDateButton", "click", function () {
       var targetDate = $("#copyTargetDate").value;
       if (!targetDate) { showToast("コピー先の日付を選んでください"); $("#copyTargetDate").focus(); return; }
       if (copySourceSessionId) copySessionToDate(copySourceSessionId, targetDate);
     });
+    on("#copyConflictAppend", "click", function () { var button = this; runButtonLocked(button, function () { handleConflictModalAction("append"); }); });
+    on("#copyConflictReplace", "click", function () { var button = this; runButtonLocked(button, function () { handleConflictModalAction("replace"); }); });
+    on("#copyConflictCancel", "click", function () { var button = this; runButtonLocked(button, handleConflictModalCancel); });
 
-    $("#profileForm").addEventListener("submit", function (event) {
+    on("#profileForm", "submit", function (event) {
       event.preventDefault();
+      var submitButton = event.submitter || $("#profileForm button[type='submit']");
+      if (submitButton && submitButton.disabled) return;
+      if (submitButton) submitButton.disabled = true;
       var stamp = nowIso();
       var old = data.profile || {};
-      data.profile = { id: old.id || makeId("profile"), weightKg: numberValue("#profileWeight"), heightCm: numberValue("#profileHeight"), age: Math.round(numberValue("#profileAge")), gender: $("#profileGender").value, createdAt: old.createdAt || stamp, updatedAt: stamp };
-      persist(); closeModal("profileModal"); renderHome(); if (draft) updateDraftCalories(); showToast("プロフィールを保存しました");
+      var nextProfile = { id: old.id || makeId("profile"), weightKg: numberValue("#profileWeight"), heightCm: numberValue("#profileHeight"), age: Math.round(numberValue("#profileAge")), gender: $("#profileGender").value, createdAt: old.createdAt || stamp, updatedAt: stamp };
+      if (!runDataTransaction(function () { data.profile = nextProfile; })) { if (submitButton) submitButton.disabled = false; return; }
+      closeModal("profileModal"); renderHome(); if (draft) updateDraftCalories(); showToast("プロフィールを保存しました");
+      if (submitButton) submitButton.disabled = false;
     });
-    $("#resetDataButton").addEventListener("click", function () {
+    on("#resetDataButton", "click", function () {
       askConfirm("プロフィールとすべてのトレーニング記録を削除します。この操作は元に戻せません。", "すべて削除", function () {
-        data = blankData(); persist(); closeModal("profileModal"); renderHome(); showToast("すべてのデータを削除しました");
+        if (!runDataTransaction(function () { data = blankData(); })) return;
+        clearSavedDraft(); closeModal("profileModal"); renderHome(); showToast("すべてのデータを削除しました");
       });
     });
 
-    $("#backHomeButton").addEventListener("click", function () { draft = null; routineEditingId = null; renderHome(); showScreen("home"); });
-    $("#finishTopButton").addEventListener("click", saveWorkout);
-    $("#finishWorkoutButton").addEventListener("click", saveWorkout);
-    $("#sessionDate").addEventListener("change", function () { if (draft) draft.date = this.value; });
-    $("#sessionMemo").addEventListener("input", function () { if (draft) draft.memo = this.value; });
-    $("#exercisePickerButton").addEventListener("click", openExercisePicker);
-    $("#chooseAnotherExercise").addEventListener("click", openExercisePicker);
-    $("#cancelExerciseSelection").addEventListener("click", cancelExerciseSelection);
-    $("#confirmExerciseSelection").addEventListener("click", confirmExerciseSelection);
-    $("#exerciseBodyPartTabs").addEventListener("click", function (event) {
+    on("#backHomeButton", "click", function () { if (draft) saveDraftNow(); draft = null; routineEditingId = null; renderHome(); showScreen("home"); });
+    on("#finishTopButton", "click", function () { var button = this; runButtonLocked(button, saveWorkout); });
+    on("#finishWorkoutButton", "click", function () { var button = this; runButtonLocked(button, saveWorkout); });
+    on("#sessionDate", "change", function () { if (draft) { draft.date = this.value; scheduleDraftSave(); } });
+    on("#sessionMemo", "input", function () { if (draft) { draft.memo = this.value; scheduleDraftSave(); } });
+    on("#exercisePickerButton", "click", openExercisePicker);
+    on("#chooseAnotherExercise", "click", openExercisePicker);
+    on("#cancelExerciseSelection", "click", cancelExerciseSelection);
+    on("#confirmExerciseSelection", "click", confirmExerciseSelection);
+    on("#exerciseBodyPartTabs", "click", function (event) {
       var tab = event.target.closest("[data-body-part]");
       if (!tab) return;
       activeExerciseBodyPart = tab.dataset.bodyPart;
       renderExerciseBodyPartTabs();
       renderExerciseList();
     });
-    $("#exerciseList").addEventListener("click", function (event) {
+    on("#exerciseList", "click", function (event) {
       var favorite = event.target.closest("[data-favorite-id]");
       if (favorite) {
         event.stopPropagation();
         var exercise = getExercise(favorite.dataset.favoriteId);
-        if (exercise) { exercise.isFavorite = !exercise.isFavorite; exercise.updatedAt = nowIso(); persist(); renderExerciseList(); }
+        if (exercise && runDataTransaction(function () { exercise.isFavorite = !exercise.isFavorite; exercise.updatedAt = nowIso(); })) renderExerciseList();
         return;
       }
       var option = event.target.closest("[data-exercise-id]");
@@ -1930,13 +3001,13 @@
         renderExerciseList();
       }
     });
-    $("#openAddExercise").addEventListener("click", function () {
+    on("#openAddExercise", "click", function () {
       if (exercisePickerMode !== "routine") closeModal("exerciseModal");
       $("#newExerciseName").value = "";
       $("#newExerciseBodyPart").value = activeExerciseBodyPart === "cardio" ? "other" : activeExerciseBodyPart;
       openModal("addExerciseModal");
     });
-    $("#addExerciseForm").addEventListener("submit", function (event) {
+    on("#addExerciseForm", "submit", function (event) {
       event.preventDefault();
       var name = $("#newExerciseName").value.trim();
       var category = $("#newExerciseCategory").value;
@@ -1956,7 +3027,8 @@
       }
       var stamp = nowIso();
       var exercise = { id: makeId("ex"), name: name, category: category, bodyPart: bodyPart, defaultWeightStep: WEIGHT_STEPS[category] || 0, isFavorite: false, createdAt: stamp, updatedAt: stamp };
-      data.exercises.push(exercise); persist(); closeModal("addExerciseModal");
+      if (!runDataTransaction(function () { data.exercises.push(exercise); })) return;
+      closeModal("addExerciseModal");
       if (exercisePickerMode === "routine") {
         routinePendingExerciseIds.push(exercise.id);
         renderExerciseList();
@@ -1964,26 +3036,28 @@
       showToast("新しい種目を追加しました");
     });
 
-    $("#weightMinus").addEventListener("click", function () { changeWeight(-1); });
-    $("#weightPlus").addEventListener("click", function () { changeWeight(1); });
-    $("#weightMinusLarge").addEventListener("click", function () { changeWeightLarge(-1); });
-    $("#weightPlusLarge").addEventListener("click", function () { changeWeightLarge(1); });
-    $("#repsMinus").addEventListener("click", function () { changeReps(-1); });
-    $("#repsPlus").addEventListener("click", function () { changeReps(1); });
-    $("#repsMinusLarge").addEventListener("click", function () { changeRepsLarge(-1); });
-    $("#repsPlusLarge").addEventListener("click", function () { changeRepsLarge(1); });
-    $("#weightInput").addEventListener("focus", function () {
+    on("#weightMinus", "click", function () { changeWeight(-1); });
+    on("#weightPlus", "click", function () { changeWeight(1); });
+    on("#weightMinusLarge", "click", function () { changeWeightLarge(-1); });
+    on("#weightPlusLarge", "click", function () { changeWeightLarge(1); });
+    on("#repsMinus", "click", function () { changeReps(-1); });
+    on("#repsPlus", "click", function () { changeReps(1); });
+    on("#repsMinusLarge", "click", function () { changeRepsLarge(-1); });
+    on("#repsPlusLarge", "click", function () { changeRepsLarge(1); });
+    on("#weightInput", "focus", function () {
       if (getNumericInputValue(this) === 0) this.value = "";
     });
-    $("#weightInput").addEventListener("blur", formatWeightInput);
-    $("#repsQuick").addEventListener("click", function (event) { var button = event.target.closest("[data-reps]"); if (!button) return; $("#repsInput").value = button.dataset.reps; renderSetChoices(); });
-    $("#repsInput").addEventListener("input", renderSetChoices);
-    $("#rirChoices").addEventListener("click", function (event) { var button = event.target.closest("[data-rir]"); if (!button) return; selectedRir = button.dataset.rir; renderSetChoices(); });
-    $("#restChoices").addEventListener("click", function (event) { var button = event.target.closest("[data-rest]"); if (!button) return; selectedRest = Number(button.dataset.rest); renderSetChoices(); });
-    $("#saveSetButton").addEventListener("click", saveCurrentSet);
-    $("#cancelSetEditButton").addEventListener("click", cancelSetEdit);
+    on("#weightInput", "input", scheduleDraftSave);
+    on("#weightInput", "blur", formatWeightInput);
+    on("#repsQuick", "click", function (event) { var button = event.target.closest("[data-reps]"); if (!button) return; $("#repsInput").value = button.dataset.reps; renderSetChoices(); scheduleDraftSave(); });
+    on("#repsInput", "input", function () { renderSetChoices(); scheduleDraftSave(); });
+    on("#setMemo", "input", scheduleDraftSave);
+    on("#rirChoices", "click", function (event) { var button = event.target.closest("[data-rir]"); if (!button) return; selectedRir = button.dataset.rir; renderSetChoices(); scheduleDraftSave(); });
+    on("#restChoices", "click", function (event) { var button = event.target.closest("[data-rest]"); if (!button) return; selectedRest = Number(button.dataset.rest); renderSetChoices(); scheduleDraftSave(); });
+    on("#saveSetButton", "click", function () { var button = this; runButtonLocked(button, saveCurrentSet); });
+    on("#cancelSetEditButton", "click", cancelSetEdit);
 
-    ["#cardioType", "#cardioDuration", "#cardioDistance", "#cardioIncline", "#cardioMemo"].forEach(function (selector) { $(selector).addEventListener("input", handleCardioInputChange); });
+    ["#cardioType", "#cardioDuration", "#cardioDistance", "#cardioIncline", "#cardioMemo"].forEach(function (selector) { on(selector, "input", handleCardioInputChange); });
     $$('[data-number-target]').forEach(function (button) {
       button.addEventListener("click", function () {
         changeNumericInput(button.dataset.numberTarget, Number(button.dataset.numberDirection));
@@ -1994,8 +3068,8 @@
         changeNumericInputByStep(button.dataset.largeTarget, Number(button.dataset.largeDirection), Number(button.dataset.largeStep));
       });
     });
-    $("#saveCardioButton").addEventListener("click", saveCardio);
-    $("#savedCardioList").addEventListener("click", function (event) {
+    on("#saveCardioButton", "click", function () { var button = this; runButtonLocked(button, saveCardio); });
+    on("#savedCardioList", "click", function (event) {
       var deleteButton = event.target.closest("[data-delete-cardio]");
       if (deleteButton) {
         event.stopPropagation();
@@ -2031,15 +3105,6 @@
       if (addSameExercise) {
         event.stopPropagation();
         chooseExercise(addSameExercise.dataset.addSameExercise);
-        return;
-      }
-      var homeEmptyAdd = event.target.closest("[data-home-empty-add]");
-      if (homeEmptyAdd) { startAddingExerciseToToday(); return; }
-      var copyLatest = event.target.closest("[data-copy-latest-menu]");
-      if (copyLatest) { copyLatestPastMenu(); return; }
-      var homeExercise = event.target.closest("[data-home-session][data-home-exercise]");
-      if (homeExercise) {
-        addExerciseToSavedSession(homeExercise.dataset.homeSession, homeExercise.dataset.homeExercise);
         return;
       }
       var useRoutineButton = event.target.closest("[data-use-routine]");
@@ -2096,7 +3161,12 @@
       var close = event.target.closest("[data-close-modal]");
       if (close) {
         if (close.dataset.closeModal === "exerciseModal" && exercisePickerMode === "routine") cancelExerciseSelection();
-        else closeModal(close.dataset.closeModal);
+        else {
+          if (close.dataset.closeModal === "copyConflictModal") cancelPendingConflict();
+          else if (close.dataset.closeModal === "copyDestinationModal") { copySourceSessionId = null; closeModal("copyDestinationModal"); }
+          else if (close.dataset.closeModal === "confirmModal") cancelConfirmModal();
+          else closeModal(close.dataset.closeModal);
+        }
       }
       var dayStart = event.target.closest("[data-day-start]");
       if (dayStart) { closeModal("dayModal"); newDraft(dayStart.dataset.dayStart, dayStart.dataset.dayDate); }
@@ -2105,15 +3175,27 @@
       var edit = event.target.closest("[data-edit-session]"); if (edit) loadDraft(edit.dataset.editSession);
       var copy = event.target.closest("[data-copy-session]"); if (copy) openCopyDestination(copy.dataset.copySession);
       var remove = event.target.closest("[data-delete-session]");
-      if (remove) askConfirm("この日の記録を削除しますか？", "削除する", function () { deleteSession(remove.dataset.deleteSession); });
+      if (remove) {
+        var deleteTarget = getSession(remove.dataset.deleteSession);
+        if (deleteTarget) {
+          var deleteDate = dateFromString(deleteTarget.date);
+          var deleteLabel = (deleteDate.getMonth() + 1) + "月" + deleteDate.getDate() + "日の" + (deleteTarget.locationType === "home" ? "自宅" : "ジム") + "トレーニングを削除しますか？";
+          askConfirm(deleteLabel, "削除する", function () { deleteSession(deleteTarget.id); });
+        }
+      }
     });
-    $("#confirmCancel").addEventListener("click", function () { confirmCallback = null; closeModal("confirmModal"); });
-    $("#confirmAccept").addEventListener("click", function () { var callback = confirmCallback; confirmCallback = null; closeModal("confirmModal"); if (callback) callback(); });
+    on("#confirmCancel", "click", cancelConfirmModal);
+    on("#confirmAccept", "click", function () { acceptConfirmModal(this); });
     document.addEventListener("keydown", function (event) {
       if (event.key !== "Escape") return;
       var open = $$(".modal.is-open");
       if (!open.length) return;
       if (open[open.length - 1].id === "exerciseModal" && exercisePickerMode === "routine") cancelExerciseSelection();
+      else if (open[open.length - 1].id === "nextSetConfirmModal") closeNextSetInput();
+      else if (open[open.length - 1].id === "copyConflictModal") cancelPendingConflict();
+      else if (open[open.length - 1].id === "copyDestinationModal") { copySourceSessionId = null; closeModal("copyDestinationModal"); }
+      else if (open[open.length - 1].id === "confirmModal") cancelConfirmModal();
+      else if (open[open.length - 1].id === "dataRecoveryModal" || open[open.length - 1].id === "draftResumeModal") return;
       else closeModal(open[open.length - 1].id);
     });
   }
@@ -2126,6 +3208,7 @@
     var current = getNumericInputValue(input);
     var value = Math.max(0, current + direction * step);
     input.value = (Math.round(value * 10) / 10).toFixed(1);
+    scheduleDraftSave();
   }
 
   function changeWeightLarge(direction) {
@@ -2133,6 +3216,7 @@
     if (!exercise || exercise.category === "BODYWEIGHT") return;
     var input = $("#weightInput");
     input.value = Math.max(0, getNumericInputValue(input) + direction * 10).toFixed(1);
+    scheduleDraftSave();
   }
 
   function changeReps(direction) {
@@ -2141,6 +3225,7 @@
     if (current < 1) current = 10;
     input.value = Math.max(1, current + direction);
     renderSetChoices();
+    scheduleDraftSave();
   }
 
   function changeRepsLarge(direction) {
@@ -2149,12 +3234,14 @@
     if (current < 1) current = 10;
     input.value = Math.max(1, current + direction * 10);
     renderSetChoices();
+    scheduleDraftSave();
   }
 
   function formatWeightInput() {
     var input = $("#weightInput");
     var value = Math.max(0, getNumericInputValue(input));
     input.value = value.toFixed(1);
+    scheduleDraftSave();
   }
 
   function changeNumericInput(targetId, direction) {
@@ -2180,8 +3267,35 @@
     handleCardioInputChange();
   }
 
-  bindEvents();
-  if (exerciseMigrationChanged) persist();
-  renderHome();
-  if (!data.profile || !data.profile.weightKg) setTimeout(openProfile, 350);
+  window.GymLog.config = { storageKey: STORAGE_KEY, draftStorageKey: DRAFT_STORAGE_KEY, uiSettingsKey: UI_SETTINGS_KEY, cardioTypes: CARDIO_TYPES.slice() };
+  window.GymLog.storage = { persist: persist, backup: downloadBackupData, validateBackup: validateBackupData, rebuildIndexes: rebuildDataIndexes };
+  window.GymLog.calculations = { strengthCalories: calculateStrengthCaloriesForRecords, cardio: calculateCardio, monthlySummary: getMonthlySummary };
+  window.GymLog.dataAccess = { getExercise: getExercise, getSession: getSession, getSessionsForDate: getSessionsForDate, getSessionRecords: getSessionRecords, getRecordSets: getRecordSets, getSessionCardios: getSessionCardios };
+  window.GymLog.progress = { filterByRange: filterProgressPointsByRange, render: renderProgressPage };
+
+  function initializeApp() {
+    try {
+      applyUiSettings(uiSettings);
+      bindSystemAppearanceListener();
+      bindEvents();
+      if ((exerciseMigrationChanged || dataMigrationChanged) && !dataRecoveryRequired) persist();
+      renderHome();
+      if (dataRecoveryRequired) { openModal("dataRecoveryModal"); return; }
+      if (dataLoadWarning) setTimeout(function () { showToast(dataLoadWarning); }, 100);
+      var startupDraft = loadSavedDraft();
+      if (startupDraft) setTimeout(function () { showSavedDraftPrompt(startupDraft); }, 250);
+      else if (!data.profile || !data.profile.weightKg) setTimeout(openProfile, 350);
+    } catch (error) {
+      console.error("Failed to initialize app", error);
+      var appRoot = document.getElementById("app");
+      if (appRoot) {
+        var notice = document.createElement("p");
+        notice.className = "startup-error";
+        notice.textContent = "データを読み込めませんでした。ページを開き直してください。";
+        if (appRoot.insertBefore) appRoot.insertBefore(notice, appRoot.firstChild);
+      }
+    }
+  }
+
+  initializeApp();
 })();
