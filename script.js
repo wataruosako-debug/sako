@@ -1103,6 +1103,31 @@
     $("#monthlySummaryLabel").textContent = "運動";
     $("#monthlyCaloriesLabel").textContent = "カロリー";
     $("#monthlyVolumeLabel").textContent = "ボリューム";
+    var scheduleFit = window.requestAnimationFrame || function (callback) { setTimeout(callback, 0); };
+    scheduleFit(fitMonthlySummaryMetrics);
+  }
+
+  function fitSummaryMetricValue(element) {
+    if (!element || !element.style || !element.getBoundingClientRect) return;
+    element.style.removeProperty("--metric-scale");
+    var container = element.closest ? element.closest(".stat-value, .monthly-volume-total strong") : null;
+    if (!container || !container.getBoundingClientRect) return;
+    var unit = container.querySelector ? container.querySelector("small") : null;
+    var unitWidth = unit && unit.getBoundingClientRect ? unit.getBoundingClientRect().width + 4 : 0;
+    var availableWidth = container.getBoundingClientRect().width - unitWidth;
+    var actualWidth = element.getBoundingClientRect().width;
+    if (!actualWidth || !availableWidth || actualWidth <= availableWidth) {
+      element.style.setProperty("--metric-scale", "1");
+      return;
+    }
+    var scale = Math.max(0.78, Math.min(1, availableWidth / actualWidth));
+    element.style.setProperty("--metric-scale", String(scale));
+  }
+
+  function fitMonthlySummaryMetrics() {
+    ["monthlyVisits", "monthlyCalories", "monthlyTotalVolume"].forEach(function (id) {
+      fitSummaryMetricValue(document.getElementById(id));
+    });
   }
 
   function renderHome() {
@@ -1289,31 +1314,27 @@
   }
 
   function draftFromRoutine(routine, dateValue, scheduleId) {
-    draft = { id: null, originalSessionId: null, date: dateValue, locationType: routine.locationType, memo: "", records: [], cardios: [], pendingCardioTypes: [], createdAt: nowIso(), sourceScheduleId: scheduleId || null };
+    var appendToCurrentDraft = draft && draft.date === dateValue && draft.locationType === routine.locationType;
+    if (!appendToCurrentDraft) {
+      draft = { id: null, originalSessionId: null, date: dateValue, locationType: routine.locationType, memo: "", records: [], cardios: [], pendingCardioTypes: [], createdAt: nowIso(), sourceScheduleId: scheduleId || null };
+    } else {
+      draft.pendingCardioTypes = draft.pendingCardioTypes || [];
+      if (scheduleId) draft.sourceScheduleId = scheduleId;
+    }
     var legacyRecords = Array.isArray(routine.records) ? routine.records : [];
-    legacyRecords.forEach(function (record, recordIndex) {
-      draft.records.push({
-        tempId: makeId("draftrecord"), exerciseId: record.exerciseId, orderIndex: recordIndex,
-        sets: (record.sets || []).map(function (set, setIndex) {
-          return { tempId: makeId("draftset"), setNumber: setIndex + 1, weight: Number(set.weight || 0), reps: Number(set.reps || 0), rir: set.rir || "", restSeconds: Number(set.restSeconds || 90), memo: set.memo || "" };
-        })
-      });
-    });
-    (routine.cardios || []).forEach(function (cardio) {
-      var copied = { tempId: makeId("draftcardio"), type: cardio.type, durationMinutes: Number(cardio.durationMinutes || 0), distanceKm: Number(cardio.distanceKm || 0), inclinePercent: Number(cardio.inclinePercent || 0), memo: cardio.memo || "" };
-      var result = calculateCardio(copied);
-      copied.speedKmh = result.speedKmh;
-      copied.calories = result.calories;
-      draft.cardios.push(copied);
-    });
+    if (legacyRecords.length || (routine.cardios || []).length) appendRecordsAndCardiosToDraft(draft, legacyRecords, routine.cardios || []);
     if (!legacyRecords.length && Array.isArray(routine.exercises)) {
       routineExerciseEntries(routine).forEach(function (entry, index) {
         var exercise = getExercise(entry.exerciseId);
         if (!exercise) return;
         if (exercise.category === "CARDIO") {
-          draft.pendingCardioTypes.push(exercise.name);
+          var alreadyPending = draft.pendingCardioTypes.indexOf(exercise.name) >= 0;
+          var alreadyRecorded = draft.cardios.some(function (cardio) { return cardio.type === exercise.name; });
+          if (!alreadyPending && !alreadyRecorded) draft.pendingCardioTypes.push(exercise.name);
         } else {
-          draft.records.push({ tempId: makeId("draftrecord"), exerciseId: exercise.id, orderIndex: index, sets: [] });
+          if (!draft.records.some(function (record) { return record.exerciseId === exercise.id; })) {
+            draft.records.push({ tempId: makeId("draftrecord"), exerciseId: exercise.id, orderIndex: draft.records.length, sets: [] });
+          }
         }
       });
     }
@@ -2172,6 +2193,29 @@
     return "前回：" + weight + " × " + Number(lastSet.reps || 0) + "回 × " + sets.length + "セット";
   }
 
+  function getLastHistoricalCardio(type) {
+    var normalizedType = type === "傾斜ウォーク" ? "ウォーキング" : type;
+    return data.cardios.slice().filter(function (cardio) {
+      return (cardio.type === "傾斜ウォーク" ? "ウォーキング" : cardio.type) === normalizedType;
+    }).sort(function (a, b) {
+      var sessionA = getSession(a.sessionId) || {};
+      var sessionB = getSession(b.sessionId) || {};
+      var dateOrder = String(sessionB.date || "").localeCompare(String(sessionA.date || ""));
+      if (dateOrder) return dateOrder;
+      return String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || ""));
+    })[0] || null;
+  }
+
+  function historicalCardioSummary(type) {
+    var cardio = getLastHistoricalCardio(type);
+    if (!cardio) return "前回の記録はありません";
+    var details = [];
+    if (Number(cardio.durationMinutes || 0) > 0) details.push(Number(cardio.durationMinutes || 0) + "分");
+    if (Number(cardio.distanceKm || 0) > 0) details.push(formatNumberForInput(Number(cardio.distanceKm || 0), 0.1) + "km");
+    if (Number(cardio.inclinePercent || 0) > 0) details.push("傾斜" + formatNumberForInput(Number(cardio.inclinePercent || 0), 0.5) + "%");
+    return details.length ? "前回：" + details.join("・") : "前回の記録はありません";
+  }
+
   function findDraftSet(tempId) {
     if (!draft || !tempId) return null;
     for (var recordIndex = 0; recordIndex < draft.records.length; recordIndex += 1) {
@@ -2230,9 +2274,9 @@
     $("#weightInput").step = WEIGHT_STEPS[exercise.category] || 1;
     $("#weightInput").value = exercise.category === "BODYWEIGHT" ? 0 : (inputSet ? (Number(inputSet.weight) / 1000).toFixed(1) : "0.0");
     $("#repsInput").value = inputSet ? inputSet.reps : 10;
-    selectedRest = inputSet ? Number(inputSet.restSeconds) : 90;
-    selectedRir = editingRef ? String(editingRef.set.rir == null ? "" : editingRef.set.rir) : null;
-    $("#setMemo").value = editingRef ? (editingRef.set.memo || "") : "";
+    selectedRest = inputSet ? Number(inputSet.restSeconds || 90) : 90;
+    selectedRir = editingRef ? String(editingRef.set.rir == null ? "" : editingRef.set.rir) : (inputSet && inputSet.rir !== undefined && inputSet.rir !== null && inputSet.rir !== "" ? String(inputSet.rir) : null);
+    $("#setMemo").value = editingRef ? (editingRef.set.memo || "") : (inputSet && inputSet.memo ? inputSet.memo : "");
     renderSetChoices();
   }
 
@@ -2253,11 +2297,12 @@
     isAddingSet = exercise.category !== "CARDIO";
     if (exercise.category !== "CARDIO") ensureDraftRecord(exerciseId);
     if (exercise.category === "CARDIO") {
+      var previousCardio = getLastHistoricalCardio(exercise.name);
       $("#cardioType").value = exercise.name;
-      $("#cardioDuration").value = "";
-      $("#cardioDistance").value = "";
-      $("#cardioIncline").value = "";
-      $("#cardioMemo").value = "";
+      $("#cardioDuration").value = previousCardio ? formatNumberForInput(Number(previousCardio.durationMinutes || 0), 1) : "";
+      $("#cardioDistance").value = previousCardio ? formatNumberForInput(Number(previousCardio.distanceKm || 0), 0.1) : "";
+      $("#cardioIncline").value = previousCardio ? formatNumberForInput(Number(previousCardio.inclinePercent || 0), 0.5) : "";
+      $("#cardioMemo").value = previousCardio ? (previousCardio.memo || "") : "";
     }
     closeModal("exerciseModal");
     renderSelectedExercise();
@@ -2392,6 +2437,9 @@
     editingCardioTempId = null;
     selectedRir = null;
     renderSelectedExercise();
+    selectedRir = null;
+    $("#setMemo").value = "";
+    renderSetChoices();
     renderSavedSets();
     updateDraftCalories();
     saveDraftNow();
@@ -2422,7 +2470,7 @@
     var rawRest = Number(selectedRest);
     var issue = setValueIssue(rawWeight, rawReps, rawRest);
     if (issue.invalid) { showToast(issue.invalid); return; }
-    if (issue.warning && options.warningConfirmed !== true) {
+    if (issue.warning && skipWarning !== true) {
       askConfirm(issue.warning, "このまま保存", function () { saveCurrentSet(true); }, "入力に戻る");
       return;
     }
@@ -2536,9 +2584,25 @@
         return '<div class="saved-item saved-item--editable' + editingClass + '" data-edit-set="' + set.tempId + '"><button class="saved-item-main" type="button" aria-label="セット' + set.setNumber + 'を編集"><span class="set-index">' + set.setNumber + '</span><span class="saved-item-text"><strong>' + weightText + ' × ' + set.reps + '回</strong><small>' + RIR_LABELS[set.rir || ""] + '・休憩' + set.restSeconds + '秒' + (set.memo ? '・' + escapeHtml(set.memo) : '') + '</small></span><span class="edit-cue">編集</span></button><button class="delete-mini" type="button" data-delete-set="' + set.tempId + '" aria-label="セットを削除">×</button></div>';
       }).join("");
       var content = record.sets.length ? '<div class="saved-current-label">今回の記録</div>' + setRows : '';
-      return '<div class="saved-group"><div class="saved-group-head"><span class="saved-group-title"><strong>' + escapeHtml(exercise ? exercise.name : "不明な種目") + '</strong><small>' + escapeHtml(previousSummary) + '</small></span><span>' + record.sets.length + 'セット</span></div>' + content + '<button class="saved-set-add-button" type="button" data-add-set-exercise="' + record.exerciseId + '">＋ セットを追加</button></div>';
+      var actionLabel = record.sets.length ? "＋ セットを追加" : "セットを入力";
+      return '<div class="saved-group"><div class="saved-group-head"><button class="saved-group-add" type="button" data-add-set-exercise="' + record.exerciseId + '"><span class="saved-group-title"><strong>' + escapeHtml(exercise ? exercise.name : "不明な種目") + '</strong><small>' + escapeHtml(previousSummary) + '</small></span><em>' + actionLabel + '</em></button><div class="saved-group-actions"><span>' + record.sets.length + 'セット</span><button class="saved-group-remove" type="button" data-delete-record="' + record.exerciseId + '" aria-label="' + escapeHtml(exercise ? exercise.name : "種目") + 'を今日のメニューから外す">削除</button></div></div>' + content + '<button class="saved-set-add-button" type="button" data-add-set-exercise="' + record.exerciseId + '">' + actionLabel + '</button></div>';
     }).join("");
     updateTodayMenuSummary();
+  }
+
+  function deleteDraftRecord(exerciseId) {
+    if (!draft || !exerciseId) return;
+    if (selectedExerciseId === exerciseId) {
+      selectedExerciseId = null;
+      editingSetTempId = null;
+      isAddingSet = false;
+      selectedRir = null;
+    }
+    draft.records = draft.records.filter(function (record) { return record.exerciseId !== exerciseId; });
+    renderSelectedExercise();
+    renderSavedSets();
+    updateDraftCalories();
+    saveDraftNow();
   }
 
   function deleteDraftSet(tempId) {
@@ -2608,7 +2672,7 @@
     var issue = cardioValueIssue(cardio);
     if (issue.invalid) { showToast(issue.invalid); return; }
     if (cardio.durationMinutes < 1) { showToast("運動時間を入力してください"); $("#cardioDuration").focus(); return; }
-    if (issue.warning && options.warningConfirmed !== true) {
+    if (issue.warning && skipWarning !== true) {
       askConfirm(issue.warning, "このまま保存", function () { saveCardio(true); }, "入力に戻る");
       return;
     }
@@ -2660,7 +2724,7 @@
     }).join("");
     var pendingHtml = (draft.pendingCardioTypes || []).map(function (type) {
       var exerciseId = cardioExerciseId(type);
-      return '<div class="saved-group saved-group--cardio"><div class="saved-group-head"><button class="saved-group-add" type="button" data-add-same-exercise="' + exerciseId + '"><span class="saved-group-title"><strong>' + escapeHtml(type) + '</strong><small>まだ入力されていません</small></span><em>記録を入力</em></button><span>有酸素</span></div></div>';
+      return '<div class="saved-group saved-group--cardio"><div class="saved-group-head"><button class="saved-group-add" type="button" data-add-same-exercise="' + exerciseId + '"><span class="saved-group-title"><strong>' + escapeHtml(type) + '</strong><small>' + escapeHtml(historicalCardioSummary(type)) + '</small></span><em>内容を入力</em></button><div class="saved-group-actions"><span>有酸素</span><button class="saved-group-remove" type="button" data-delete-pending-cardio="' + escapeHtml(type) + '" aria-label="' + escapeHtml(type) + 'を今日のメニューから外す">削除</button></div></div></div>';
     }).join("");
     $("#savedCardioList").innerHTML = savedHtml + pendingHtml;
     updateTodayMenuSummary();
@@ -2677,6 +2741,20 @@
       $("#saveCardioButton").textContent = "この有酸素記録を保存";
       renderSelectedExercise();
       updateCardioPreview();
+    }
+    renderSavedCardios();
+    updateDraftCalories();
+    saveDraftNow();
+  }
+
+  function deletePendingCardioType(type) {
+    if (!draft || !type) return;
+    draft.pendingCardioTypes = (draft.pendingCardioTypes || []).filter(function (item) { return item !== type; });
+    var exercise = getExercise(selectedExerciseId);
+    if (exercise && exercise.category === "CARDIO" && exercise.name === type && !editingCardioTempId) {
+      selectedExerciseId = null;
+      resetCardioForm();
+      renderSelectedExercise();
     }
     renderSavedCardios();
     updateDraftCalories();
@@ -2856,6 +2934,7 @@
   }
 
   function bindEvents() {
+    if (window.addEventListener) window.addEventListener("resize", fitMonthlySummaryMetrics);
     on("#homeSettingsButton", "click", function () { openModal("settingsMenuModal"); });
     on("#homeRoutineMenuButton", "click", function () { openModal("routineMenuModal"); });
     on("#homeRecordMenuButton", "click", function () { openModal("recordMenuModal"); });
@@ -3070,6 +3149,13 @@
     });
     on("#saveCardioButton", "click", function () { var button = this; runButtonLocked(button, saveCardio); });
     on("#savedCardioList", "click", function (event) {
+      var deletePendingButton = event.target.closest("[data-delete-pending-cardio]");
+      if (deletePendingButton) {
+        event.stopPropagation();
+        var pendingType = deletePendingButton.dataset.deletePendingCardio;
+        askConfirm(pendingType + "を今日のメニューから外しますか？", "削除する", function () { deletePendingCardioType(pendingType); });
+        return;
+      }
       var deleteButton = event.target.closest("[data-delete-cardio]");
       if (deleteButton) {
         event.stopPropagation();
@@ -3093,6 +3179,14 @@
         event.stopPropagation();
         var setTempId = deleteSetButton.dataset.deleteSet;
         askConfirm("このセットを削除しますか？", "削除する", function () { deleteDraftSet(setTempId); });
+        return;
+      }
+      var deleteRecordButton = event.target.closest("[data-delete-record]");
+      if (deleteRecordButton) {
+        event.stopPropagation();
+        var exerciseIdToDelete = deleteRecordButton.dataset.deleteRecord;
+        var exerciseToDelete = getExercise(exerciseIdToDelete);
+        askConfirm((exerciseToDelete ? exerciseToDelete.name : "この種目") + "を今日のメニューから外しますか？", "削除する", function () { deleteDraftRecord(exerciseIdToDelete); });
         return;
       }
       var addSetButton = event.target.closest("[data-add-set-exercise]");

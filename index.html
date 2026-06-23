@@ -28,7 +28,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=M+PLUS+1p:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260623-04">
+  <link rel="stylesheet" href="style.css?v=20260623-05">
 </head>
 <body>
   <div class="app-shell">
@@ -50,23 +50,23 @@
         <section class="stats-grid" aria-label="表示中の月の記録">
           <article class="stat-card stat-card--blue">
             <div class="stat-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M7 3v3m10-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"/><path d="m8.5 14 2 2 4-5"/></svg>
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="2"/><path d="M7 21v-5l5-3 5 3v5"/><path d="M6 5v4M18 5v4M3 7h18"/><path d="M8 11l4 2 4-2"/></svg>
             </div>
-              <div class="stat-content"><p id="monthlySummaryLabel">今月の運動</p><span class="stat-value"><strong id="monthlyVisits">0</strong><small>日</small></span><small id="monthlyVisitBreakdown" class="visit-breakdown"><span class="visit-breakdown--gym">ジム <b id="monthlyGymVisits">0</b>回</span><span class="visit-breakdown--home">自宅 <b id="monthlyHomeVisits">0</b>回</span></small></div>
+              <div class="stat-content"><p id="monthlySummaryLabel">今月の運動</p><span class="stat-value"><strong id="monthlyVisits" class="summary-metric-value">0</strong><small class="summary-metric-unit">日</small></span><small id="monthlyVisitBreakdown" class="visit-breakdown"><span class="visit-breakdown--gym">ジム <b id="monthlyGymVisits">0</b>回</span><span class="visit-breakdown--home">自宅 <b id="monthlyHomeVisits">0</b>回</span></small></div>
           </article>
           <article class="stat-card stat-card--orange">
             <div class="stat-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M12 22c4 0 7-2.8 7-6.7 0-2.6-1.4-5.1-4.2-7.5.1 2.2-.7 3.6-2.1 4.5.2-3.7-1.8-7-5.2-10.3.3 3.9-2.5 6.7-2.5 10.8C5 18.1 8.1 22 12 22Z"/><path d="M9.5 18.3c0 1.6 1.1 2.7 2.5 2.7s2.5-1.1 2.5-2.7c0-1.3-.7-2.5-2.2-3.8.1 1.1-.3 1.8-1 2.3.1-1.8-.8-3.4-2.2-5 .1 2-1.1 3.5.4 6.5Z"/></svg>
             </div>
-              <div class="stat-content"><p id="monthlyCaloriesLabel">今月のカロリー</p><span class="stat-value"><strong id="monthlyCalories">0</strong><small>kcal</small></span><small class="calorie-breakdown"><span class="calorie-breakdown--strength">筋トレ <b id="monthlyStrengthCalories">0</b>kcal</span><span class="calorie-breakdown--cardio">有酸素 <b id="monthlyCardioCalories">0</b>kcal</span></small></div>
+              <div class="stat-content"><p id="monthlyCaloriesLabel">今月のカロリー</p><span class="stat-value"><strong id="monthlyCalories" class="summary-metric-value">0</strong><small class="summary-metric-unit">kcal</small></span><small class="calorie-breakdown"><span class="calorie-breakdown--strength">筋トレ <b id="monthlyStrengthCalories">0</b>kcal</span><span class="calorie-breakdown--cardio">有酸素 <b id="monthlyCardioCalories">0</b>kcal</span></small></div>
           </article>
           <article class="stat-card stat-card--volume">
             <div class="stat-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M4 8v8m3-6v4m10-4v4m3-6v8M7 12h10M2 10v4m20-4v4"/></svg>
+              <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v5c0 1.7 3.1 3 7 3s7-1.3 7-3V5"/><path d="M5 10v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/><path d="M5 15v3c0 1.7 3.1 3 7 3s7-1.3 7-3v-3"/></svg>
             </div>
             <div class="stat-content stat-content--volume">
               <p id="monthlyVolumeLabel" class="volume-title">今月の月間ボリューム</p>
-              <div class="monthly-volume-total"><strong><b id="monthlyTotalVolume">0</b><small>kg</small></strong></div>
+              <div class="monthly-volume-total"><strong><b id="monthlyTotalVolume" class="summary-metric-value">0</b><small class="summary-metric-unit">kg</small></strong></div>
               <div class="monthly-volume-breakdown">
                 <span class="monthly-volume--upper">上半身 <b id="monthlyUpperVolume">0</b><small>kg</small></span>
                 <span class="monthly-volume--lower">下半身 <b id="monthlyLowerVolume">0</b><small>kg</small></span>
@@ -95,16 +95,16 @@
 
         <nav class="home-shortcuts" aria-label="主要メニュー">
           <button id="homeRoutineMenuButton" class="progress-action" type="button">
-            <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4h8m-7 0a2 2 0 0 0-2 2v1h10V6a2 2 0 0 0-2-2"/><path d="M6 7h12v13H6z"/><path d="M9 12h6M9 16h4"/></svg></span><strong>ルーティーン</strong>
+            <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4h8m-7 0a2 2 0 0 0-2 2v1h10V6a2 2 0 0 0-2-2"/><path d="M6 7h12v13H6z"/><path d="m9 12 1.5 1.5L14 10"/><path d="M9 17h6"/></svg></span><strong>ルーティーン</strong>
           </button>
           <button id="homeRecordMenuButton" class="progress-action progress-action--record" type="button">
-            <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8v8m3-6v4m10-4v4m3-6v8M7 12h10M2 10v4m20-4v4"/></svg></span><strong>記録</strong>
+            <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.4 2.6a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg></span><strong>記録</strong>
           </button>
           <button id="openProgressButton" class="progress-action" type="button">
-            <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/><path d="m4 9 6-4 6 7 4-4"/></svg></span><strong>成長を見る</strong>
+            <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span><strong>成長を見る</strong>
           </button>
           <button id="homeSettingsButton" class="progress-action" type="button">
-            <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2 3.4-.2-.1a1.8 1.8 0 0 0-2 .1 7.6 7.6 0 0 1-1.7 1l-.3.1a1.7 1.7 0 0 0-1.4 1.5v.2H8.2V23a1.7 1.7 0 0 0-1.3-1.6l-.3-.1a7.6 7.6 0 0 1-1.7-1 1.8 1.8 0 0 0-2-.1l-.2.1-2-3.4.1-.1A1.7 1.7 0 0 0 1.1 15a7.9 7.9 0 0 1 0-2 1.7 1.7 0 0 0-.3-1.9l-.1-.1 2-3.4.2.1a1.8 1.8 0 0 0 2-.1 7.6 7.6 0 0 1 1.7-1l.3-.1A1.7 1.7 0 0 0 8.2 5V4.8h3.6V5a1.7 1.7 0 0 0 1.4 1.5l.3.1a7.6 7.6 0 0 1 1.7 1 1.8 1.8 0 0 0 2 .1l.2-.1 2 3.4-.1.1A1.7 1.7 0 0 0 19.4 13a7.9 7.9 0 0 1 0 2Z"/></svg></span><strong>設定</strong>
+            <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.3 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 3.1h5l.3-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1Z"/></svg></span><strong>設定</strong>
           </button>
         </nav>
       </section>
@@ -474,6 +474,6 @@
     </section>
   </div>
 
-  <script src="script.js?v=20260623-05"></script>
+  <script src="script.js?v=20260623-06"></script>
 </body>
 </html>

@@ -24,6 +24,8 @@
   --border-strong: #CBD5E1;
   --danger: #E5484D;
   --danger-soft: #FFF1F2;
+  --calorie-color: #FF4D4F;
+  --calorie-color-soft: #FFF0F0;
   --warning: #F97316;
   --warning-soft: #FFF2E8;
   --planned: #8B5CF6;
@@ -122,6 +124,8 @@
   --border: #263243;
   --border-strong: #37475C;
   --danger-soft: #32181C;
+  --calorie-color: #FF6B6D;
+  --calorie-color-soft: #3A1C20;
   --warning-soft: #342013;
   --modal-backdrop: rgba(0, 0, 0, .72);
   --shadow-card: 0 8px 26px rgba(0, 0, 0, .24);
@@ -276,15 +280,15 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   margin: 0 auto 8px;
   border-radius: 50%;
 }
-.stat-icon svg { width: 20px; height: 20px; stroke-width: 2; }
+.stat-icon svg { width: 21px; height: 21px; stroke-width: 2; }
 .stat-card--blue .stat-icon,
 .stat-card--volume .stat-icon {
   color: #FFFFFF;
   background: var(--brand-primary);
 }
 .stat-card--orange .stat-icon {
-  color: var(--text-primary);
-  background: var(--brand-accent);
+  color: #FFFFFF;
+  background: var(--calorie-color);
 }
 .stat-content { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .stat-card p, .stat-card .volume-title {
@@ -300,31 +304,43 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   white-space: nowrap;
 }
 .stat-value, .monthly-volume-total strong {
+  position: relative;
   display: flex;
   align-items: baseline;
   justify-content: center;
+  width: 100%;
   min-width: 0;
+  gap: 3px;
   line-height: 1;
 }
-.stat-value strong, .monthly-volume-total b {
-  overflow: hidden;
+.summary-metric-value {
+  display: inline-block;
+  max-width: none;
+  overflow: visible;
   color: var(--brand-primary);
   font-family: "Inter Tight", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: clamp(22px, 6.3vw, 30px);
+  font-size: clamp(24px, 6.3vw, 30px);
   font-weight: 800;
   line-height: 1;
-  letter-spacing: -.055em;
-  text-overflow: ellipsis;
+  letter-spacing: -.06em;
+  text-overflow: clip;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  transform: scaleX(var(--metric-scale, 1));
+  transform-origin: center;
 }
-.stat-card--orange .stat-value strong { color: var(--text-primary); }
+.stat-card--orange .summary-metric-value { color: var(--calorie-color); }
 .monthly-volume-total { margin: 0 0 4px; padding: 0; border: 0; }
 .stat-value small, .monthly-volume-total small {
-  margin-left: 3px;
+  flex: 0 0 auto;
+  margin-left: 0;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
+}
+.summary-metric-unit {
+  align-self: flex-end;
+  margin-bottom: 2px;
 }
 .visit-breakdown, .calorie-breakdown, .monthly-volume-breakdown {
   display: grid;
@@ -349,7 +365,8 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 }
 .visit-breakdown--gym, .calorie-breakdown--strength, .monthly-volume--upper { color: var(--brand-primary); }
 .visit-breakdown--home, .monthly-volume--lower { color: var(--home-color-dark); }
-.calorie-breakdown--cardio, .monthly-volume--cardio { color: var(--warning); }
+.calorie-breakdown--cardio { color: var(--calorie-color); }
+.monthly-volume--cardio { color: var(--warning); }
 .monthly-volume-breakdown small { margin-left: 1px; color: inherit; font-size: 8px; font-weight: 500; }
 
 .calendar-card, .flow-card, .progress-chart-card, .progress-summary-card, .routine-card, .summary-session, .planned-routine, .copy-date-choice, .saved-group, .record-menu-button, .routine-menu-button {
@@ -928,6 +945,9 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .saved-group-add strong, .saved-item-text strong, .routine-editor-name strong, .exercise-choice-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .saved-group-add small { margin-top: 2px; color: var(--text-muted); font-size: 9px; font-weight: 600; }
 .saved-group-add em { color: var(--brand-primary); font-size: 9px; font-style: normal; font-weight: 800; white-space: nowrap; }
+.saved-group-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+.saved-group-actions > span { padding: 4px 7px; border-radius: 999px; color: var(--text-muted); background: var(--surface); font-size: 9px; font-weight: 800; white-space: nowrap; }
+.saved-group-remove { min-height: 28px; padding: 0 8px; border: 0; border-radius: 999px; color: var(--danger); background: var(--danger-soft); font-size: 9px; font-weight: 800; }
 .saved-current-label { padding: 5px 11px; border-top: 1px solid var(--border); color: var(--text-muted); background: var(--surface); font-size: 9px; font-weight: 700; }
 .saved-set-add-button { display: block; width: calc(100% - 16px); min-height: 44px; margin: 8px; padding: 0 12px; text-align: center; }
 .saved-item {
@@ -965,7 +985,8 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .cardio-section .cardio-form { margin-top: 0; padding-top: 0; border-top: 0; }
 .cardio-section .flow-step-head { margin-bottom: 16px; }
 .saved-cardio-list:not(:empty) { margin-top: 10px; }
-.saved-group--cardio .saved-group-head > span { color: var(--home-color-dark); background: var(--home-color-soft); }
+.saved-group--cardio .saved-group-head > span,
+.saved-group--cardio .saved-group-actions > span { color: var(--home-color-dark); background: var(--home-color-soft); }
 .routine-workout-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }
 .routine-workout-actions button { min-height: 40px; padding: 0 10px; color: var(--text-secondary); background: var(--surface-subtle); border-color: var(--border); }
 .two-column-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
