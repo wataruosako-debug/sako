@@ -1,5 +1,5 @@
 :root {
-  --ad-reserved-height: 54px;
+  --ad-reserved-height: 18px;
   --brand-primary: #2563EB;
   --brand-primary-hover: #1D4ED8;
   --brand-primary-soft: #EAF2FF;
@@ -11,16 +11,16 @@
   --home-color-soft: #E7FAF7;
   --gym-calendar-color: var(--brand-primary);
   --primary-button-text: #FFFFFF;
-  --canvas: #F4F6FA;
-  --page-background: #E9EDF4;
+  --canvas: #F1F3F6;
+  --page-background: #E7EBF2;
   --surface: #FFFFFF;
-  --surface-subtle: #F8FAFC;
+  --surface-subtle: #F7F9FC;
   --surface-raised: #FFFFFF;
   --text-primary: #0D1B2A;
   --text-secondary: #475467;
   --text-muted: #667085;
   --text-disabled: #A7AFBD;
-  --border: #E8ECF2;
+  --border: #E6EBF2;
   --border-strong: #CBD5E1;
   --danger: #E5484D;
   --danger-soft: #FFF1F2;
@@ -31,9 +31,9 @@
   --planned: #8B5CF6;
   --best-gold: #F59E0B;
   --modal-backdrop: rgba(13, 27, 42, .48);
-  --shadow-card: 0 8px 24px rgba(13, 27, 42, .055);
-  --shadow-floating: 0 20px 54px rgba(13, 27, 42, .18);
-  --radius-card: 18px;
+  --shadow-card: 0 10px 26px rgba(13, 27, 42, .055);
+  --shadow-floating: 0 24px 64px rgba(13, 27, 42, .14);
+  --radius-card: 20px;
   --radius-panel: 16px;
   --radius-button: 13px;
   --radius-input: 12px;
@@ -94,29 +94,29 @@
 
 [data-appearance="light"] {
   color-scheme: light;
-  --canvas: #F4F6FA;
-  --page-background: #E9EDF4;
+  --canvas: #F1F3F6;
+  --page-background: #E7EBF2;
   --surface: #FFFFFF;
-  --surface-subtle: #F8FAFC;
+  --surface-subtle: #F7F9FC;
   --surface-raised: #FFFFFF;
   --text-primary: #0D1B2A;
   --text-secondary: #475467;
   --text-muted: #667085;
   --text-disabled: #A7AFBD;
-  --border: #E8ECF2;
+  --border: #E6EBF2;
   --border-strong: #CBD5E1;
   --modal-backdrop: rgba(13, 27, 42, .48);
-  --shadow-card: 0 8px 24px rgba(13, 27, 42, .055);
-  --shadow-floating: 0 20px 54px rgba(13, 27, 42, .18);
+  --shadow-card: 0 10px 26px rgba(13, 27, 42, .055);
+  --shadow-floating: 0 24px 64px rgba(13, 27, 42, .14);
 }
 
 [data-appearance="dark"] {
   color-scheme: dark;
-  --canvas: #0B0F14;
-  --page-background: #060A0F;
-  --surface: #121821;
-  --surface-subtle: #171F2A;
-  --surface-raised: #1A2330;
+  --canvas: #0B1118;
+  --page-background: #070B11;
+  --surface: #121A24;
+  --surface-subtle: #17212D;
+  --surface-raised: #1A2634;
   --text-primary: #F8FAFC;
   --text-secondary: #CBD5E1;
   --text-muted: #94A3B8;
@@ -128,8 +128,8 @@
   --calorie-color-soft: #3A1C20;
   --warning-soft: #342013;
   --modal-backdrop: rgba(0, 0, 0, .72);
-  --shadow-card: 0 8px 26px rgba(0, 0, 0, .24);
-  --shadow-floating: 0 22px 58px rgba(0, 0, 0, .50);
+  --shadow-card: 0 10px 28px rgba(0, 0, 0, .26);
+  --shadow-floating: 0 24px 64px rgba(0, 0, 0, .50);
 }
 
 [data-appearance="dark"][data-color-theme="urban-blue"] {
@@ -178,7 +178,7 @@ body {
   min-height: 100vh;
   color: var(--text-primary);
   background: var(--page-background);
-  font-family: "M PLUS 1p", -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", "Segoe UI", sans-serif;
+  font-family: "M PLUS Rounded 1c", "M PLUS 1p", -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -200,7 +200,9 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   min-height: 100vh;
   margin: 0 auto;
   overflow: hidden;
-  background: var(--canvas);
+  background:
+    radial-gradient(circle at 16% -8%, color-mix(in srgb, var(--brand-primary) 7%, transparent), transparent 30%),
+    linear-gradient(180deg, var(--canvas) 0%, var(--page-background) 100%);
   box-shadow: var(--shadow-floating);
 }
 .screen { display: none; min-height: 100vh; padding: 20px 18px calc(22px + env(safe-area-inset-bottom)); }
@@ -210,21 +212,21 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
-  padding: max(13px, env(safe-area-inset-top)) 12px calc(var(--ad-reserved-height) + env(safe-area-inset-bottom));
+  padding: max(14px, env(safe-area-inset-top)) 10px calc(var(--ad-reserved-height) + env(safe-area-inset-bottom));
 }
 
 .topbar, .sub-header { display: flex; align-items: center; justify-content: space-between; }
 .topbar {
-  min-height: 50px;
-  margin-bottom: 12px;
-  padding: 2px 4px;
+  min-height: 48px;
+  margin-bottom: 10px;
+  padding: 1px 5px;
 }
 .brand-wrap { display: flex; align-items: center; min-width: 0; }
 .brand-mark, .eyebrow { display: none; }
 .topbar h1 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 29px;
+  font-size: clamp(30px, 7.6vw, 38px);
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -.055em;
@@ -235,12 +237,12 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 0 3px 9px;
+  margin: 0 4px 10px;
 }
 .monthly-summary-head h2 {
   margin: 0;
   color: var(--brand-primary);
-  font-size: 15px;
+  font-size: 15.5px;
   font-weight: 700;
   letter-spacing: -.025em;
 }
@@ -248,28 +250,28 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   flex: 0 0 auto;
   color: var(--text-primary);
   font-family: "Inter Tight", sans-serif;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 9px;
+  margin-bottom: 13px;
 }
 .stat-card {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: 135px;
+  min-height: 132px;
   padding: 12px 9px 10px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
-  border-radius: var(--radius-panel);
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 17px;
   color: var(--text-primary);
   background: var(--surface);
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 10px 24px rgba(13, 27, 42, .052);
 }
 .stat-card::before { display: none; }
 .stat-card--interactive {
@@ -292,20 +294,21 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .stat-icon {
   display: grid;
   place-items: center;
-  width: 39px;
-  height: 39px;
+  width: 40px;
+  height: 40px;
   margin: 0 auto 8px;
   border-radius: 50%;
+  box-shadow: 0 9px 18px rgba(13, 27, 42, .10);
 }
 .stat-icon svg { width: 21px; height: 21px; stroke-width: 2; }
 .stat-card--blue .stat-icon,
 .stat-card--volume .stat-icon {
   color: #FFFFFF;
-  background: var(--brand-primary);
+  background: linear-gradient(145deg, #2F72FF 0%, var(--brand-primary) 100%);
 }
 .stat-card--orange .stat-icon {
   color: #FFFFFF;
-  background: var(--calorie-color);
+  background: linear-gradient(145deg, var(--brand-accent) 0%, var(--brand-accent-dark) 100%);
 }
 .stat-content { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .stat-card p, .stat-card .volume-title {
@@ -313,7 +316,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   margin: 0 0 4px;
   overflow: hidden;
   color: var(--text-primary);
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 700;
   line-height: 1.25;
   text-align: center;
@@ -336,23 +339,23 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   overflow: visible;
   color: var(--brand-primary);
   font-family: "Inter Tight", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: clamp(24px, 6.3vw, 30px);
+  font-size: clamp(24px, 6.2vw, 31px);
   font-weight: 800;
   line-height: 1;
-  letter-spacing: -.06em;
+  letter-spacing: -.045em;
   text-overflow: clip;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   transform: scaleX(var(--metric-scale, 1));
   transform-origin: center;
 }
-.stat-card--orange .summary-metric-value { color: var(--calorie-color); }
+.stat-card--orange .summary-metric-value { color: var(--text-primary); }
 .monthly-volume-total { margin: 0 0 4px; padding: 0; border: 0; }
 .stat-value small, .monthly-volume-total small {
   flex: 0 0 auto;
   margin-left: 0;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: 9.5px;
   font-weight: 600;
 }
 .summary-metric-unit {
@@ -361,11 +364,11 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 }
 .visit-breakdown, .calorie-breakdown, .monthly-volume-breakdown {
   display: grid;
-  gap: 2px;
+  gap: 3px;
   margin-top: auto;
-  padding-top: 7px;
+  padding-top: 8px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 9.5px;
   font-style: normal;
   font-weight: 500;
   line-height: 1.3;
@@ -378,37 +381,36 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .visit-breakdown b, .calorie-breakdown b, .monthly-volume-breakdown b {
   font-family: "Inter Tight", sans-serif;
   font-weight: 600;
-  letter-spacing: -.02em;
+  letter-spacing: -.01em;
 }
 .visit-breakdown--gym, .calorie-breakdown--strength, .monthly-volume--upper { color: var(--brand-primary); }
 .visit-breakdown--home, .monthly-volume--lower { color: var(--home-color-dark); }
-.calorie-breakdown--cardio { color: var(--calorie-color); }
-.monthly-volume--cardio { color: var(--warning); }
+.calorie-breakdown--cardio, .monthly-volume--cardio { color: var(--brand-accent-dark); }
 .monthly-volume-breakdown small { margin-left: 1px; color: inherit; font-size: 8px; font-weight: 500; }
 
 .calendar-card, .flow-card, .progress-chart-card, .progress-summary-card, .routine-card, .summary-session, .planned-routine, .copy-date-choice, .saved-group, .record-menu-button, .routine-menu-button {
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
   border-radius: var(--radius-card);
   color: var(--text-primary);
   background: var(--surface);
   box-shadow: var(--shadow-card);
 }
 .calendar-card {
-  padding: 15px 14px 11px;
-  border-radius: var(--radius-card);
+  padding: 16px 14px 12px;
+  border-radius: 21px;
 }
 .calendar-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 11px;
 }
 .calendar-head h2, .section-title-row h2 {
   margin: 0;
   color: var(--text-primary);
   font-family: "Inter Tight", "M PLUS 1p", sans-serif;
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 700;
   letter-spacing: -.035em;
 }
@@ -417,7 +419,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .mini-icon-button, .icon-button, .today-button {
   display: grid;
   place-items: center;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
   color: var(--text-secondary);
   background: var(--surface);
   box-shadow: none;
@@ -429,7 +431,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .icon-button--back { font-size: 34px; line-height: 1; padding: 0 0 5px; }
 .weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
 .weekdays {
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   color: var(--text-secondary);
   font-size: 10px;
   font-weight: 600;
@@ -441,6 +443,8 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   position: relative;
   display: grid;
   place-items: center;
+  justify-self: center;
+  width: min(44px, 100%);
   min-width: 0;
   aspect-ratio: 1;
   border: 0;
@@ -448,7 +452,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   color: var(--text-primary);
   background: transparent;
   font-family: "Inter Tight", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -481,7 +485,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .calendar-day--today {
   color: var(--primary-button-text);
   background: var(--brand-primary);
-  box-shadow: 0 8px 16px color-mix(in srgb, var(--brand-primary) 22%, transparent);
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--brand-primary) 24%, transparent);
 }
 .calendar-day--today.calendar-day--gym::before,
 .calendar-day--today.calendar-day--home::before,
@@ -492,9 +496,9 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   align-items: center;
   justify-content: center;
   gap: 14px;
-  margin-top: 8px;
+  margin-top: 9px;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 500;
 }
 .legend span { display: flex; align-items: center; gap: 5px; }
@@ -507,13 +511,13 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0;
-  margin-top: 11px;
-  padding: 4px;
+  margin-top: 12px;
+  padding: 5px;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
+  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--surface) 96%, var(--surface-subtle));
+  box-shadow: 0 11px 26px rgba(13, 27, 42, .06);
 }
 .progress-action {
   position: relative;
@@ -521,14 +525,14 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
   width: 100%;
   min-width: 0;
-  min-height: 64px;
+  min-height: 62px;
   margin: 0;
-  padding: 7px 2px 5px;
+  padding: 7px 2px 6px;
   border: 0;
-  border-radius: 13px;
+  border-radius: 16px;
   color: var(--text-secondary);
   background: transparent;
   box-shadow: none;
@@ -540,14 +544,14 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   bottom: 13px;
   left: 0;
   width: 1px;
-  background: var(--border);
+  background: color-mix(in srgb, var(--border) 80%, transparent);
   content: "";
 }
 .progress-action-icon {
   display: grid;
   place-items: center;
-  width: 27px;
-  height: 27px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   color: var(--text-primary);
   background: transparent;
@@ -557,7 +561,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   overflow: hidden;
   max-width: 100%;
   color: inherit;
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 600;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -565,7 +569,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 }
 .progress-action--record {
   color: var(--brand-primary);
-  background: var(--brand-primary-soft);
+  background: color-mix(in srgb, var(--brand-primary-soft) 82%, var(--surface));
 }
 .progress-action--record::after {
   position: absolute;
