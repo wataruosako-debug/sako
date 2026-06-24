@@ -27,8 +27,8 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=M+PLUS+1p:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260624-03">
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=M+PLUS+Rounded+1c:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20260624-06">
 </head>
 <body>
   <div class="app-shell">
@@ -179,6 +179,10 @@
             </div>
             <div id="savedSetsList" class="saved-list"></div>
             <div id="savedCardioList" class="saved-list saved-cardio-list"></div>
+            <div id="guideModeActions" class="guide-mode-actions hidden">
+              <button id="startGuideModeButton" class="guide-start-button" type="button">ガイドモードで開始</button>
+              <button id="guideModeHelpButton" class="guide-help-button" type="button">ガイドモードとは？</button>
+            </div>
             <div class="routine-workout-actions"><button id="openRoutineListButton" type="button">ルーティーンから追加</button><button id="saveRoutineButton" type="button">ルーティーンとして保存</button></div>
           </section>
 
@@ -261,6 +265,123 @@
           <button id="finishWorkoutButton" class="finish-button" type="button">トレーニングを保存</button>
         </div>
       </section>
+      <section id="guideWorkoutScreen" class="screen" aria-labelledby="guideWorkoutTitle">
+        <header class="sub-header">
+          <button id="guideBackHomeButton" class="icon-button icon-button--back" type="button" aria-label="ホームへ戻る">‹</button>
+          <div class="sub-header-title"><span id="guideProgressBadge" class="location-badge">GUIDE</span><h1 id="guideWorkoutTitle">ガイドモード</h1></div>
+          <button id="guideExitButton" class="text-button" type="button">終了</button>
+        </header>
+
+        <div class="guide-body">
+          <section class="guide-progress-card">
+            <div>
+              <p class="section-kicker">GUIDED WORKOUT</p>
+              <h2 id="guideCurrentTitle">次のセット</h2>
+              <small id="guideProgressText">0 / 0種目</small>
+            </div>
+            <button id="guideMenuListButton" class="outline-button guide-menu-button" type="button">メニュー一覧</button>
+          </section>
+
+          <section id="guideSetCard" class="guide-card guide-set-stage is-active">
+            <div id="guideSetTopAnchor" class="guide-set-anchor" aria-hidden="true"></div>
+            <div class="guide-set-head">
+              <section class="guide-current-set-card" aria-labelledby="guideCurrentExerciseName">
+                <p id="guideExerciseProgress" class="section-kicker">1 / 1種目</p>
+                <h2 id="guideCurrentExerciseName" class="guide-current-exercise-name">種目</h2>
+                <div class="guide-set-progress-large" aria-live="polite">
+                  <span>SET</span>
+                  <strong id="guideCurrentSetNumber">1</strong>
+                  <small>/ <b id="guideTotalSetCount">1</b></small>
+                </div>
+                <small id="guidePreviousSummary">前回の記録はありません</small>
+                <span id="guideItemPosition" class="hidden">1 / 1種目</span>
+                <span id="guideExerciseName" class="hidden">種目</span>
+                <span id="guideSetProgress" class="hidden">1 / 1セット</span>
+              </section>
+            </div>
+            <div id="guideSetSavedNotice" class="guide-set-saved-notice hidden" role="status" aria-live="polite"></div>
+
+            <div id="guideRestTimer" class="guide-rest-timer hidden" role="status" aria-live="polite">
+              <div><span id="guideRestTimerLabel">休憩中</span><strong id="guideRestTimerTime">00:00</strong></div>
+              <div class="guide-rest-actions">
+                <button id="guideRestAdd10" type="button" aria-label="休憩時間を10秒追加">＋10秒</button>
+                <button id="guideRestAdd30" type="button" aria-label="休憩時間を30秒追加">＋30秒</button>
+                <button id="guideRestPause" type="button" aria-label="休憩タイマーを一時停止または再開">一時停止</button>
+                <button id="guideRestEnd" type="button" aria-label="休憩を終了">休憩終了</button>
+              </div>
+            </div>
+
+            <div id="guideWeightBlock" class="guide-input-block">
+              <div class="label-row"><label for="guideWeightInput">重量</label><small id="guideWeightStepLabel">1.0kg刻み</small></div>
+              <div class="guide-large-step-row"><button id="guideWeightMinusLarge" type="button" aria-label="10kg減らす">−10kg</button><button id="guideWeightPlusLarge" type="button" aria-label="10kg増やす">＋10kg</button></div>
+              <div class="guide-counter-control">
+                <button id="guideWeightMinus" type="button" aria-label="重量を減らす">−</button>
+                <div class="guide-counter-value"><input id="guideWeightInput" type="number" min="0" step="1" inputmode="decimal"><span>kg</span></div>
+                <button id="guideWeightPlus" type="button" aria-label="重量を増やす">＋</button>
+              </div>
+            </div>
+
+            <div class="guide-input-block">
+              <div class="label-row"><label for="guideRepsInput">回数</label><small>前回値から調整</small></div>
+              <div class="guide-counter-control guide-counter-control--reps">
+                <button id="guideRepsMinus" type="button" aria-label="回数を減らす">−</button>
+                <div class="guide-counter-value"><input id="guideRepsInput" type="number" min="1" max="999" inputmode="numeric"><span>回</span></div>
+                <button id="guideRepsPlus" type="button" aria-label="回数を増やす">＋</button>
+              </div>
+            </div>
+
+            <details class="guide-details">
+              <summary>詳細を入力する</summary>
+              <fieldset class="guide-input-block">
+                <legend>あと何回できそう？</legend>
+                <div id="guideRirChoices" class="stacked-choices">
+                  <button type="button" data-guide-rir="0"><strong>0回</strong><span>限界</span></button>
+                  <button type="button" data-guide-rir="1"><strong>1回</strong><span>かなりキツい</span></button>
+                  <button type="button" data-guide-rir="2-3"><strong>2〜3回</strong><span>結構キツい</span></button>
+                  <button type="button" data-guide-rir="4+"><strong>4回以上</strong><span>まだ余裕</span></button>
+                  <button type="button" data-guide-rir=""><strong>未入力</strong><span>あとで振り返る</span></button>
+                </div>
+              </fieldset>
+              <fieldset class="guide-input-block">
+                <legend>休憩時間</legend>
+                <div id="guideRestChoices" class="choice-grid choice-grid--five choice-grid--small">
+                  <button type="button" data-guide-rest="30">30秒</button><button type="button" data-guide-rest="60">60秒</button><button type="button" data-guide-rest="90">90秒</button><button type="button" data-guide-rest="120">120秒</button><button type="button" data-guide-rest="180">180秒</button>
+                </div>
+              </fieldset>
+              <label class="memo-field"><span>セットメモ <small>任意</small></span><input id="guideSetMemo" type="text" maxlength="80" placeholder="フォームや感覚をメモ"></label>
+            </details>
+
+            <button id="completeGuideSetButton" class="finish-button" type="button">このセットを完了</button>
+            <div class="guide-secondary-actions">
+              <button id="deferGuideItemButton" type="button">この種目を後回し</button>
+              <button id="replaceGuideItemButton" type="button">別の種目に変更</button>
+              <button id="skipGuideItemButton" type="button">今回はやらない</button>
+            </div>
+          </section>
+
+          <section id="guideFinishedSetCard" class="guide-card guide-finished-card hidden">
+            <p class="section-kicker">予定セット完了</p>
+            <h2 id="guideFinishedExerciseName">種目</h2>
+            <p id="guideFinishedSetSummary">0 / 0セット完了</p>
+            <div class="guide-next-actions">
+              <button id="guideAddExtraSetButton" class="finish-button" type="button">もう1セット追加</button>
+              <button id="guideFinishCurrentExerciseButton" class="outline-button" type="button">この種目を終了</button>
+            </div>
+          </section>
+
+          <section id="guideSelectNextCard" class="guide-card hidden">
+            <h2 id="guideSelectNextTitle">次に行う種目を選んでください</h2>
+            <p id="guideSelectNextText">未完了または後回しの種目から再開できます。</p>
+            <div class="guide-next-actions">
+              <button id="guideStartNextPending" class="finish-button" type="button">次の未完了種目を開始</button>
+              <button id="guideOpenDeferredList" class="outline-button" type="button">後回し中の種目から選ぶ</button>
+              <button id="guideOpenMenuFromNext" class="outline-button" type="button">メニュー一覧から選ぶ</button>
+              <button id="guideAddExerciseButton" class="outline-button outline-button--blue" type="button">別の種目を追加</button>
+              <button id="endGuideWorkoutButton" class="outline-button danger-text" type="button">トレーニングを終了</button>
+            </div>
+          </section>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -294,7 +415,7 @@
       <div class="modal-handle"></div>
       <header class="exercise-picker-header"><button id="cancelExerciseSelection" type="button">キャンセル</button><h2 id="exerciseModalTitle">種目を選択</h2><button id="confirmExerciseSelection" type="button" disabled>完了</button></header>
       <div id="exerciseBodyPartTabs" class="exercise-body-tabs" role="tablist" aria-label="部位カテゴリ"></div>
-      <input id="exerciseSearch" class="hidden" type="search" value="">
+      <input id="exerciseSearch" class="exercise-search" type="search" placeholder="種目名を検索" autocomplete="off" enterkeyhint="search" aria-label="種目名を検索" value="">
       <div id="exerciseList" class="exercise-list"></div>
       <button id="openAddExercise" class="outline-button" type="button">＋ 新しい種目を追加</button>
     </section>
@@ -419,6 +540,16 @@
           <button type="button" data-color-theme-option="graphite-lime"><span class="theme-swatches" aria-hidden="true"><i style="--swatch:#27272A"></i><i style="--swatch:#A3E635"></i><i style="--swatch:#3B82F6"></i></span><span><strong>Graphite Lime</strong><small>筋トレ感を強めたテーマ</small></span><span class="choice-check" aria-hidden="true">✓</span></button>
         </div>
       </fieldset>
+      <fieldset class="appearance-section">
+        <legend>休憩タイマー</legend>
+        <div class="timer-option-list">
+          <label><input id="autoStartRestTimer" type="checkbox" data-timer-setting="autoStartRestTimer">休憩タイマーを自動開始</label>
+          <label><input id="restTimerSound" type="checkbox" data-timer-setting="restTimerSound">終了時に音を鳴らす</label>
+          <small class="timer-setting-help">iPhoneでは最初にトレーニング開始ボタンを押した後から音が有効になります</small>
+          <label><input id="restTimerVibration" type="checkbox" data-timer-setting="restTimerVibration">終了時に振動する</label>
+          <small class="timer-setting-help">振動は対応している端末のみ利用できます</small>
+        </div>
+      </fieldset>
       <button class="finish-button" type="button" data-close-modal="appearanceSettingsModal">完了</button>
     </section>
   </div>
@@ -452,6 +583,58 @@
     </section>
   </div>
 
+  <div id="guideModeHelpModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="guideModeHelpModal"></div>
+    <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="guideModeHelpTitle">
+      <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideModeHelpModal" aria-label="閉じる">×</button>
+      <p class="section-kicker">GUIDE MODE</p><h2 id="guideModeHelpTitle">ガイドモードとは？</h2>
+      <p class="modal-lead">セットしたメニューを順番に進めながら、重量・回数の記録と休憩時間の管理ができます。完了したセットだけが正式な記録になります。</p>
+      <ul class="guide-help-list">
+        <li>次に行うセットを自動で表示</li>
+        <li>休憩タイマーを見ながら重量を変更可能</li>
+        <li>種目の後回しや変更に対応</li>
+        <li>途中終了しても、ここまでの実績だけ保存可能</li>
+      </ul>
+      <div class="modal-actions"><button id="startGuideFromHelpButton" class="finish-button" type="button">ガイドモードで開始</button><button class="outline-button" type="button" data-close-modal="guideModeHelpModal">閉じる</button></div>
+    </section>
+  </div>
+
+  <div id="guideStartModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="guideStartModal"></div>
+    <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="guideStartTitle">
+      <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideStartModal" aria-label="閉じる">×</button>
+      <p class="section-kicker">START GUIDE</p><h2 id="guideStartTitle">このメニューを開始しますか？</h2>
+      <div id="guideStartSummary" class="guide-start-summary"></div>
+      <fieldset class="guide-start-options">
+        <legend>開始位置</legend>
+        <label><input type="radio" name="guideStartMode" value="first" checked> 最初から</label>
+        <label><input type="radio" name="guideStartMode" value="choose"> 開始する種目を選ぶ</label>
+        <select id="guideStartExerciseSelect" class="hidden" aria-label="開始する種目"></select>
+      </fieldset>
+      <div class="modal-actions"><button id="confirmGuideStart" class="finish-button" type="button">開始する</button><button id="editGuideMenuButton" class="outline-button" type="button">メニューを編集</button><button class="outline-button" type="button" data-close-modal="guideStartModal">キャンセル</button></div>
+    </section>
+  </div>
+
+  <div id="guideMenuModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="guideMenuModal"></div>
+    <section class="modal-sheet modal-sheet--tall" role="dialog" aria-modal="true" aria-labelledby="guideMenuTitle">
+      <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideMenuModal" aria-label="閉じる">×</button>
+      <p class="section-kicker">GUIDE MENU</p><h2 id="guideMenuTitle">メニュー一覧</h2>
+      <div id="guideMenuList" class="guide-menu-list"></div>
+      <button id="guideMenuAddExercise" class="outline-button outline-button--blue" type="button">別の種目を追加</button>
+    </section>
+  </div>
+
+  <div id="guideExitModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="guideExitModal"></div>
+    <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="guideExitTitle">
+      <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideExitModal" aria-label="閉じる">×</button>
+      <p class="section-kicker">FINISH GUIDE</p><h2 id="guideExitTitle">ここまでの内容で保存しますか？</h2>
+      <div id="guideExitSummary" class="guide-exit-summary"></div>
+      <div class="modal-actions"><button id="saveGuideProgress" class="finish-button" type="button">ここまでを保存</button><button id="continueGuideButton" class="outline-button" type="button">トレーニングを続ける</button><button id="cancelGuideExit" class="outline-button danger-text" type="button">一時中断してホームへ戻る</button></div>
+    </section>
+  </div>
+
   <div id="nextSetConfirmModal" class="modal" aria-hidden="true">
     <div class="modal-backdrop"></div>
     <section class="modal-sheet modal-sheet--confirm" role="alertdialog" aria-modal="true" aria-labelledby="nextSetConfirmTitle" aria-describedby="nextSetConfirmMessage">
@@ -460,6 +643,21 @@
       <p id="nextSetConfirmMessage" class="modal-lead">続けて次のセットを入力しますか？</p>
       <div class="next-set-actions"><button id="nextSetYesButton" class="finish-button" type="button">はい</button><button id="nextSetNoButton" class="outline-button" type="button">いいえ</button></div>
     </section>
+  </div>
+
+  <div id="restTimerPanel" class="rest-timer-panel hidden" role="status" aria-live="polite">
+    <div><span id="restTimerLabel">休憩中</span><strong id="restTimerTime">00:00</strong></div>
+    <div class="rest-timer-actions">
+      <button id="restTimerPauseButton" type="button">一時停止</button>
+      <button id="restTimerAddButton" type="button">＋30秒</button>
+      <button id="restTimerSkipButton" type="button">スキップ</button>
+    </div>
+  </div>
+
+  <div id="personalBestBanner" class="personal-best-banner hidden" role="status" aria-live="polite">
+    <button id="personalBestClose" type="button" aria-label="自己ベスト通知を閉じる">×</button>
+    <strong>自己ベスト更新！</strong>
+    <p id="personalBestMessage"></p>
   </div>
 
   <div id="routineListModal" class="modal" aria-hidden="true">
@@ -480,6 +678,6 @@
     </section>
   </div>
 
-  <script src="script.js?v=20260624-02"></script>
+  <script src="script.js?v=20260624-05"></script>
 </body>
 </html>
