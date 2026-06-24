@@ -42,6 +42,10 @@
     speed: { label: "平均速度", unit: "km/h", decimals: 1, help: "合計距離と合計時間から計算した平均速度です。" },
     calories: { label: "概算消費カロリー", unit: "kcal", decimals: 0, help: "同じ日の概算消費カロリーの合計です。" }
   };
+  var OVERALL_METRICS = {
+    totalCalories: { label: "総消費カロリー", unit: "kcal", decimals: 0, help: "筋トレと有酸素を合計した、1日ごとの概算消費カロリーです。" },
+    totalVolume: { label: "総ボリューム", unit: "kg", decimals: 0, help: "その日に行った筋トレの重量×回数を合計した値です。" }
+  };
   var BODY_PARTS = [
     { id: "chest", label: "胸" }, { id: "shoulder", label: "肩" }, { id: "arm", label: "腕" },
     { id: "back", label: "背中" }, { id: "legs", label: "脚" }, { id: "abs", label: "腹" },
@@ -184,6 +188,15 @@
     }
     element.addEventListener(eventName, handler);
     return element;
+  }
+  function bindKeyboardActivation(element, callback) {
+    if (!element) return;
+    element.addEventListener("click", callback);
+    element.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      callback();
+    });
   }
   var nowIso = function () { return new Date().toISOString(); };
   var makeId = function (prefix) {
@@ -507,7 +520,7 @@
   var pendingExerciseId = null;
   var activeExerciseBodyPart = "chest";
   var exercisePickerMode = "workout";
-  var progressState = { tab: "strength", exerciseId: null, cardioType: "ウォーキング", metric: "maxWeight", range: "6m" };
+  var progressState = { tab: "strength", exerciseId: null, cardioType: "ウォーキング", metric: "maxWeight", range: "6m", customStart: "", customEnd: "" };
   var toastTimer = null;
   var confirmCallback = null;
   var confirmCancelCallback = null;
@@ -523,6 +536,35 @@
   var pendingSavedDraft = null;
   var draftSaveTimer = null;
   var nextSetExerciseId = null;
+
+  function createWorkoutDraft(options) {
+    options = options || {};
+    var result = {
+      id: options.id || null,
+      originalSessionId: options.originalSessionId || null,
+      date: options.date || todayString(),
+      locationType: options.locationType || "gym",
+      memo: options.memo || "",
+      records: Array.isArray(options.records) ? options.records : [],
+      cardios: Array.isArray(options.cardios) ? options.cardios : [],
+      pendingCardioTypes: Array.isArray(options.pendingCardioTypes) ? options.pendingCardioTypes : [],
+      createdAt: options.createdAt || nowIso()
+    };
+    if (options.sourceScheduleId) result.sourceScheduleId = options.sourceScheduleId;
+    if (options.previousSessionIdToRemove) result.previousSessionIdToRemove = options.previousSessionIdToRemove;
+    return result;
+  }
+
+  function resetWorkoutEditorState(options) {
+    options = options || {};
+    selectedExerciseId = options.selectedExerciseId || null;
+    selectedRir = Object.prototype.hasOwnProperty.call(options, "selectedRir") ? options.selectedRir : null;
+    selectedRest = Object.prototype.hasOwnProperty.call(options, "selectedRest") ? Number(options.selectedRest) : 90;
+    if (!Number.isFinite(selectedRest)) selectedRest = 90;
+    editingSetTempId = options.editingSetTempId || null;
+    isAddingSet = !!options.isAddingSet;
+    editingCardioTempId = options.editingCardioTempId || null;
+  }
 
   function writeDataToStorage() {
     if (dataRecoveryRequired) {
@@ -856,12 +898,7 @@
       draft.originalSessionId = draft.id || null;
     }
     resetCardioForm();
-    selectedExerciseId = null;
-    editingSetTempId = null;
-    isAddingSet = false;
-    editingCardioTempId = null;
-    selectedRir = null;
-    selectedRest = 90;
+    resetWorkoutEditorState();
     if (editorState.mode === "addSet" && getExercise(editorState.exerciseId)) {
       selectedExerciseId = editorState.exerciseId;
       isAddingSet = true;
@@ -1008,6 +1045,28 @@
     return strength + cardio;
   }
 
+  function isStrengthVolumeExercise(exercise) {
+    return !!exercise && ["chest", "shoulder", "arm", "back", "abs", "legs"].indexOf(exercise.bodyPart) >= 0;
+  }
+
+  function isUpperBodyVolumeExercise(exercise) {
+    return !!exercise && ["chest", "shoulder", "arm", "back", "abs"].indexOf(exercise.bodyPart) >= 0;
+  }
+
+  function calculateRecordStrengthVolume(record) {
+    var exercise = getExercise(record.exerciseId);
+    if (!isStrengthVolumeExercise(exercise)) return 0;
+    return getRecordSets(record.id).reduce(function (total, set) {
+      return total + Number(set.weight || 0) / 1000 * Number(set.reps || 0);
+    }, 0);
+  }
+
+  function calculateSessionStrengthVolume(sessionId) {
+    return getSessionRecords(sessionId).reduce(function (sessionTotal, record) {
+      return sessionTotal + calculateRecordStrengthVolume(record);
+    }, 0);
+  }
+
   function calculateCardio(cardio) {
     var duration = Number(cardio.durationMinutes || 0);
     var distance = Number(cardio.distanceKm || 0);
@@ -1043,18 +1102,14 @@
     var upperBodyVolumeKg = 0;
     var lowerBodyVolumeKg = 0;
     var cardioDistanceKm = 0;
-    var upperBodyParts = { chest: true, shoulder: true, arm: true, back: true, abs: true };
 
     data.records.forEach(function (record) {
       if (!sessionIds[record.sessionId]) return;
-      var sets = getRecordSets(record.id);
       strengthCalories += calculateStrengthCaloriesForRecords([record]);
       var exercise = getExercise(record.exerciseId);
-      if (!exercise || (!upperBodyParts[exercise.bodyPart] && exercise.bodyPart !== "legs")) return;
-      var volumeKg = sets.reduce(function (sum, set) {
-        return sum + Number(set.weight || 0) / 1000 * Number(set.reps || 0);
-      }, 0);
-      if (upperBodyParts[exercise.bodyPart]) upperBodyVolumeKg += volumeKg;
+      var volumeKg = calculateRecordStrengthVolume(record);
+      if (!volumeKg) return;
+      if (isUpperBodyVolumeExercise(exercise)) upperBodyVolumeKg += volumeKg;
       else lowerBodyVolumeKg += volumeKg;
     });
 
@@ -1316,7 +1371,7 @@
   function draftFromRoutine(routine, dateValue, scheduleId) {
     var appendToCurrentDraft = draft && draft.date === dateValue && draft.locationType === routine.locationType;
     if (!appendToCurrentDraft) {
-      draft = { id: null, originalSessionId: null, date: dateValue, locationType: routine.locationType, memo: "", records: [], cardios: [], pendingCardioTypes: [], createdAt: nowIso(), sourceScheduleId: scheduleId || null };
+      draft = createWorkoutDraft({ date: dateValue, locationType: routine.locationType, sourceScheduleId: scheduleId || null });
     } else {
       draft.pendingCardioTypes = draft.pendingCardioTypes || [];
       if (scheduleId) draft.sourceScheduleId = scheduleId;
@@ -1338,12 +1393,7 @@
         }
       });
     }
-    selectedExerciseId = null;
-    editingSetTempId = null;
-    isAddingSet = false;
-    editingCardioTempId = null;
-    selectedRir = null;
-    selectedRest = 90;
+    resetWorkoutEditorState();
     resetCardioForm();
     renderWorkout();
     closeModal("routineListModal");
@@ -1510,8 +1560,36 @@
     });
   }
 
-  function filterProgressPointsByRange(points, range) {
-    if (!points.length || range === "all") return points.slice();
+  function getOverallProgress(metric) {
+    var daily = {};
+    data.sessions.forEach(function (session) {
+      if (!daily[session.date]) daily[session.date] = { totalCalories: 0, totalVolume: 0 };
+      daily[session.date].totalCalories += calculateSessionCalories(session.id);
+      daily[session.date].totalVolume += calculateSessionStrengthVolume(session.id);
+    });
+    return Object.keys(daily).sort().map(function (date) {
+      return { date: date, value: daily[date][metric] || 0 };
+    }).filter(function (point) { return point.value > 0; });
+  }
+
+  function filterProgressPointsByRange(points, range, customStart, customEnd) {
+    if (!points.length) return [];
+    if (range === "all") return points.slice();
+    if (range === "currentMonth") {
+      var today = dateFromString(todayString());
+      var start = new Date(today.getFullYear(), today.getMonth(), 1);
+      var end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      return points.filter(function (point) {
+        var date = dateFromString(point.date);
+        return date >= start && date <= end;
+      });
+    }
+    if (range === "custom") {
+      if (!customStart || !customEnd) return points.slice();
+      return points.filter(function (point) {
+        return point.date >= customStart && point.date <= customEnd;
+      });
+    }
     var months = { "1m": 1, "3m": 3, "6m": 6, "1y": 12 }[range] || 6;
     var latest = dateFromString(points[points.length - 1].date);
     var targetMonthIndex = latest.getFullYear() * 12 + latest.getMonth() - months;
@@ -1591,9 +1669,19 @@
         title: "運動量を振り返ろう",
         description: "運動内容から計算した概算消費カロリーの変化を確認できます。",
         first: "初回の消費量", latest: "最新の消費量"
+      },
+      totalCalories: {
+        title: "消費カロリーを振り返ろう",
+        description: "筋トレと有酸素を合計した、1日ごとの消費カロリーを確認できます。",
+        first: "最初の記録", latest: "最新の記録"
+      },
+      totalVolume: {
+        title: "トレーニング量を振り返ろう",
+        description: "その日に積み重ねた筋トレの総ボリュームを確認できます。",
+        first: "最初の記録", latest: "最新の記録"
       }
     };
-    return copies[metric] || (tab === "strength" ? copies.maxWeight : copies.distance);
+    return copies[metric] || (tab === "overall" ? copies.totalCalories : (tab === "strength" ? copies.maxWeight : copies.distance));
   }
 
   function getProgressMessage(points, definition, metric) {
@@ -1614,13 +1702,15 @@
     if (metric === "distance") return "前より" + amount + "長く動けるようになりました。" + bestSuffix;
     if (metric === "duration") return "前より" + amount + "長く続けられるようになりました。" + bestSuffix;
     if (metric === "speed") return "前より" + amount + "速く動けるようになりました。" + bestSuffix;
+    if (metric === "totalVolume") return "前より" + amount + "多く積み重ねられています。" + bestSuffix;
+    if (metric === "totalCalories") return "前より" + amount + "多く動けています。" + bestSuffix;
     return "運動量が前より" + amount + "増えました。" + bestSuffix;
   }
 
   function getProgressTickStep(metric, minValue, maxValue) {
     var span = Math.max(0, maxValue - minValue);
     if (metric === "maxWeight" || metric === "oneRm") return 5;
-    if (metric === "volume") {
+    if (metric === "volume" || metric === "totalVolume") {
       var volumeTarget = span > 0 ? span / 5 : maxValue / 5;
       if (volumeTarget <= 100) return 100;
       if (volumeTarget <= 500) return 500;
@@ -1632,7 +1722,7 @@
     if (metric === "distance") return span <= 3 ? 0.5 : 1;
     if (metric === "duration") return span <= 15 ? 5 : (span <= 60 ? 10 : 30);
     if (metric === "speed") return span <= 3 ? 0.5 : 1;
-    if (metric === "calories") {
+    if (metric === "calories" || metric === "totalCalories") {
       var calorieTarget = span > 0 ? span / 5 : maxValue / 5;
       if (calorieTarget <= 50) return 50;
       if (calorieTarget <= 100) return 100;
@@ -1686,14 +1776,18 @@
     var grid = "";
     scale.ticks.slice().reverse().forEach(function (tickValue) {
       var y = margin.top + (scale.max - tickValue) / (scale.max - scale.min) * plotHeight;
+      var axisLabelX = Math.round(margin.left - 9);
+      var axisLabelY = Math.round(y + 4);
       var tickDecimals = scale.step < 1 ? 1 : 0;
       var tickText = tickValue.toLocaleString("ja-JP", { minimumFractionDigits: tickDecimals, maximumFractionDigits: tickDecimals });
-      grid += '<line class="chart-grid-line" x1="' + margin.left + '" y1="' + y.toFixed(1) + '" x2="' + (width - margin.right) + '" y2="' + y.toFixed(1) + '"/><text class="chart-axis-label" x="' + (margin.left - 9) + '" y="' + (y + 4).toFixed(1) + '" text-anchor="end">' + tickText + '</text>';
+      grid += '<line class="chart-grid-line" x1="' + margin.left + '" y1="' + y.toFixed(1) + '" x2="' + (width - margin.right) + '" y2="' + y.toFixed(1) + '"/><text class="chart-axis-label" x="' + axisLabelX + '" y="' + axisLabelY + '" text-anchor="end">' + tickText + '</text>';
     });
     var linePath = coordinates.map(function (coordinate, index) { return (index ? "L" : "M") + coordinate.x.toFixed(1) + " " + coordinate.y.toFixed(1); }).join(" ");
     var areaPath = coordinates.length > 1 ? linePath + " L" + coordinates[coordinates.length - 1].x.toFixed(1) + " " + (margin.top + plotHeight) + " L" + coordinates[0].x.toFixed(1) + " " + (margin.top + plotHeight) + " Z" : "";
     var dateLabels = coordinates.map(function (coordinate) {
-      return '<text class="chart-axis-label" x="' + coordinate.x.toFixed(1) + '" y="' + (height - 17) + '" text-anchor="middle">' + progressDateLabel(coordinate.point.date) + '</text>';
+      var axisLabelX = Math.round(coordinate.x);
+      var axisLabelY = Math.round(height - 17);
+      return '<text class="chart-axis-label" x="' + axisLabelX + '" y="' + axisLabelY + '" text-anchor="middle">' + progressDateLabel(coordinate.point.date) + '</text>';
     }).join("");
     var circles = coordinates.map(function (coordinate, index) {
       var latestClass = index === coordinates.length - 1 ? " chart-point--latest" : "";
@@ -1726,6 +1820,7 @@
   }
 
   function renderProgressPage() {
+    var isOverall = progressState.tab === "overall";
     var isStrength = progressState.tab === "strength";
     $$('[data-progress-tab]').forEach(function (button) {
       var active = button.dataset.progressTab === progressState.tab;
@@ -1737,7 +1832,22 @@
     var selectedLabel = "";
     var definition;
     var points;
-    if (isStrength) {
+    var exerciseField = $("#progressExerciseField");
+    if (exerciseField) exerciseField.classList.toggle("hidden", isOverall);
+    $("#progressCustomRange").classList.toggle("hidden", progressState.range !== "custom");
+    $("#progressCustomStart").value = progressState.customStart || "";
+    $("#progressCustomEnd").value = progressState.customEnd || "";
+    if (isOverall) {
+      var overallMetricKeys = ["totalCalories", "totalVolume"];
+      if (overallMetricKeys.indexOf(progressState.metric) < 0) progressState.metric = overallMetricKeys[0];
+      metricSelect.innerHTML = overallMetricKeys.map(function (key) { return '<option value="' + key + '">' + OVERALL_METRICS[key].label + '</option>'; }).join("");
+      metricSelect.value = progressState.metric;
+      exerciseSelect.innerHTML = "";
+      definition = OVERALL_METRICS[progressState.metric];
+      selectedLabel = "";
+      points = getOverallProgress(progressState.metric);
+      $("#progressExerciseLabel").textContent = "種目";
+    } else if (isStrength) {
       var exercises = data.exercises.filter(function (exercise) { return exercise.category !== "CARDIO"; });
       var recordedIds = data.records.map(function (record) { return record.exerciseId; });
       if (!progressState.exerciseId || !exercises.some(function (exercise) { return exercise.id === progressState.exerciseId; })) {
@@ -1770,7 +1880,7 @@
       points = getCardioProgress(progressState.cardioType, progressState.metric);
       $("#progressExerciseLabel").textContent = "有酸素種目";
     }
-    points = filterProgressPointsByRange(points, progressState.range);
+    points = filterProgressPointsByRange(points, progressState.range, progressState.customStart, progressState.customEnd);
     $("#progressRangeSelect").value = progressState.range;
     var displayCopy = getProgressDisplayCopy(progressState.tab, progressState.metric);
     $("#progressHeroTitle").textContent = displayCopy.title;
@@ -1780,9 +1890,10 @@
     $("#progressGrowthLabel").textContent = "伸び幅";
     $("#progressBestLabel").textContent = "自己ベスト";
     $("#progressMetricHelp").textContent = definition.help;
-    $("#progressChartTitle").textContent = selectedLabel + "の" + definition.label + "推移";
-    $("#progressChartMeta").textContent = "単位：" + definition.unit + (progressState.metric === "volume" ? "　｜　重量×回数の合計" : "");
-    $("#progressPointCount").textContent = points.length + "回";
+    var chartTitle = isOverall ? definition.label + "の推移" : selectedLabel + "の" + definition.label + "推移";
+    $("#progressChartTitle").textContent = chartTitle;
+    $("#progressChartMeta").textContent = "単位：" + definition.unit + (progressState.metric === "volume" || progressState.metric === "totalVolume" ? "　｜　重量×回数の合計" : "");
+    $("#progressPointCount").textContent = points.length + "日";
     var message = $("#progressMessage");
     message.textContent = getProgressMessage(points, definition, progressState.metric);
     message.classList.toggle("is-muted", !points.length);
@@ -1801,16 +1912,46 @@
       $("#progressLatestDate").textContent = progressDateLabel(latest.date);
       $("#progressBestDate").textContent = progressDateLabel(best.date);
     }
-    renderProgressChart(points, definition, selectedLabel + "の" + definition.label + "の推移");
+    renderProgressChart(points, definition, chartTitle);
   }
 
-  function openProgressPage() {
-    progressState.tab = "strength";
-    progressState.metric = "maxWeight";
-    progressState.exerciseId = null;
-    progressState.range = "6m";
+  function defaultProgressMetric(tab) {
+    if (tab === "overall") return "totalCalories";
+    if (tab === "cardio") return "distance";
+    return "maxWeight";
+  }
+
+  function openProgressPage(options) {
+    options = options || {};
+    progressState.tab = options.tab || "strength";
+    progressState.metric = options.metric || defaultProgressMetric(progressState.tab);
+    progressState.exerciseId = options.exerciseId || null;
+    progressState.cardioType = options.cardioType || progressState.cardioType || "ウォーキング";
+    progressState.range = options.range || "6m";
+    progressState.customStart = options.customStart || "";
+    progressState.customEnd = options.customEnd || "";
     renderProgressPage();
     showScreen("progress");
+  }
+
+  function getCalendarCursorMonthRange() {
+    var year = calendarCursor.getFullYear();
+    var month = calendarCursor.getMonth();
+    var lastDay = new Date(year, month + 1, 0).getDate();
+    return {
+      start: year + "-" + String(month + 1).padStart(2, "0") + "-01",
+      end: year + "-" + String(month + 1).padStart(2, "0") + "-" + String(lastDay).padStart(2, "0")
+    };
+  }
+
+  function openDisplayedMonthCaloriesProgress() {
+    var range = getCalendarCursorMonthRange();
+    openProgressPage({ tab: "overall", metric: "totalCalories", range: "custom", customStart: range.start, customEnd: range.end });
+  }
+
+  function openDisplayedMonthVolumeProgress() {
+    var range = getCalendarCursorMonthRange();
+    openProgressPage({ tab: "overall", metric: "totalVolume", range: "custom", customStart: range.start, customEnd: range.end });
   }
 
   function openProfile() {
@@ -1841,10 +1982,7 @@
     var cardioExercise = data.exercises.find(function (exercise) {
       return exercise.category === "CARDIO" && exercise.name === normalizedType;
     });
-    editingSetTempId = null;
-    isAddingSet = false;
-    editingCardioTempId = cardio.tempId;
-    selectedExerciseId = cardioExercise ? cardioExercise.id : null;
+    resetWorkoutEditorState({ selectedExerciseId: cardioExercise ? cardioExercise.id : null, editingCardioTempId: cardio.tempId });
     $("#cardioType").value = normalizedType;
     renderSelectedExercise();
     $("#cardioDuration").value = formatNumberForInput(Number(cardio.durationMinutes || 0), 1);
@@ -1861,12 +1999,8 @@
   /* Workout draft, editing, copy, and save flows */
   function newDraft(locationType, date) {
     routineEditingId = null;
-    draft = { id: null, originalSessionId: null, date: date || todayString(), locationType: locationType, memo: "", records: [], cardios: [], createdAt: nowIso() };
-    selectedExerciseId = null;
-    selectedRir = null;
-    selectedRest = 90;
-    editingSetTempId = null;
-    isAddingSet = false;
+    draft = createWorkoutDraft({ date: date || todayString(), locationType: locationType });
+    resetWorkoutEditorState();
     resetCardioForm();
     renderWorkout();
     showScreen("workout");
@@ -1893,7 +2027,7 @@
     var session = getSession(sessionId);
     if (!session) return;
     routineEditingId = null;
-    draft = {
+    draft = createWorkoutDraft({
       id: session.id,
       originalSessionId: session.id,
       date: session.date,
@@ -1904,12 +2038,8 @@
         return { tempId: record.id, exerciseId: record.exerciseId, orderIndex: record.orderIndex, sets: getRecordSets(record.id).map(function (set) { return Object.assign({}, set, { tempId: set.id }); }) };
       }),
       cardios: getSessionCardios(session.id).map(function (cardio) { return Object.assign({}, cardio, { tempId: cardio.id }); })
-    };
-    selectedExerciseId = null;
-    selectedRir = null;
-    selectedRest = 90;
-    editingSetTempId = null;
-    isAddingSet = false;
+    });
+    resetWorkoutEditorState();
     resetCardioForm();
     renderWorkout();
     closeModal("dayModal");
@@ -1953,18 +2083,21 @@
   function createDraftFromSession(sessionId, targetDate, keepSessionId) {
     var source = getSession(sessionId);
     if (!source) return null;
-    var resultDraft = { id: keepSessionId ? source.id : null, originalSessionId: keepSessionId ? source.id : null, date: targetDate, locationType: source.locationType, memo: keepSessionId ? (source.memo || "") : "", records: [], cardios: [], createdAt: keepSessionId ? source.createdAt : nowIso() };
+    var resultDraft = createWorkoutDraft({
+      id: keepSessionId ? source.id : null,
+      originalSessionId: keepSessionId ? source.id : null,
+      date: targetDate,
+      locationType: source.locationType,
+      memo: keepSessionId ? (source.memo || "") : "",
+      createdAt: keepSessionId ? source.createdAt : nowIso()
+    });
     appendRecordsAndCardiosToDraft(resultDraft, getSessionRecords(source.id), getSessionCardios(source.id));
     return resultDraft;
   }
 
   function finishCopiedDraft() {
     if (!draft) return;
-    selectedExerciseId = null;
-    selectedRir = null;
-    selectedRest = 90;
-    editingSetTempId = null;
-    isAddingSet = false;
+    resetWorkoutEditorState();
     resetCardioForm();
     renderWorkout();
     closeModal("dayModal");
@@ -2291,10 +2424,7 @@
   function chooseExercise(exerciseId) {
     var exercise = getExercise(exerciseId);
     if (!exercise) return;
-    editingSetTempId = null;
-    editingCardioTempId = null;
-    selectedExerciseId = exerciseId;
-    isAddingSet = exercise.category !== "CARDIO";
+    resetWorkoutEditorState({ selectedExerciseId: exerciseId, isAddingSet: exercise.category !== "CARDIO" });
     if (exercise.category !== "CARDIO") ensureDraftRecord(exerciseId);
     if (exercise.category === "CARDIO") {
       var previousCardio = getLastHistoricalCardio(exercise.name);
@@ -2431,11 +2561,7 @@
     nextSetExerciseId = null;
     closeModal("nextSetConfirmModal");
     if (!draft || !getExercise(exerciseId)) return;
-    selectedExerciseId = exerciseId;
-    editingSetTempId = null;
-    isAddingSet = true;
-    editingCardioTempId = null;
-    selectedRir = null;
+    resetWorkoutEditorState({ selectedExerciseId: exerciseId, isAddingSet: true });
     renderSelectedExercise();
     selectedRir = null;
     $("#setMemo").value = "";
@@ -2449,11 +2575,7 @@
   function closeNextSetInput() {
     nextSetExerciseId = null;
     closeModal("nextSetConfirmModal");
-    selectedExerciseId = null;
-    editingSetTempId = null;
-    isAddingSet = false;
-    editingCardioTempId = null;
-    selectedRir = null;
+    resetWorkoutEditorState();
     renderSelectedExercise();
     renderSavedSets();
     updateDraftCalories();
@@ -2496,10 +2618,7 @@
       editingRef.set.restSeconds = setValues.restSeconds;
       editingRef.set.memo = setValues.memo;
       var updatedSetNumber = editingRef.set.setNumber;
-      editingSetTempId = null;
-      isAddingSet = false;
-      selectedExerciseId = null;
-      selectedRir = null;
+      resetWorkoutEditorState();
       renderSelectedExercise();
       renderSavedSets();
       updateDraftCalories();
@@ -2514,10 +2633,7 @@
       rir: setValues.rir, restSeconds: setValues.restSeconds, memo: setValues.memo
     });
     var savedSetNumber = record.sets.length;
-    editingSetTempId = null;
-    isAddingSet = false;
-    selectedExerciseId = null;
-    selectedRir = null;
+    resetWorkoutEditorState();
     renderSelectedExercise();
     renderSavedSets();
     updateDraftCalories();
@@ -2528,9 +2644,7 @@
   function startEditSet(tempId) {
     var editingRef = findDraftSet(tempId);
     if (!editingRef) return;
-    editingSetTempId = tempId;
-    isAddingSet = false;
-    selectedExerciseId = editingRef.record.exerciseId;
+    resetWorkoutEditorState({ selectedExerciseId: editingRef.record.exerciseId, editingSetTempId: tempId });
     renderSelectedExercise();
     var exercise = getExercise(editingRef.record.exerciseId);
     $("#weightInput").value = exercise && exercise.category === "BODYWEIGHT" ? 0 : (Number(editingRef.set.weight) / 1000).toFixed(1);
@@ -2550,9 +2664,7 @@
 
   function cancelSetEdit() {
     if (!editingSetTempId) return;
-    editingSetTempId = null;
-    isAddingSet = false;
-    selectedExerciseId = null;
+    resetWorkoutEditorState();
     renderSelectedExercise();
     renderSavedSets();
     showToast("編集をキャンセルしました");
@@ -2593,10 +2705,7 @@
   function deleteDraftRecord(exerciseId) {
     if (!draft || !exerciseId) return;
     if (selectedExerciseId === exerciseId) {
-      selectedExerciseId = null;
-      editingSetTempId = null;
-      isAddingSet = false;
-      selectedRir = null;
+      resetWorkoutEditorState();
     }
     draft.records = draft.records.filter(function (record) { return record.exerciseId !== exerciseId; });
     renderSelectedExercise();
@@ -2607,9 +2716,7 @@
 
   function deleteDraftSet(tempId) {
     if (editingSetTempId === tempId) {
-      editingSetTempId = null;
-      isAddingSet = false;
-      selectedExerciseId = null;
+      resetWorkoutEditorState();
     }
     draft.records.forEach(function (record) {
       record.sets = record.sets.filter(function (set) { return set.tempId !== tempId; });
@@ -2752,7 +2859,7 @@
     draft.pendingCardioTypes = (draft.pendingCardioTypes || []).filter(function (item) { return item !== type; });
     var exercise = getExercise(selectedExerciseId);
     if (exercise && exercise.category === "CARDIO" && exercise.name === type && !editingCardioTempId) {
-      selectedExerciseId = null;
+      resetWorkoutEditorState();
       resetCardioForm();
       renderSelectedExercise();
     }
@@ -2871,8 +2978,7 @@
     var savedSessionDate = draft.date;
     draft = null;
     routineEditingId = null;
-    selectedExerciseId = null;
-    editingSetTempId = null;
+    resetWorkoutEditorState();
     calendarCursor = dateFromString(savedSessionDate);
     calendarCursor.setDate(1);
     renderHome();
@@ -2933,8 +3039,7 @@
     showToast("記録を削除しました");
   }
 
-  function bindEvents() {
-    if (window.addEventListener) window.addEventListener("resize", fitMonthlySummaryMetrics);
+  function bindHomeMenuEvents() {
     on("#homeSettingsButton", "click", function () { openModal("settingsMenuModal"); });
     on("#homeRoutineMenuButton", "click", function () { openModal("routineMenuModal"); });
     on("#homeRecordMenuButton", "click", function () { openModal("recordMenuModal"); });
@@ -2943,6 +3048,11 @@
     on("#homeHomeStartButton", "click", function () { closeModal("recordMenuModal"); startTodayLocation("home"); });
     on("#settingsProfileButton", "click", function () { closeModal("settingsMenuModal"); openProfile(); });
     on("#settingsAppearanceButton", "click", function () { closeModal("settingsMenuModal"); renderAppearanceSettings(); openModal("appearanceSettingsModal"); });
+    bindKeyboardActivation($("#monthlyCaloriesCard"), openDisplayedMonthCaloriesProgress);
+    bindKeyboardActivation($("#monthlyVolumeCard"), openDisplayedMonthVolumeProgress);
+  }
+
+  function bindAppearanceEvents() {
     on("#appearanceSettingsModal", "click", function (event) {
       var appearanceButton = event.target.closest("[data-appearance-option]");
       if (appearanceButton) {
@@ -2952,6 +3062,9 @@
       var themeButton = event.target.closest("[data-color-theme-option]");
       if (themeButton) setColorTheme(themeButton.dataset.colorThemeOption);
     });
+  }
+
+  function bindSettingsDataEvents() {
     on("#settingsRoutineButton", "click", function () { closeModal("routineMenuModal"); openRoutineList(todayString(), "manage"); });
     on("#backupDataButton", "click", function () { var button = this; runButtonLocked(button, function () { downloadBackupData("gymlog-backup"); }); });
     on("#restoreDataButton", "click", function () { $("#restoreDataInput").value = ""; $("#restoreDataInput").click(); });
@@ -2964,12 +3077,15 @@
     on("#resumeSavedDraft", "click", resumeSavedDraft);
     on("#nextSetYesButton", "click", function () { var button = this; runButtonLocked(button, startConfirmedNextSet); });
     on("#nextSetNoButton", "click", function () { var button = this; runButtonLocked(button, closeNextSetInput); });
-    on("#openProgressButton", "click", openProgressPage);
+  }
+
+  function bindProgressEvents() {
+    on("#openProgressButton", "click", function () { openProgressPage(); });
     on("#backFromProgressButton", "click", function () { renderHome(); showScreen("home"); });
     $$('[data-progress-tab]').forEach(function (button) {
       button.addEventListener("click", function () {
         progressState.tab = button.dataset.progressTab;
-        progressState.metric = progressState.tab === "strength" ? "maxWeight" : "distance";
+        progressState.metric = defaultProgressMetric(progressState.tab);
         renderProgressPage();
       });
     });
@@ -2980,6 +3096,18 @@
     });
     on("#progressMetricSelect", "change", function () { progressState.metric = this.value; renderProgressPage(); });
     on("#progressRangeSelect", "change", function () { progressState.range = this.value; renderProgressPage(); });
+    on("#applyProgressCustomRange", "click", function () {
+      var start = $("#progressCustomStart").value;
+      var end = $("#progressCustomEnd").value;
+      if (!start || !end || start > end) {
+        showToast("正しい期間を指定してください");
+        return;
+      }
+      progressState.customStart = start;
+      progressState.customEnd = end;
+      progressState.range = "custom";
+      renderProgressPage();
+    });
     on("#progressChart", "pointerover", function (event) {
       var point = event.target.closest("[data-chart-point]");
       if (point) showProgressChartTooltip(point);
@@ -2998,12 +3126,18 @@
       if (point) showProgressChartTooltip(point);
     });
     on("#progressChart", "focusout", hideProgressChartTooltip);
+  }
+
+  function bindRoutineEvents() {
     on("#openRoutineListButton", "click", function () { openRoutineList(draft ? draft.date : todayString(), "use"); });
     on("#saveRoutineButton", "click", openRoutineSaveModal);
     on("#confirmRoutineSave", "click", function () { var button = this; runButtonLocked(button, saveRoutineFromDraft); });
     on("#routineAddExerciseButton", "click", openRoutineExercisePicker);
     on("#routineNameInput", "input", function () { if (routineEditorState) routineEditorState.name = this.value; });
     on("#routineLocationType", "change", function () { if (routineEditorState) routineEditorState.locationType = this.value === "home" ? "home" : "gym"; });
+  }
+
+  function bindCalendarAndCopyEvents() {
     on("#emptyAddExerciseButton", "click", openExercisePicker);
     on("#emptyCopyPastButton", "click", copyLatestPastMenu);
     on("#prevMonth", "click", function () { calendarCursor.setMonth(calendarCursor.getMonth() - 1); renderHome(); });
@@ -3022,6 +3156,9 @@
     on("#copyConflictReplace", "click", function () { var button = this; runButtonLocked(button, function () { handleConflictModalAction("replace"); }); });
     on("#copyConflictCancel", "click", function () { var button = this; runButtonLocked(button, handleConflictModalCancel); });
 
+  }
+
+  function bindProfileEvents() {
     on("#profileForm", "submit", function (event) {
       event.preventDefault();
       var submitButton = event.submitter || $("#profileForm button[type='submit']");
@@ -3041,15 +3178,24 @@
       });
     });
 
+  }
+
+  function bindWorkoutNavigationEvents() {
     on("#backHomeButton", "click", function () { if (draft) saveDraftNow(); draft = null; routineEditingId = null; renderHome(); showScreen("home"); });
     on("#finishTopButton", "click", function () { var button = this; runButtonLocked(button, saveWorkout); });
     on("#finishWorkoutButton", "click", function () { var button = this; runButtonLocked(button, saveWorkout); });
     on("#sessionDate", "change", function () { if (draft) { draft.date = this.value; scheduleDraftSave(); } });
     on("#sessionMemo", "input", function () { if (draft) { draft.memo = this.value; scheduleDraftSave(); } });
+  }
+
+  function bindExercisePickerControlEvents() {
     on("#exercisePickerButton", "click", openExercisePicker);
     on("#chooseAnotherExercise", "click", openExercisePicker);
     on("#cancelExerciseSelection", "click", cancelExerciseSelection);
     on("#confirmExerciseSelection", "click", confirmExerciseSelection);
+  }
+
+  function bindExerciseListEvents() {
     on("#exerciseBodyPartTabs", "click", function (event) {
       var tab = event.target.closest("[data-body-part]");
       if (!tab) return;
@@ -3080,6 +3226,9 @@
         renderExerciseList();
       }
     });
+  }
+
+  function bindAddExerciseEvents() {
     on("#openAddExercise", "click", function () {
       if (exercisePickerMode !== "routine") closeModal("exerciseModal");
       $("#newExerciseName").value = "";
@@ -3115,6 +3264,9 @@
       showToast("新しい種目を追加しました");
     });
 
+  }
+
+  function bindStrengthSetInputEvents() {
     on("#weightMinus", "click", function () { changeWeight(-1); });
     on("#weightPlus", "click", function () { changeWeight(1); });
     on("#weightMinusLarge", "click", function () { changeWeightLarge(-1); });
@@ -3136,6 +3288,16 @@
     on("#saveSetButton", "click", function () { var button = this; runButtonLocked(button, saveCurrentSet); });
     on("#cancelSetEditButton", "click", cancelSetEdit);
 
+  }
+  function bindWorkoutEditorEvents() {
+    bindWorkoutNavigationEvents();
+    bindExercisePickerControlEvents();
+    bindExerciseListEvents();
+    bindAddExerciseEvents();
+    bindStrengthSetInputEvents();
+  }
+
+  function bindCardioEvents() {
     ["#cardioType", "#cardioDuration", "#cardioDistance", "#cardioIncline", "#cardioMemo"].forEach(function (selector) { on(selector, "input", handleCardioInputChange); });
     $$('[data-number-target]').forEach(function (button) {
       button.addEventListener("click", function () {
@@ -3173,111 +3335,143 @@
       setTimeout(function () { $("#cardioEditorCard").scrollIntoView({ behavior: "smooth", block: "start" }); }, 50);
     });
 
-    document.addEventListener("click", function (event) {
-      var deleteSetButton = event.target.closest("[data-delete-set]");
-      if (deleteSetButton) {
-        event.stopPropagation();
-        var setTempId = deleteSetButton.dataset.deleteSet;
-        askConfirm("このセットを削除しますか？", "削除する", function () { deleteDraftSet(setTempId); });
-        return;
-      }
-      var deleteRecordButton = event.target.closest("[data-delete-record]");
-      if (deleteRecordButton) {
-        event.stopPropagation();
-        var exerciseIdToDelete = deleteRecordButton.dataset.deleteRecord;
-        var exerciseToDelete = getExercise(exerciseIdToDelete);
-        askConfirm((exerciseToDelete ? exerciseToDelete.name : "この種目") + "を今日のメニューから外しますか？", "削除する", function () { deleteDraftRecord(exerciseIdToDelete); });
-        return;
-      }
-      var addSetButton = event.target.closest("[data-add-set-exercise]");
-      if (addSetButton) {
-        event.stopPropagation();
-        chooseExercise(addSetButton.dataset.addSetExercise);
-        return;
-      }
-      var addSameExercise = event.target.closest("[data-add-same-exercise]");
-      if (addSameExercise) {
-        event.stopPropagation();
-        chooseExercise(addSameExercise.dataset.addSameExercise);
-        return;
-      }
-      var useRoutineButton = event.target.closest("[data-use-routine]");
-      if (useRoutineButton) { useRoutineToday(useRoutineButton.dataset.useRoutine); return; }
-      var createRoutineButton = event.target.closest("[data-create-routine]");
-      if (createRoutineButton) { closeModal("routineListModal"); openRoutineCreator(false); return; }
-      var cancelRoutineButton = event.target.closest("[data-cancel-routine-editor]");
-      if (cancelRoutineButton) { cancelRoutineEditor(); return; }
-      var removeRoutineExercise = event.target.closest("[data-remove-routine-exercise]");
-      if (removeRoutineExercise && routineEditorState) {
-        routineEditorState.exerciseIds.splice(Number(removeRoutineExercise.dataset.removeRoutineExercise), 1);
+  }
+
+  function handleDraftMenuDelegatedClick(event) {
+    var deleteSetButton = event.target.closest("[data-delete-set]");
+    if (deleteSetButton) {
+      event.stopPropagation();
+      var setTempId = deleteSetButton.dataset.deleteSet;
+      askConfirm("このセットを削除しますか？", "削除する", function () { deleteDraftSet(setTempId); });
+      return true;
+    }
+    var deleteRecordButton = event.target.closest("[data-delete-record]");
+    if (deleteRecordButton) {
+      event.stopPropagation();
+      var exerciseIdToDelete = deleteRecordButton.dataset.deleteRecord;
+      var exerciseToDelete = getExercise(exerciseIdToDelete);
+      askConfirm((exerciseToDelete ? exerciseToDelete.name : "この種目") + "を今日のメニューから外しますか？", "削除する", function () { deleteDraftRecord(exerciseIdToDelete); });
+      return true;
+    }
+    var addSetButton = event.target.closest("[data-add-set-exercise]");
+    if (addSetButton) {
+      event.stopPropagation();
+      chooseExercise(addSetButton.dataset.addSetExercise);
+      return true;
+    }
+    var addSameExercise = event.target.closest("[data-add-same-exercise]");
+    if (addSameExercise) {
+      event.stopPropagation();
+      chooseExercise(addSameExercise.dataset.addSameExercise);
+      return true;
+    }
+    return false;
+  }
+
+  function handleRoutineDelegatedClick(event) {
+    var useRoutineButton = event.target.closest("[data-use-routine]");
+    if (useRoutineButton) { useRoutineToday(useRoutineButton.dataset.useRoutine); return true; }
+    var createRoutineButton = event.target.closest("[data-create-routine]");
+    if (createRoutineButton) { closeModal("routineListModal"); openRoutineCreator(false); return true; }
+    var cancelRoutineButton = event.target.closest("[data-cancel-routine-editor]");
+    if (cancelRoutineButton) { cancelRoutineEditor(); return true; }
+    var removeRoutineExercise = event.target.closest("[data-remove-routine-exercise]");
+    if (removeRoutineExercise && routineEditorState) {
+      routineEditorState.exerciseIds.splice(Number(removeRoutineExercise.dataset.removeRoutineExercise), 1);
+      renderRoutineEditor();
+      return true;
+    }
+    var moveRoutineExercise = event.target.closest("[data-move-routine-exercise]");
+    if (moveRoutineExercise && routineEditorState) {
+      var fromIndex = Number(moveRoutineExercise.dataset.moveRoutineExercise);
+      var toIndex = fromIndex + Number(moveRoutineExercise.dataset.moveDirection);
+      if (toIndex >= 0 && toIndex < routineEditorState.exerciseIds.length) {
+        var movedExercise = routineEditorState.exerciseIds.splice(fromIndex, 1)[0];
+        routineEditorState.exerciseIds.splice(toIndex, 0, movedExercise);
         renderRoutineEditor();
-        return;
       }
-      var moveRoutineExercise = event.target.closest("[data-move-routine-exercise]");
-      if (moveRoutineExercise && routineEditorState) {
-        var fromIndex = Number(moveRoutineExercise.dataset.moveRoutineExercise);
-        var toIndex = fromIndex + Number(moveRoutineExercise.dataset.moveDirection);
-        if (toIndex >= 0 && toIndex < routineEditorState.exerciseIds.length) {
-          var movedExercise = routineEditorState.exerciseIds.splice(fromIndex, 1)[0];
-          routineEditorState.exerciseIds.splice(toIndex, 0, movedExercise);
-          renderRoutineEditor();
-        }
-        return;
+      return true;
+    }
+    var scheduleRoutineButton = event.target.closest("[data-schedule-routine]");
+    if (scheduleRoutineButton) {
+      var routineDateInput = $('[data-routine-date="' + scheduleRoutineButton.dataset.scheduleRoutine + '"]');
+      scheduleRoutine(scheduleRoutineButton.dataset.scheduleRoutine, routineDateInput ? routineDateInput.value : "");
+      return true;
+    }
+    var editRoutineButton = event.target.closest("[data-edit-routine]");
+    if (editRoutineButton) { editRoutine(editRoutineButton.dataset.editRoutine); return true; }
+    var deleteRoutineButton = event.target.closest("[data-delete-routine]");
+    if (deleteRoutineButton) {
+      var routineId = deleteRoutineButton.dataset.deleteRoutine;
+      askConfirm("このルーティーンを削除しますか？ 過去のトレーニング記録は削除されません。", "削除する", function () { deleteRoutine(routineId); });
+      return true;
+    }
+    var startScheduleButton = event.target.closest("[data-start-schedule]");
+    if (startScheduleButton) { startScheduledRoutine(startScheduleButton.dataset.startSchedule); return true; }
+    var deleteScheduleButton = event.target.closest("[data-delete-schedule]");
+    if (deleteScheduleButton) {
+      var scheduleId = deleteScheduleButton.dataset.deleteSchedule;
+      askConfirm("この予定を削除しますか？", "削除する", function () { deleteSchedule(scheduleId); });
+      return true;
+    }
+    return false;
+  }
+
+  function handleSetEditDelegatedClick(event) {
+    var editSetRow = event.target.closest("[data-edit-set]");
+    if (editSetRow) {
+      event.stopPropagation();
+      startEditSet(editSetRow.dataset.editSet);
+      return true;
+    }
+    return false;
+  }
+
+  function handleModalCloseDelegatedClick(event) {
+    var close = event.target.closest("[data-close-modal]");
+    if (close) {
+      if (close.dataset.closeModal === "exerciseModal" && exercisePickerMode === "routine") cancelExerciseSelection();
+      else {
+        if (close.dataset.closeModal === "copyConflictModal") cancelPendingConflict();
+        else if (close.dataset.closeModal === "copyDestinationModal") { copySourceSessionId = null; closeModal("copyDestinationModal"); }
+        else if (close.dataset.closeModal === "confirmModal") cancelConfirmModal();
+        else closeModal(close.dataset.closeModal);
       }
-      var scheduleRoutineButton = event.target.closest("[data-schedule-routine]");
-      if (scheduleRoutineButton) {
-        var routineDateInput = $('[data-routine-date="' + scheduleRoutineButton.dataset.scheduleRoutine + '"]');
-        scheduleRoutine(scheduleRoutineButton.dataset.scheduleRoutine, routineDateInput ? routineDateInput.value : "");
-        return;
+    }
+    if (close) return true;
+    return false;
+  }
+
+  function handleDaySummaryDelegatedClick(event) {
+    var dayStart = event.target.closest("[data-day-start]");
+    if (dayStart) { closeModal("dayModal"); newDraft(dayStart.dataset.dayStart, dayStart.dataset.dayDate); }
+    var dayRoutine = event.target.closest("[data-day-routine-date]");
+    if (dayRoutine) { closeModal("dayModal"); openRoutineList(dayRoutine.dataset.dayRoutineDate, "use"); }
+    var edit = event.target.closest("[data-edit-session]"); if (edit) loadDraft(edit.dataset.editSession);
+    var copy = event.target.closest("[data-copy-session]"); if (copy) openCopyDestination(copy.dataset.copySession);
+    var remove = event.target.closest("[data-delete-session]");
+    if (remove) {
+      var deleteTarget = getSession(remove.dataset.deleteSession);
+      if (deleteTarget) {
+        var deleteDate = dateFromString(deleteTarget.date);
+        var deleteLabel = (deleteDate.getMonth() + 1) + "月" + deleteDate.getDate() + "日の" + (deleteTarget.locationType === "home" ? "自宅" : "ジム") + "トレーニングを削除しますか？";
+        askConfirm(deleteLabel, "削除する", function () { deleteSession(deleteTarget.id); });
       }
-      var editRoutineButton = event.target.closest("[data-edit-routine]");
-      if (editRoutineButton) { editRoutine(editRoutineButton.dataset.editRoutine); return; }
-      var deleteRoutineButton = event.target.closest("[data-delete-routine]");
-      if (deleteRoutineButton) {
-        var routineId = deleteRoutineButton.dataset.deleteRoutine;
-        askConfirm("このルーティーンを削除しますか？ 過去のトレーニング記録は削除されません。", "削除する", function () { deleteRoutine(routineId); });
-        return;
-      }
-      var startScheduleButton = event.target.closest("[data-start-schedule]");
-      if (startScheduleButton) { startScheduledRoutine(startScheduleButton.dataset.startSchedule); return; }
-      var deleteScheduleButton = event.target.closest("[data-delete-schedule]");
-      if (deleteScheduleButton) {
-        var scheduleId = deleteScheduleButton.dataset.deleteSchedule;
-        askConfirm("この予定を削除しますか？", "削除する", function () { deleteSchedule(scheduleId); });
-        return;
-      }
-      var editSetRow = event.target.closest("[data-edit-set]");
-      if (editSetRow) {
-        event.stopPropagation();
-        startEditSet(editSetRow.dataset.editSet);
-        return;
-      }
-      var close = event.target.closest("[data-close-modal]");
-      if (close) {
-        if (close.dataset.closeModal === "exerciseModal" && exercisePickerMode === "routine") cancelExerciseSelection();
-        else {
-          if (close.dataset.closeModal === "copyConflictModal") cancelPendingConflict();
-          else if (close.dataset.closeModal === "copyDestinationModal") { copySourceSessionId = null; closeModal("copyDestinationModal"); }
-          else if (close.dataset.closeModal === "confirmModal") cancelConfirmModal();
-          else closeModal(close.dataset.closeModal);
-        }
-      }
-      var dayStart = event.target.closest("[data-day-start]");
-      if (dayStart) { closeModal("dayModal"); newDraft(dayStart.dataset.dayStart, dayStart.dataset.dayDate); }
-      var dayRoutine = event.target.closest("[data-day-routine-date]");
-      if (dayRoutine) { closeModal("dayModal"); openRoutineList(dayRoutine.dataset.dayRoutineDate, "use"); }
-      var edit = event.target.closest("[data-edit-session]"); if (edit) loadDraft(edit.dataset.editSession);
-      var copy = event.target.closest("[data-copy-session]"); if (copy) openCopyDestination(copy.dataset.copySession);
-      var remove = event.target.closest("[data-delete-session]");
-      if (remove) {
-        var deleteTarget = getSession(remove.dataset.deleteSession);
-        if (deleteTarget) {
-          var deleteDate = dateFromString(deleteTarget.date);
-          var deleteLabel = (deleteDate.getMonth() + 1) + "月" + deleteDate.getDate() + "日の" + (deleteTarget.locationType === "home" ? "自宅" : "ジム") + "トレーニングを削除しますか？";
-          askConfirm(deleteLabel, "削除する", function () { deleteSession(deleteTarget.id); });
-        }
-      }
+    }
+    if (dayStart || dayRoutine || edit || copy || remove) return true;
+    return false;
+  }
+  function bindGlobalClickEvents() {
+    document.addEventListener("click", function (event) {
+      if (handleDraftMenuDelegatedClick(event)) return;
+      if (handleRoutineDelegatedClick(event)) return;
+      if (handleSetEditDelegatedClick(event)) return;
+      if (handleModalCloseDelegatedClick(event)) return;
+      handleDaySummaryDelegatedClick(event);
     });
+  }
+
+  function bindConfirmAndKeyboardEvents() {
     on("#confirmCancel", "click", cancelConfirmModal);
     on("#confirmAccept", "click", function () { acceptConfirmModal(this); });
     document.addEventListener("keydown", function (event) {
@@ -3292,6 +3486,20 @@
       else if (open[open.length - 1].id === "dataRecoveryModal" || open[open.length - 1].id === "draftResumeModal") return;
       else closeModal(open[open.length - 1].id);
     });
+  }
+  function bindEvents() {
+    if (window.addEventListener) window.addEventListener("resize", fitMonthlySummaryMetrics);
+    bindHomeMenuEvents();
+    bindAppearanceEvents();
+    bindSettingsDataEvents();
+    bindProgressEvents();
+    bindRoutineEvents();
+    bindCalendarAndCopyEvents();
+    bindProfileEvents();
+    bindWorkoutEditorEvents();
+    bindCardioEvents();
+    bindGlobalClickEvents();
+    bindConfirmAndKeyboardEvents();
   }
 
   function changeWeight(direction) {

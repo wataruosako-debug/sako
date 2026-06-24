@@ -272,6 +272,23 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   box-shadow: var(--shadow-card);
 }
 .stat-card::before { display: none; }
+.stat-card--interactive {
+  cursor: pointer;
+  transition:
+    transform .15s ease,
+    box-shadow .15s ease,
+    border-color .15s ease;
+}
+.stat-card--interactive:hover {
+  border-color: color-mix(in srgb, var(--brand-primary) 25%, var(--border));
+}
+.stat-card--interactive:active {
+  transform: scale(.985);
+}
+.stat-card--interactive:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--brand-primary) 24%, transparent);
+  outline-offset: 2px;
+}
 .stat-icon {
   display: grid;
   place-items: center;
@@ -614,7 +631,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .section-kicker { margin: 0 0 3px; color: var(--text-muted); font-size: 9px; font-weight: 700; letter-spacing: .12em; }
 .progress-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 5px;
   margin-bottom: 10px;
   padding: 4px;
@@ -661,6 +678,29 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   padding: 10px 24px 10px 8px;
   font-size: 11px;
   font-weight: 700;
+}
+.progress-custom-range {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface-subtle);
+}
+.progress-custom-range button {
+  grid-column: 1 / -1;
+  min-height: 38px;
+  border-radius: var(--radius-input);
+  font-size: 11px;
+  font-weight: 700;
+}
+.progress-custom-range input {
+  min-height: 39px;
+  padding: 8px;
+  font-size: 11px;
+  font-weight: 600;
 }
 .metric-help {
   grid-column: 1 / -1;
@@ -739,9 +779,23 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .chart-grid-line { stroke: var(--border); stroke-width: 1; }
 .chart-axis-label {
   fill: var(--text-secondary);
-  font-family: "Inter Tight", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 12px;
-  font-weight: 500;
+  stroke: none;
+  filter: none;
+  opacity: 1;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  font-synthesis: none;
+  text-shadow: none;
+  text-rendering: auto;
 }
 .chart-line { fill: none; stroke: var(--brand-primary); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .chart-area { fill: var(--brand-primary-soft); opacity: .75; }

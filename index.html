@@ -28,7 +28,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=M+PLUS+1p:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260623-05">
+  <link rel="stylesheet" href="style.css?v=20260624-02">
 </head>
 <body>
   <div class="app-shell">
@@ -54,13 +54,13 @@
             </div>
               <div class="stat-content"><p id="monthlySummaryLabel">今月の運動</p><span class="stat-value"><strong id="monthlyVisits" class="summary-metric-value">0</strong><small class="summary-metric-unit">日</small></span><small id="monthlyVisitBreakdown" class="visit-breakdown"><span class="visit-breakdown--gym">ジム <b id="monthlyGymVisits">0</b>回</span><span class="visit-breakdown--home">自宅 <b id="monthlyHomeVisits">0</b>回</span></small></div>
           </article>
-          <article class="stat-card stat-card--orange">
+          <article id="monthlyCaloriesCard" class="stat-card stat-card--orange stat-card--interactive" role="button" tabindex="0" aria-label="表示中の月の消費カロリー推移を見る">
             <div class="stat-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M12 22c4 0 7-2.8 7-6.7 0-2.6-1.4-5.1-4.2-7.5.1 2.2-.7 3.6-2.1 4.5.2-3.7-1.8-7-5.2-10.3.3 3.9-2.5 6.7-2.5 10.8C5 18.1 8.1 22 12 22Z"/><path d="M9.5 18.3c0 1.6 1.1 2.7 2.5 2.7s2.5-1.1 2.5-2.7c0-1.3-.7-2.5-2.2-3.8.1 1.1-.3 1.8-1 2.3.1-1.8-.8-3.4-2.2-5 .1 2-1.1 3.5.4 6.5Z"/></svg>
             </div>
               <div class="stat-content"><p id="monthlyCaloriesLabel">今月のカロリー</p><span class="stat-value"><strong id="monthlyCalories" class="summary-metric-value">0</strong><small class="summary-metric-unit">kcal</small></span><small class="calorie-breakdown"><span class="calorie-breakdown--strength">筋トレ <b id="monthlyStrengthCalories">0</b>kcal</span><span class="calorie-breakdown--cardio">有酸素 <b id="monthlyCardioCalories">0</b>kcal</span></small></div>
           </article>
-          <article class="stat-card stat-card--volume">
+          <article id="monthlyVolumeCard" class="stat-card stat-card--volume stat-card--interactive" role="button" tabindex="0" aria-label="表示中の月の総ボリューム推移を見る">
             <div class="stat-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v5c0 1.7 3.1 3 7 3s7-1.3 7-3V5"/><path d="M5 10v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/><path d="M5 15v3c0 1.7 3.1 3 7 3s7-1.3 7-3v-3"/></svg>
             </div>
@@ -123,14 +123,20 @@
           </section>
 
           <div class="progress-tabs" role="tablist" aria-label="分析する運動の種類">
+            <button id="overallProgressTab" type="button" role="tab" aria-selected="false" data-progress-tab="overall">全体</button>
             <button id="strengthProgressTab" class="is-active" type="button" role="tab" aria-selected="true" data-progress-tab="strength">筋トレ</button>
             <button id="cardioProgressTab" type="button" role="tab" aria-selected="false" data-progress-tab="cardio">有酸素</button>
           </div>
 
           <section class="progress-controls" aria-label="分析内容を選択">
-            <label><span id="progressExerciseLabel">種目</span><select id="progressExerciseSelect"></select></label>
+            <label id="progressExerciseField"><span id="progressExerciseLabel">種目</span><select id="progressExerciseSelect"></select></label>
             <label><span>見たい成長</span><select id="progressMetricSelect"></select></label>
-            <label><span>期間</span><select id="progressRangeSelect"><option value="1m">1か月</option><option value="3m">3か月</option><option value="6m" selected>6か月</option><option value="1y">1年</option><option value="all">すべて</option></select></label>
+            <label><span>期間</span><select id="progressRangeSelect"><option value="currentMonth">当月</option><option value="1m">1か月</option><option value="3m">3か月</option><option value="6m" selected>6か月</option><option value="1y">1年</option><option value="custom">任意期間</option><option value="all">すべて</option></select></label>
+            <div id="progressCustomRange" class="progress-custom-range hidden">
+              <label><span>開始日</span><input id="progressCustomStart" type="date"></label>
+              <label><span>終了日</span><input id="progressCustomEnd" type="date"></label>
+              <button id="applyProgressCustomRange" type="button">この期間で表示</button>
+            </div>
             <p id="progressMetricHelp" class="metric-help"></p>
           </section>
 
@@ -474,6 +480,6 @@
     </section>
   </div>
 
-  <script src="script.js?v=20260623-06"></script>
+  <script src="script.js?v=20260624-02"></script>
 </body>
 </html>
