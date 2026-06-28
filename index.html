@@ -28,7 +28,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=M+PLUS+Rounded+1c:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260624-06">
+  <link rel="stylesheet" href="style.css?v=20260628-01">
 </head>
 <body>
   <div class="app-shell">
@@ -170,11 +170,14 @@
           <section id="savedSetsSection" class="flow-card draft-menu-card">
             <div class="section-title-row draft-menu-title-row">
               <div><p class="section-kicker">TODAY'S MENU</p><h2>今日のメニュー</h2><small class="draft-menu-hint">セットを追加・編集 <b id="setCountBadge">0件</b></small></div>
-              <button id="chooseAnotherExercise" class="draft-menu-add-button" type="button">種目を追加</button>
+            </div>
+            <div id="draftStatsSummary" class="draft-stats-summary" aria-live="polite">
+              <div class="draft-stat draft-stat--calories"><span>概算カロリー</span><strong><b id="sessionCaloriesTop">0</b><small>kcal</small></strong></div>
+              <div class="draft-stat draft-stat--volume"><span>総ボリューム</span><strong><b id="sessionVolumeTop">0</b><small>kg</small></strong></div>
             </div>
             <div id="emptyDraftMenu" class="empty-draft-menu">
               <p>今日のメニューはまだありません</p>
-              <div class="empty-draft-actions"><button id="emptyAddExerciseButton" type="button">種目を追加</button><button id="emptyCopyPastButton" type="button">過去メニューからコピー</button></div>
+              <div class="empty-draft-actions"><button id="emptyAddExerciseButton" type="button">＋ 種目を追加</button><button id="emptyCopyPastButton" type="button">過去メニューからコピー</button></div>
               <small>前回のメニューをコピーすると、すぐ記録を始められます。</small>
             </div>
             <div id="savedSetsList" class="saved-list"></div>
@@ -183,6 +186,7 @@
               <button id="startGuideModeButton" class="guide-start-button" type="button">ガイドモードで開始</button>
               <button id="guideModeHelpButton" class="guide-help-button" type="button">ガイドモードとは？</button>
             </div>
+            <button id="chooseAnotherExercise" class="draft-menu-add-button draft-menu-add-button--bottom hidden" type="button">＋ 種目を追加</button>
             <div class="routine-workout-actions"><button id="openRoutineListButton" type="button">ルーティーンから追加</button><button id="saveRoutineButton" type="button">ルーティーンとして保存</button></div>
           </section>
 
@@ -199,13 +203,14 @@
             <div class="flow-step-head"><span class="step-number">SET</span><div><p id="setEditorTitle"><span id="currentSetLabel">セット1</span><span id="setEditorSuffix">を入力</span></p><small id="previousSetSummary">前回の記録はありません</small></div></div>
 
             <div id="weightBlock" class="input-block">
-              <div class="label-row"><label for="weightInput">重量</label><small id="weightStepLabel">1.0kg刻み</small></div>
+              <div class="label-row"><label for="weightInput">重量</label><small id="weightStepLabel">10kg / 1kg / 0.5kg</small></div>
+              <div class="large-step-row large-step-row--top"><button id="weightMinusLarge" type="button">−10kg</button><button id="weightPlusLarge" type="button">＋10kg</button></div>
               <div class="counter-control">
-                <button id="weightMinus" type="button" aria-label="重量を減らす">−</button>
+                <button id="weightMinus" type="button" aria-label="1kg減らす">−1kg</button>
                 <div class="counter-value"><input id="weightInput" type="number" min="0" step="1" inputmode="decimal"><span>kg</span></div>
-                <button id="weightPlus" type="button" aria-label="重量を増やす">＋</button>
+                <button id="weightPlus" type="button" aria-label="1kg増やす">＋1kg</button>
               </div>
-              <div class="large-step-row"><button id="weightMinusLarge" type="button">−10kg</button><button id="weightPlusLarge" type="button">＋10kg</button></div>
+              <div class="large-step-row large-step-row--small"><button id="weightMinusSmall" type="button">−0.5kg</button><button id="weightPlusSmall" type="button">＋0.5kg</button></div>
             </div>
 
             <div class="input-block">
@@ -261,7 +266,6 @@
           </section>
 
           <label class="session-memo"><span>今日のメモ <small>任意</small></span><textarea id="sessionMemo" rows="2" maxlength="200" placeholder="体調やトレーニング全体の感想"></textarea></label>
-          <section class="total-card"><span>今回の概算消費カロリー</span><strong><span id="sessionCalories">0</span> kcal</strong></section>
           <button id="finishWorkoutButton" class="finish-button" type="button">トレーニングを保存</button>
         </div>
       </section>
@@ -312,13 +316,14 @@
             </div>
 
             <div id="guideWeightBlock" class="guide-input-block">
-              <div class="label-row"><label for="guideWeightInput">重量</label><small id="guideWeightStepLabel">1.0kg刻み</small></div>
+              <div class="label-row"><label for="guideWeightInput">重量</label><small id="guideWeightStepLabel">10kg / 1kg / 0.5kg</small></div>
               <div class="guide-large-step-row"><button id="guideWeightMinusLarge" type="button" aria-label="10kg減らす">−10kg</button><button id="guideWeightPlusLarge" type="button" aria-label="10kg増やす">＋10kg</button></div>
               <div class="guide-counter-control">
-                <button id="guideWeightMinus" type="button" aria-label="重量を減らす">−</button>
+                <button id="guideWeightMinus" type="button" aria-label="1kg減らす">−1kg</button>
                 <div class="guide-counter-value"><input id="guideWeightInput" type="number" min="0" step="1" inputmode="decimal"><span>kg</span></div>
-                <button id="guideWeightPlus" type="button" aria-label="重量を増やす">＋</button>
+                <button id="guideWeightPlus" type="button" aria-label="1kg増やす">＋1kg</button>
               </div>
+              <div class="guide-large-step-row guide-large-step-row--small"><button id="guideWeightMinusSmall" type="button" aria-label="0.5kg減らす">−0.5kg</button><button id="guideWeightPlusSmall" type="button" aria-label="0.5kg増やす">＋0.5kg</button></div>
             </div>
 
             <div class="guide-input-block">
@@ -359,6 +364,23 @@
             </div>
           </section>
 
+          <section id="guideCardioCard" class="guide-card guide-cardio-card hidden">
+            <p class="section-kicker">有酸素</p>
+            <h2 id="guideCardioTitle">ウォーキング</h2>
+            <div class="cardio-grid cardio-grid--guide">
+              <label><span>時間</span><div><input id="guideCardioDuration" type="number" min="0" step="1" inputmode="numeric"><b>分</b></div></label>
+              <label><span>距離</span><div><input id="guideCardioDistance" type="number" min="0" step="0.1" inputmode="decimal"><b>km</b></div></label>
+              <label><span>傾斜</span><div><input id="guideCardioIncline" type="number" min="0" step="0.5" inputmode="decimal"><b>%</b></div></label>
+              <label class="cardio-memo-field"><span>メモ</span><input id="guideCardioMemo" type="text" maxlength="80" placeholder="感覚をメモ"></label>
+            </div>
+            <p id="guideCardioPreview" class="cardio-preview">速度 <strong>--</strong> / 概算消費カロリー <strong>--</strong></p>
+            <button id="completeGuideCardioButton" class="finish-button" type="button">この有酸素を完了</button>
+            <div class="guide-secondary-actions">
+              <button id="replaceGuideCardioButton" type="button">別の種目に変更</button>
+              <button id="skipGuideCardioButton" type="button">今回はやらない</button>
+            </div>
+          </section>
+
           <section id="guideFinishedSetCard" class="guide-card guide-finished-card hidden">
             <p class="section-kicker">予定セット完了</p>
             <h2 id="guideFinishedExerciseName">種目</h2>
@@ -370,10 +392,13 @@
           </section>
 
           <section id="guideSelectNextCard" class="guide-card hidden">
+            <button id="guideUndoLastActionButton" class="guide-undo-button hidden" type="button">戻る</button>
             <h2 id="guideSelectNextTitle">次に行う種目を選んでください</h2>
-            <p id="guideSelectNextText">未完了または後回しの種目から再開できます。</p>
+            <p id="guideSelectNextText">空いている種目から選んで進められます。</p>
+            <div id="guideNextChoiceList" class="guide-choice-list" role="radiogroup" aria-label="次に行う種目"></div>
             <div class="guide-next-actions">
-              <button id="guideStartNextPending" class="finish-button" type="button">次の未完了種目を開始</button>
+              <button id="guideStartSelectedItem" class="finish-button" type="button">選んだ種目を開始</button>
+              <button id="guideStartNextPending" class="outline-button hidden" type="button">次の候補を開始</button>
               <button id="guideOpenDeferredList" class="outline-button" type="button">後回し中の種目から選ぶ</button>
               <button id="guideOpenMenuFromNext" class="outline-button" type="button">メニュー一覧から選ぶ</button>
               <button id="guideAddExerciseButton" class="outline-button outline-button--blue" type="button">別の種目を追加</button>
@@ -414,6 +439,7 @@
     <section class="modal-sheet modal-sheet--tall exercise-picker-sheet" role="dialog" aria-modal="true" aria-labelledby="exerciseModalTitle">
       <div class="modal-handle"></div>
       <header class="exercise-picker-header"><button id="cancelExerciseSelection" type="button">キャンセル</button><h2 id="exerciseModalTitle">種目を選択</h2><button id="confirmExerciseSelection" type="button" disabled>完了</button></header>
+      <button id="guideExercisePickerUndoButton" class="guide-undo-button hidden" type="button">戻る</button>
       <div id="exerciseBodyPartTabs" class="exercise-body-tabs" role="tablist" aria-label="部位カテゴリ"></div>
       <input id="exerciseSearch" class="exercise-search" type="search" placeholder="種目名を検索" autocomplete="off" enterkeyhint="search" aria-label="種目名を検索" value="">
       <div id="exerciseList" class="exercise-list"></div>
@@ -429,7 +455,8 @@
       <form id="addExerciseForm" class="profile-form">
         <label><span>種目名</span><input id="newExerciseName" type="text" maxlength="40" required placeholder="例：ヒップスラスト"></label>
         <label><span>部位</span><select id="newExerciseBodyPart"><option value="chest">胸</option><option value="shoulder">肩</option><option value="arm">腕</option><option value="back">背中</option><option value="legs">脚</option><option value="abs">腹</option><option value="other">その他</option></select></label>
-        <label><span>種類</span><select id="newExerciseCategory"><option value="MACHINE">マシン（1.0kg刻み）</option><option value="BARBELL">バーベル（2.5kg刻み）</option><option value="DUMBBELL">ダンベル（0.5kg刻み）</option><option value="BODYWEIGHT">自重（重量なし）</option></select></label>
+        <label><span>種類</span><select id="newExerciseCategory"><option value="MACHINE">マシン</option><option value="BARBELL">バーベル</option><option value="DUMBBELL">ダンベル</option><option value="BODYWEIGHT">自重</option></select></label>
+        <label id="newExerciseStepField" class="weight-step-field hidden" aria-hidden="true"><span>重量ボタンの増減幅<small>＋／－を1回押した時に変わる重さ</small></span><select id="newExerciseWeightStep"><option value="0.5">0.5kg</option><option value="1">1.0kg</option><option value="1.25">1.25kg</option><option value="2">2.0kg</option><option value="2.5">2.5kg</option><option value="5">5.0kg</option><option value="10">10.0kg</option></select></label>
         <button class="finish-button" type="submit">追加して選択</button>
       </form>
     </section>
@@ -543,11 +570,21 @@
       <fieldset class="appearance-section">
         <legend>休憩タイマー</legend>
         <div class="timer-option-list">
-          <label><input id="autoStartRestTimer" type="checkbox" data-timer-setting="autoStartRestTimer">休憩タイマーを自動開始</label>
-          <label><input id="restTimerSound" type="checkbox" data-timer-setting="restTimerSound">終了時に音を鳴らす</label>
-          <small class="timer-setting-help">iPhoneでは最初にトレーニング開始ボタンを押した後から音が有効になります</small>
-          <label><input id="restTimerVibration" type="checkbox" data-timer-setting="restTimerVibration">終了時に振動する</label>
-          <small class="timer-setting-help">振動は対応している端末のみ利用できます</small>
+          <label><input id="restTimerEnabled" type="checkbox" data-timer-setting="restTimerEnabled">休憩タイマーを使用する</label>
+          <div id="restTimerSubSettings" class="timer-option-subsettings">
+            <label><input id="autoStartRestTimer" type="checkbox" data-timer-setting="autoStartRestTimer">休憩タイマーを自動開始</label>
+            <label><input id="restTimerSound" type="checkbox" data-timer-setting="restTimerSound">終了時に音を鳴らす</label>
+            <small class="timer-setting-help">iPhoneでは最初にトレーニング開始ボタンを押した後から音が有効になります</small>
+            <label><input id="restTimerVibration" type="checkbox" data-timer-setting="restTimerVibration">終了時に振動する</label>
+            <small class="timer-setting-help">振動は対応している端末のみ利用できます</small>
+          </div>
+        </div>
+      </fieldset>
+      <fieldset class="appearance-section">
+        <legend>ガイドモード</legend>
+        <div class="timer-option-list">
+          <label><input id="guideModeEnabled" type="checkbox" data-timer-setting="guideModeEnabled">ガイドモードを使用する</label>
+          <small class="timer-setting-help">ルーティーンやコピーしたメニューだけに表示します。手動入力だけの時は表示されません。</small>
         </div>
       </fieldset>
       <button class="finish-button" type="button" data-close-modal="appearanceSettingsModal">完了</button>
@@ -620,6 +657,7 @@
     <section class="modal-sheet modal-sheet--tall" role="dialog" aria-modal="true" aria-labelledby="guideMenuTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideMenuModal" aria-label="閉じる">×</button>
       <p class="section-kicker">GUIDE MENU</p><h2 id="guideMenuTitle">メニュー一覧</h2>
+      <button id="guideMenuUndoLastActionButton" class="guide-undo-button hidden" type="button">戻る</button>
       <div id="guideMenuList" class="guide-menu-list"></div>
       <button id="guideMenuAddExercise" class="outline-button outline-button--blue" type="button">別の種目を追加</button>
     </section>
@@ -635,13 +673,23 @@
     </section>
   </div>
 
+  <div id="guideModeOffModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop"></div>
+    <section class="modal-sheet modal-sheet--confirm" role="alertdialog" aria-modal="true" aria-labelledby="guideModeOffTitle">
+      <div class="modal-handle"></div>
+      <h2 id="guideModeOffTitle">ガイドモードの途中です</h2>
+      <p class="modal-lead">ガイドモードをOFFにすると、現在のガイド進行を終了します。</p>
+      <div class="modal-actions"><button id="saveGuideAndDisableButton" class="finish-button" type="button">ここまでを保存してOFFにする</button><button id="discardGuideAndDisableButton" class="outline-button danger-text" type="button">ガイド下書きを破棄してOFFにする</button><button id="cancelGuideDisableButton" class="outline-button" type="button">キャンセル</button></div>
+    </section>
+  </div>
+
   <div id="nextSetConfirmModal" class="modal" aria-hidden="true">
     <div class="modal-backdrop"></div>
     <section class="modal-sheet modal-sheet--confirm" role="alertdialog" aria-modal="true" aria-labelledby="nextSetConfirmTitle" aria-describedby="nextSetConfirmMessage">
       <div class="modal-handle"></div>
       <h2 id="nextSetConfirmTitle">セットを保存しました</h2>
-      <p id="nextSetConfirmMessage" class="modal-lead">続けて次のセットを入力しますか？</p>
-      <div class="next-set-actions"><button id="nextSetYesButton" class="finish-button" type="button">はい</button><button id="nextSetNoButton" class="outline-button" type="button">いいえ</button></div>
+      <p id="nextSetConfirmMessage" class="modal-lead">次はどうしますか？</p>
+      <div class="next-set-actions"><button id="nextSetYesButton" class="finish-button" type="button">同じ種目の次セットを入力</button><button id="nextSetPickExerciseButton" class="outline-button" type="button">次の種目を選ぶ</button><button id="nextSetNoButton" class="outline-button" type="button">今日のメニューへ戻る</button></div>
     </section>
   </div>
 
@@ -678,6 +726,6 @@
     </section>
   </div>
 
-  <script src="script.js?v=20260624-05"></script>
+  <script src="script.js?v=20260628-01"></script>
 </body>
 </html>
