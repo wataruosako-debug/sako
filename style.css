@@ -1401,11 +1401,21 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .profile-form .finish-button { margin-top: 4px; }
 .data-actions { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border); text-align: center; }
 .data-actions button { border: 0; color: var(--danger); background: transparent; font-size: 10px; }
-.ai-export-sheet { display: flex; flex-direction: column; }
+.ai-export-sheet {
+  display: flex;
+  flex-direction: column;
+  height: min(88dvh, 720px);
+  max-height: calc(100dvh - 24px);
+  overflow: hidden;
+}
 .ai-export-form {
   display: grid;
+  flex: 1 1 auto;
   gap: 12px;
   min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8px;
 }
 .ai-export-form label {
   display: flex;
@@ -1468,13 +1478,22 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .ai-export-sheet .modal-actions {
   position: sticky;
   bottom: 0;
-  z-index: 2;
-  margin-top: 4px;
+  z-index: 5;
+  flex: 0 0 auto;
+  margin-top: 8px;
   padding-top: 10px;
+  padding-bottom: max(0px, env(safe-area-inset-bottom));
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 0%, transparent), var(--surface) 35%);
 }
 .ai-export-sheet .modal-actions .finish-button:disabled {
   box-shadow: none;
+}
+
+@media (max-width: 480px) {
+  .ai-export-preview {
+    min-height: 180px;
+    max-height: 280px;
+  }
 }
 
 .exercise-picker-sheet {

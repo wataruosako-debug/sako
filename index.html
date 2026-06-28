@@ -28,7 +28,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=M+PLUS+Rounded+1c:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260628-03">
+  <link rel="stylesheet" href="style.css?v=20260628-04">
 </head>
 <body>
   <div class="app-shell">
@@ -382,27 +382,27 @@
           </section>
 
           <section id="guideFinishedSetCard" class="guide-card guide-finished-card hidden">
-            <p class="section-kicker">予定セット完了</p>
+            <p class="section-kicker">セット完了</p>
             <h2 id="guideFinishedExerciseName">種目</h2>
             <p id="guideFinishedSetSummary">0 / 0セット完了</p>
-            <div class="guide-next-actions">
-              <button id="guideAddExtraSetButton" class="finish-button" type="button">もう1セット追加</button>
-              <button id="guideFinishCurrentExerciseButton" class="outline-button" type="button">この種目を終了</button>
+            <div class="guide-next-actions guide-complete-actions">
+              <button id="guideChooseNextExerciseButton" class="finish-button" type="button">次の種目を行う</button>
+              <button id="guideEndMenuAfterSetButton" class="outline-button" type="button">メニューを終了</button>
             </div>
           </section>
 
           <section id="guideSelectNextCard" class="guide-card hidden">
             <button id="guideUndoLastActionButton" class="guide-undo-button hidden" type="button">戻る</button>
             <h2 id="guideSelectNextTitle">次に行う種目を選んでください</h2>
-            <p id="guideSelectNextText">空いている種目から選んで進められます。</p>
-            <div id="guideNextChoiceList" class="guide-choice-list" role="radiogroup" aria-label="次に行う種目"></div>
+            <p id="guideSelectNextText">種目をタップするとすぐ始まります。</p>
+            <div id="guideNextChoiceList" class="guide-choice-list" role="list" aria-label="次に行う種目"></div>
             <div class="guide-next-actions">
-              <button id="guideStartSelectedItem" class="finish-button" type="button">選んだ種目を開始</button>
+              <button id="guideStartSelectedItem" class="finish-button hidden" type="button">選んだ種目を開始</button>
               <button id="guideStartNextPending" class="outline-button hidden" type="button">次の候補を開始</button>
-              <button id="guideOpenDeferredList" class="outline-button" type="button">後回し中の種目から選ぶ</button>
-              <button id="guideOpenMenuFromNext" class="outline-button" type="button">メニュー一覧から選ぶ</button>
-              <button id="guideAddExerciseButton" class="outline-button outline-button--blue" type="button">別の種目を追加</button>
-              <button id="endGuideWorkoutButton" class="outline-button danger-text" type="button">トレーニングを終了</button>
+              <button id="guideOpenDeferredList" class="outline-button hidden" type="button">後回し中の種目から選ぶ</button>
+              <button id="guideOpenMenuFromNext" class="outline-button hidden" type="button">メニュー一覧から選ぶ</button>
+              <button id="guideAddExerciseButton" class="outline-button outline-button--blue" type="button">別の種目を行う</button>
+              <button id="endGuideWorkoutButton" class="outline-button danger-text hidden" type="button">トレーニングを終了</button>
             </div>
           </section>
         </div>
@@ -689,9 +689,9 @@
     <div class="modal-backdrop" data-close-modal="guideExitModal"></div>
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="guideExitTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideExitModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">FINISH GUIDE</p><h2 id="guideExitTitle">ここまでの内容で保存しますか？</h2>
+      <p class="section-kicker">FINISH GUIDE</p><h2 id="guideExitTitle">今日のメニューを保存しますか？</h2>
       <div id="guideExitSummary" class="guide-exit-summary"></div>
-      <div class="modal-actions"><button id="saveGuideProgress" class="finish-button" type="button">ここまでを保存</button><button id="continueGuideButton" class="outline-button" type="button">トレーニングを続ける</button><button id="cancelGuideExit" class="outline-button danger-text" type="button">一時中断してホームへ戻る</button></div>
+      <div class="modal-actions"><button id="saveGuideProgress" class="finish-button" type="button">保存して終了</button><button id="continueGuideButton" class="outline-button" type="button">今日のメニューに戻る</button><button id="cancelGuideExit" class="outline-button" type="button">キャンセル</button></div>
     </section>
   </div>
 
@@ -748,6 +748,6 @@
     </section>
   </div>
 
-  <script src="script.js?v=20260628-03"></script>
+  <script src="script.js?v=20260628-04"></script>
 </body>
 </html>

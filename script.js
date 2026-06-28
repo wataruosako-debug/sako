@@ -1369,6 +1369,18 @@
     return { start: today, end: today };
   }
 
+  function ensureAiExportCustomDates() {
+    var start = $("#aiExportStartDate");
+    var end = $("#aiExportEndDate");
+    if (!start || !end) return;
+    if (start.value && end.value) return;
+    var today = todayString();
+    var todayDate = dateFromString(today);
+    var firstDay = todayDate.getFullYear() + "-" + String(todayDate.getMonth() + 1).padStart(2, "0") + "-01";
+    if (!start.value) start.value = firstDay;
+    if (!end.value) end.value = today;
+  }
+
   function getAiExportTargetLabel(target, exerciseId) {
     if (target === "strength") return "筋トレのみ";
     if (target === "cardio") return "有酸素のみ";
@@ -1509,6 +1521,7 @@
     var custom = $("#aiExportCustomDates");
     var target = $("#aiExportTarget");
     var exerciseField = $("#aiExportExerciseField");
+    if (range && range.value === "custom") ensureAiExportCustomDates();
     if (custom && range) custom.classList.toggle("hidden", range.value !== "custom");
     if (exerciseField && target) exerciseField.classList.toggle("hidden", target.value !== "exercise");
     var text = buildAiExportText(getAiExportOptions());
@@ -1521,8 +1534,11 @@
     var copyButton = $("#copyAiExportButton");
     var copyable = isAiExportTextCopyable(text);
     if (copyButton) {
+      copyButton.hidden = false;
+      copyButton.classList.remove("hidden");
       copyButton.disabled = !copyable;
       copyButton.setAttribute("aria-disabled", copyable ? "false" : "true");
+      copyButton.textContent = "テキストをコピー";
     }
     var status = $("#aiExportStatus");
     if (status) status.textContent = copyable ? "" : text;
@@ -1723,6 +1739,7 @@
     activeExerciseBodyPart = "chest";
     $("#exerciseModalTitle").textContent = "ルーティーンに種目を追加";
     $("#confirmExerciseSelection").textContent = "完了";
+    $("#confirmExerciseSelection").classList.remove("hidden");
     $("#confirmExerciseSelection").disabled = false;
     $("#exerciseSearch").value = "";
     renderExerciseBodyPartTabs();
@@ -3170,7 +3187,6 @@
     var total = guideItemPlannedSets(item).length;
     if (item.status === "completed") return "完了";
     if (completed > 0) return completed + "/" + Math.max(total, completed + 1) + "セット完了";
-    if (item.status === "deferred") return "後回し中";
     return "";
   }
 
@@ -3180,19 +3196,12 @@
     var choices = guideItems(state).filter(function (item) { return item.status !== "skipped"; });
     if (!choices.length) {
       list.innerHTML = '<div class="empty-state">選べる種目はありません。</div>';
-      $("#guideStartSelectedItem").disabled = true;
       return;
     }
-    if (!state.selectedNextItemId || !choices.some(function (item) { return item.id === state.selectedNextItemId; })) {
-      var preferred = choices.find(function (item) { return item.status !== "completed"; }) || choices[0];
-      state.selectedNextItemId = preferred ? preferred.id : null;
-    }
-    $("#guideStartSelectedItem").disabled = !state.selectedNextItemId;
     list.innerHTML = choices.map(function (item) {
-      var selected = item.id === state.selectedNextItemId;
       var progress = guideChoiceProgressText(item);
       var marker = item.status === "completed" ? "✓" : "○";
-      return '<button class="guide-choice-item' + (selected ? ' is-selected' : '') + (item.status === "completed" ? ' is-completed' : '') + '" type="button" data-guide-select-item="' + item.id + '" role="radio" aria-checked="' + (selected ? "true" : "false") + '"><span class="guide-choice-marker">' + marker + '</span><span><strong>' + escapeHtml(guideItemName(item)) + '</strong>' + (progress ? '<small>' + escapeHtml(progress) + '</small>' : '') + '</span></button>';
+      return '<button class="guide-choice-item' + (item.status === "completed" ? ' is-completed' : '') + '" type="button" data-guide-select-item="' + item.id + '"><span class="guide-choice-marker">' + marker + '</span><span><strong>' + escapeHtml(guideItemName(item)) + '</strong>' + (progress ? '<small>' + escapeHtml(progress) + '</small>' : '') + '</span></button>';
     }).join("");
   }
 
@@ -3216,9 +3225,8 @@
     $("#guideSelectNextCard").classList.toggle("hidden", showSet || showFinished || showCardio);
     if (showFinished) {
       var finishedMeta = guideSetMeta(item);
-      var finishedTotal = Math.max(1, finishedMeta.completed.length, guideItemPlannedSets(item).length);
       $("#guideFinishedExerciseName").textContent = guideItemName(item);
-      $("#guideFinishedSetSummary").textContent = finishedMeta.completed.length + "セット目を記録しました / " + finishedMeta.completed.length + " / " + finishedTotal + "セット完了";
+      $("#guideFinishedSetSummary").textContent = finishedMeta.completed.length + "セット目を完了しました";
       renderGuideRestTimer();
       renderGuideMenuList();
       return;
@@ -3352,6 +3360,7 @@
     if (!state) return;
     var item = guideItems(state).find(function (entry) { return entry.id === itemId; });
     if (!item || item.status === "skipped") return;
+    stopRestTimer();
     guideSetSaveLocked = false;
     captureGuideInputToState();
     state.lastAction = null;
@@ -3387,6 +3396,19 @@
     state.updatedAt = nowIso();
     renderGuideWorkout();
     saveDraftNow();
+  }
+
+  function showGuideNextExercisePicker() {
+    moveGuideToSelectNext();
+  }
+
+  function finishGuideRestAndContinue() {
+    var state = guideState();
+    var item = guideCurrentItem();
+    stopRestTimer();
+    if (state && item && state.status === "itemComplete" && item.status !== "completed" && item.status !== "skipped") {
+      activateGuideItem(item.id);
+    }
   }
 
   function rememberGuideSkipAction(item) {
@@ -3591,14 +3613,14 @@
     var isFinalSet = completed.length >= planned.length;
     state.currentSetIndex = completed.length;
     state.currentInput = null;
+    state.status = "itemComplete";
+    state.currentItemId = item.id;
+    state.selectedNextItemId = null;
     state.updatedAt = nowIso();
     showPersonalBestBanner(best, newSet.tempId + ":" + (best ? best.metric + ":" + best.value : ""));
     showGuideSetSavedNotice(newSet.setNumber, completed.length + 1, isFinalSet);
     if (isFinalSet) {
       item.status = "completed";
-      state.status = "selectNext";
-      state.currentItemId = null;
-      state.selectedNextItemId = null;
       renderGuideWorkout();
       saveDraftNow();
       scheduleGuideCurrentSetScroll();
@@ -3758,6 +3780,24 @@
     showToast("ガイドモードを一時保存しました");
   }
 
+  function returnGuideToWorkoutMenu() {
+    if (!isGuideActive()) {
+      closeModal("guideExitModal");
+      return;
+    }
+    if (!convertGuideDraftToNormalInput(true)) return;
+    stopRestTimer();
+    closeModal("guideExitModal");
+    renderWorkout();
+    showScreen("workout");
+    showToast("今日のメニューに戻りました");
+  }
+
+  function cancelGuideExitDialog() {
+    closeModal("guideExitModal");
+    renderGuideWorkout();
+  }
+
   function openGuideExercisePicker(mode) {
     if (!isGuideActive()) return;
     if (!isGuideModeEnabled()) {
@@ -3767,8 +3807,9 @@
     exercisePickerMode = mode;
     pendingExerciseId = null;
     activeExerciseBodyPart = "chest";
-    $("#exerciseModalTitle").textContent = mode === "guideAdd" ? "ガイドに種目を追加" : "別の種目に変更";
+    $("#exerciseModalTitle").textContent = mode === "guideAdd" ? "別の種目を行う" : "別の種目に変更";
     $("#confirmExerciseSelection").textContent = "完了";
+    $("#confirmExerciseSelection").classList.toggle("hidden", mode === "guideAdd");
     $("#confirmExerciseSelection").disabled = true;
     $("#exerciseSearch").value = "";
     renderExerciseBodyPartTabs();
@@ -4091,6 +4132,7 @@
     activeExerciseBodyPart = selected && selected.bodyPart ? selected.bodyPart : "chest";
     $("#exerciseModalTitle").textContent = "種目を選択";
     $("#confirmExerciseSelection").textContent = "完了";
+    $("#confirmExerciseSelection").classList.remove("hidden");
     $("#confirmExerciseSelection").disabled = !pendingExerciseId;
     $("#exerciseSearch").value = "";
     renderExerciseBodyPartTabs();
@@ -5111,9 +5153,15 @@
     on("#restoreDataButton", "click", function () { $("#restoreDataInput").value = ""; $("#restoreDataInput").click(); });
     on("#restoreSnapshotButton", "click", restorePreRestoreSnapshot);
     on("#aiExportButton", "click", openAiExportModal);
-    ["#aiExportRange", "#aiExportStartDate", "#aiExportEndDate", "#aiExportTarget", "#aiExportExercise"].forEach(function (selector) {
+    on("#aiExportRange", "change", function () {
+      if (this.value === "custom") ensureAiExportCustomDates();
+      updateAiExportPreview();
+    });
+    ["#aiExportStartDate", "#aiExportEndDate", "#aiExportTarget", "#aiExportExercise"].forEach(function (selector) {
       on(selector, "change", updateAiExportPreview);
     });
+    on("#aiExportStartDate", "input", updateAiExportPreview);
+    on("#aiExportEndDate", "input", updateAiExportPreview);
     on("#copyAiExportButton", "click", copyAiExportText);
     on("#restoreDataInput", "change", function () { readBackupFile(this.files && this.files[0]); });
     on("#exportCorruptDataButton", "click", downloadCorruptData);
@@ -5275,6 +5323,14 @@
           if (selectedIndex >= 0) routinePendingExerciseIds.splice(selectedIndex, 1);
           else routinePendingExerciseIds.push(routineExerciseId);
           renderExerciseList();
+          return;
+        }
+        if (exercisePickerMode === "guideAdd") {
+          var guideAddExerciseId = option.dataset.exerciseId;
+          pendingExerciseId = null;
+          exercisePickerMode = "workout";
+          closeModal("exerciseModal");
+          addExerciseToGuide(guideAddExerciseId, true);
           return;
         }
         pendingExerciseId = option.dataset.exerciseId;
@@ -5488,36 +5544,27 @@
     on("#guideBackHomeButton", "click", openGuideExit);
     on("#guideExitButton", "click", openGuideExit);
     on("#guideMenuListButton", "click", openGuideMenu);
-    on("#guideOpenMenuFromNext", "click", openGuideMenu);
     on("#guideUndoLastActionButton", "click", undoLastGuideAction);
     on("#guideMenuUndoLastActionButton", "click", undoLastGuideAction);
     on("#guideExercisePickerUndoButton", "click", undoLastGuideAction);
-    on("#guideOpenDeferredList", "click", function () { startNextGuideItem(true); });
-    on("#guideStartNextPending", "click", function () { startNextGuideItem(false); });
-    on("#guideStartSelectedItem", "click", startSelectedGuideItem);
+    on("#guideChooseNextExerciseButton", "click", showGuideNextExercisePicker);
+    on("#guideEndMenuAfterSetButton", "click", openGuideExit);
     on("#guideNextChoiceList", "click", function (event) {
       var button = event.target.closest("[data-guide-select-item]");
-      var state = guideState();
-      if (!button || !state) return;
-      state.selectedNextItemId = button.dataset.guideSelectItem;
-      state.updatedAt = nowIso();
-      renderGuideNextChoiceList(state);
-      scheduleDraftSave();
+      if (!button) return;
+      activateGuideItem(button.dataset.guideSelectItem);
     });
     on("#guideAddExerciseButton", "click", function () { openGuideExercisePicker("guideAdd"); });
     on("#guideMenuAddExercise", "click", function () { openGuideExercisePicker("guideAdd"); });
     on("#replaceGuideItemButton", "click", function () { openGuideExercisePicker("guideReplace"); });
     on("#completeGuideSetButton", "click", completeGuideSet);
     on("#completeGuideCardioButton", "click", completeGuideCardio);
-    on("#guideAddExtraSetButton", "click", addExtraGuideSetToCurrentItem);
-    on("#guideFinishCurrentExerciseButton", "click", finishCurrentGuideItemAndSelectNext);
     on("#deferGuideItemButton", "click", deferCurrentGuideItem);
     on("#skipGuideItemButton", "click", skipCurrentGuideItem);
     on("#replaceGuideCardioButton", "click", function () { openGuideExercisePicker("guideReplace"); });
     on("#skipGuideCardioButton", "click", skipCurrentGuideItem);
-    on("#endGuideWorkoutButton", "click", openGuideExit);
-    on("#continueGuideButton", "click", function () { closeModal("guideExitModal"); });
-    on("#cancelGuideExit", "click", suspendGuideToHome);
+    on("#continueGuideButton", "click", returnGuideToWorkoutMenu);
+    on("#cancelGuideExit", "click", cancelGuideExitDialog);
     on("#saveGuideProgress", "click", function () { var button = this; runButtonLocked(button, saveGuideProgress); });
     on("#saveGuideAndDisableButton", "click", function () { var button = this; runButtonLocked(button, saveGuideAndDisableMode); });
     on("#discardGuideAndDisableButton", "click", function () { var button = this; runButtonLocked(button, discardGuideAndDisableMode); });
@@ -5556,7 +5603,7 @@
     on("#guideRestAdd10", "click", function () { addRestTimerSeconds(10); });
     on("#guideRestAdd30", "click", function () { addRestTimerSeconds(30); });
     on("#guideRestPause", "click", pauseRestTimer);
-    on("#guideRestEnd", "click", stopRestTimer);
+    on("#guideRestEnd", "click", finishGuideRestAndContinue);
     on("#guideMenuList", "click", function (event) {
       var button = event.target.closest("[data-guide-start-item]");
       if (!button) return;
