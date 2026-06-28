@@ -1302,7 +1302,7 @@
     var summaryMonth = $("#monthlySummaryMonth");
     if (summaryMonth) summaryMonth.textContent = year + "年" + monthLabel;
     $("#monthlySummaryLabel").textContent = "運動";
-    $("#monthlyCaloriesLabel").textContent = "カロリー";
+    $("#monthlyCaloriesLabel").textContent = "概算消費カロリー";
     $("#monthlyVolumeLabel").textContent = "ボリューム";
     var scheduleFit = window.requestAnimationFrame || function (callback) { setTimeout(callback, 0); };
     scheduleFit(fitMonthlySummaryMetrics);
@@ -1362,9 +1362,8 @@
     if (rangeType === "custom") {
       var start = $("#aiExportStartDate") ? $("#aiExportStartDate").value : "";
       var end = $("#aiExportEndDate") ? $("#aiExportEndDate").value : "";
-      if (!start) start = today;
-      if (!end) end = today;
-      if (start > end) { var temp = start; start = end; end = temp; }
+      if (!start || !end) return { start: start, end: end, error: "開始日と終了日を選択してください。" };
+      if (start > end) return { start: start, end: end, error: "終了日は開始日以降にしてください。" };
       return { start: start, end: end };
     }
     return { start: today, end: today };
@@ -1395,7 +1394,15 @@
     var rangeType = $("#aiExportRange") ? $("#aiExportRange").value : "today";
     var target = $("#aiExportTarget") ? $("#aiExportTarget").value : "all";
     var range = getAiExportDateRange(rangeType);
-    return { rangeType: rangeType, startDate: range.start, endDate: range.end, target: target, exerciseId: target === "exercise" && $("#aiExportExercise") ? $("#aiExportExercise").value : "" };
+    return { rangeType: rangeType, startDate: range.start, endDate: range.end, rangeError: range.error || "", target: target, exerciseId: target === "exercise" && $("#aiExportExercise") ? $("#aiExportExercise").value : "" };
+  }
+
+  function isAiExportTextCopyable(text) {
+    var value = String(text || "").trim();
+    return !!value &&
+      value !== "指定した期間に記録がありません。" &&
+      value !== "開始日と終了日を選択してください。" &&
+      value !== "終了日は開始日以降にしてください。";
   }
 
   function recordMatchesAiExportTarget(record, options) {
@@ -1458,6 +1465,8 @@
 
   function buildAiExportText(options) {
     options = options || getAiExportOptions();
+    if (options.rangeError) return options.rangeError;
+    if (!options.startDate || !options.endDate) return "開始日と終了日を選択してください。";
     var entries = getAiExportSessions(options);
     if (!entries.length) return "指定した期間に記録がありません。";
     var workoutDates = {};
@@ -1504,9 +1513,19 @@
     if (exerciseField && target) exerciseField.classList.toggle("hidden", target.value !== "exercise");
     var text = buildAiExportText(getAiExportOptions());
     var preview = $("#aiExportPreview");
-    if (preview) preview.value = text;
+    if (preview) {
+      preview.disabled = false;
+      preview.setAttribute("readonly", "readonly");
+      preview.value = text;
+    }
+    var copyButton = $("#copyAiExportButton");
+    var copyable = isAiExportTextCopyable(text);
+    if (copyButton) {
+      copyButton.disabled = !copyable;
+      copyButton.setAttribute("aria-disabled", copyable ? "false" : "true");
+    }
     var status = $("#aiExportStatus");
-    if (status) status.textContent = text === "指定した期間に記録がありません。" ? text : "";
+    if (status) status.textContent = copyable ? "" : text;
     return text;
   }
 
@@ -1526,10 +1545,12 @@
     var preview = $("#aiExportPreview");
     try {
       if (preview) {
-        if (preview.removeAttribute) preview.removeAttribute("readonly");
+        preview.disabled = false;
+        preview.setAttribute("readonly", "readonly");
         preview.value = text;
         preview.focus();
         preview.select();
+        if (preview.setSelectionRange) preview.setSelectionRange(0, text.length);
       }
       if (document.execCommand && document.execCommand("copy")) {
         if (preview) preview.setAttribute("readonly", "readonly");
@@ -1543,30 +1564,33 @@
   }
 
   function copyAiExportText() {
-    var text = updateAiExportPreview();
-    if (!text || !text.trim()) {
-      showToast("コピーする記録がありません");
+    updateAiExportPreview();
+    var preview = $("#aiExportPreview");
+    var text = preview ? preview.value : buildAiExportText(getAiExportOptions());
+    if (!isAiExportTextCopyable(text)) {
+      showToast("コピーできる記録がありません");
       return;
     }
     var onSuccess = function () {
-      var preview = $("#aiExportPreview");
       if (preview) preview.setAttribute("readonly", "readonly");
       showToast("コピーしました。ChatGPTなどに貼り付けて分析できます。");
     };
     var onFailure = function () {
-      var preview = $("#aiExportPreview");
       if (preview) {
-        if (preview.removeAttribute) preview.removeAttribute("readonly");
+        preview.disabled = false;
+        preview.setAttribute("readonly", "readonly");
         preview.value = text;
         preview.focus();
         preview.select();
+        if (preview.setSelectionRange) preview.setSelectionRange(0, text.length);
       }
       var status = $("#aiExportStatus");
-      if (status) status.textContent = "コピーできませんでした。テキストを手動で選択してください。";
-      showToast("コピーできませんでした。テキストを手動で選択してください。");
+      if (status) status.textContent = "コピーできませんでした。プレビュー欄から手動でコピーしてください。";
+      showToast("コピーできませんでした。プレビュー欄から手動でコピーしてください。");
     };
     if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(onSuccess).catch(function () {
+      navigator.clipboard.writeText(text).then(onSuccess).catch(function (error) {
+        console.warn("Clipboard API failed", error);
         if (fallbackCopyText(text)) onSuccess();
         else onFailure();
       });

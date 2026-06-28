@@ -328,6 +328,13 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+#monthlyCaloriesLabel {
+  overflow: visible;
+  line-height: 1.2;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .stat-value, .monthly-volume-total strong {
   position: relative;
   display: flex;
@@ -1424,9 +1431,10 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   min-height: 42px;
   padding: 0 12px;
 }
-.ai-export-form textarea {
-  min-height: 220px;
-  max-height: 42vh;
+.ai-export-form textarea,
+.ai-export-preview {
+  min-height: 240px;
+  max-height: 420px;
   padding: 12px;
   overflow: auto;
   color: var(--text-secondary);
@@ -1435,7 +1443,13 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   font-weight: 500;
   line-height: 1.55;
   resize: vertical;
-  white-space: pre;
+  white-space: pre-wrap;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.ai-export-preview:disabled {
+  opacity: 1;
+  -webkit-text-fill-color: var(--text-secondary);
 }
 .ai-export-custom-dates {
   display: grid;
@@ -1450,6 +1464,17 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   color: var(--text-muted);
   font-size: 10px;
   line-height: 1.5;
+}
+.ai-export-sheet .modal-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: 4px;
+  padding-top: 10px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 0%, transparent), var(--surface) 35%);
+}
+.ai-export-sheet .modal-actions .finish-button:disabled {
+  box-shadow: none;
 }
 
 .exercise-picker-sheet {
