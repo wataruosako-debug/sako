@@ -28,7 +28,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=M+PLUS+Rounded+1c:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260628-01">
+  <link rel="stylesheet" href="style.css?v=20260628-02">
 </head>
 <body>
   <div class="app-shell">
@@ -539,6 +539,7 @@
         <button id="settingsAppearanceButton" type="button"><strong>外観</strong><small id="settingsAppearanceSummary">端末に合わせる・Urban Blue</small></button>
         <button id="backupDataButton" type="button"><strong>データをバックアップ</strong><small>すべての記録をJSONファイルに保存</small></button>
         <button id="restoreDataButton" type="button"><strong>バックアップから復元</strong><small>保存したJSONファイルを読み込む</small></button>
+        <button id="aiExportButton" type="button"><strong>AI分析用にテキスト出力</strong><small>期間を選んで、記録をコピーできます</small></button>
         <button id="restoreSnapshotButton" type="button"><strong>直前の復元前データに戻す</strong><small>復元直前に自動保存したデータを使用</small></button>
         <input id="restoreDataInput" class="hidden" type="file" accept="application/json,.json">
       </div>
@@ -598,6 +599,27 @@
       <h2 id="dataRecoveryTitle">保存データを正常に読み込めませんでした</h2>
       <p class="modal-lead">元データは破損データとして退避しました。バックアップから復元するか、新規データとして開始してください。</p>
       <div class="modal-actions"><button id="exportCorruptDataButton" class="outline-button" type="button">破損データを書き出す</button><button id="recoveryRestoreButton" class="finish-button" type="button">バックアップから復元</button><button id="startFreshDataButton" class="outline-button danger-text" type="button">新規で開始</button></div>
+    </section>
+  </div>
+
+  <div id="aiExportModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="aiExportModal"></div>
+    <section class="modal-sheet modal-sheet--tall ai-export-sheet" role="dialog" aria-modal="true" aria-labelledby="aiExportTitle">
+      <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="aiExportModal" aria-label="閉じる">×</button>
+      <p class="section-kicker">EXPORT TEXT</p><h2 id="aiExportTitle">AI分析用にテキスト出力</h2>
+      <p class="modal-lead">期間と対象を選ぶと、ChatGPTなどに貼り付けやすい記録テキストを作れます。</p>
+      <div class="ai-export-form">
+        <label><span>期間</span><select id="aiExportRange"><option value="today">今日</option><option value="last7">直近7日</option><option value="last30">直近30日</option><option value="thisMonth">今月</option><option value="lastMonth">先月</option><option value="custom">任意期間</option></select></label>
+        <div id="aiExportCustomDates" class="ai-export-custom-dates hidden">
+          <label><span>開始日</span><input id="aiExportStartDate" type="date"></label>
+          <label><span>終了日</span><input id="aiExportEndDate" type="date"></label>
+        </div>
+        <label><span>対象</span><select id="aiExportTarget"><option value="all">すべて</option><option value="strength">筋トレのみ</option><option value="cardio">有酸素のみ</option><option value="exercise">特定種目</option></select></label>
+        <label id="aiExportExerciseField" class="hidden"><span>種目</span><select id="aiExportExercise"></select></label>
+        <label><span>出力プレビュー</span><textarea id="aiExportPreview" rows="12" readonly></textarea></label>
+        <p id="aiExportStatus" class="ai-export-status" role="status" aria-live="polite"></p>
+      </div>
+      <div class="modal-actions"><button id="copyAiExportButton" class="finish-button" type="button">テキストをコピー</button><button class="outline-button" type="button" data-close-modal="aiExportModal">閉じる</button></div>
     </section>
   </div>
 
@@ -726,6 +748,6 @@
     </section>
   </div>
 
-  <script src="script.js?v=20260628-01"></script>
+  <script src="script.js?v=20260628-02"></script>
 </body>
 </html>

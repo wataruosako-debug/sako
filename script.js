@@ -1331,6 +1331,251 @@
     });
   }
 
+  function addDaysToDateString(value, days) {
+    var date = dateFromString(value);
+    date.setDate(date.getDate() + days);
+    return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+  }
+
+  function formatDateForAiExport(value) {
+    return String(value || "").replace(/-/g, "/");
+  }
+
+  function locationLabelForAiExport(locationType) {
+    return locationType === "home" ? "自宅" : "ジム";
+  }
+
+  function getAiExportDateRange(rangeType) {
+    var today = todayString();
+    var current = dateFromString(today);
+    if (rangeType === "last7") return { start: addDaysToDateString(today, -6), end: today };
+    if (rangeType === "last30") return { start: addDaysToDateString(today, -29), end: today };
+    if (rangeType === "thisMonth") {
+      var endThis = new Date(current.getFullYear(), current.getMonth() + 1, 0);
+      return { start: current.getFullYear() + "-" + String(current.getMonth() + 1).padStart(2, "0") + "-01", end: endThis.getFullYear() + "-" + String(endThis.getMonth() + 1).padStart(2, "0") + "-" + String(endThis.getDate()).padStart(2, "0") };
+    }
+    if (rangeType === "lastMonth") {
+      var last = new Date(current.getFullYear(), current.getMonth() - 1, 1);
+      var endLast = new Date(current.getFullYear(), current.getMonth(), 0);
+      return { start: last.getFullYear() + "-" + String(last.getMonth() + 1).padStart(2, "0") + "-01", end: endLast.getFullYear() + "-" + String(endLast.getMonth() + 1).padStart(2, "0") + "-" + String(endLast.getDate()).padStart(2, "0") };
+    }
+    if (rangeType === "custom") {
+      var start = $("#aiExportStartDate") ? $("#aiExportStartDate").value : "";
+      var end = $("#aiExportEndDate") ? $("#aiExportEndDate").value : "";
+      if (!start) start = today;
+      if (!end) end = today;
+      if (start > end) { var temp = start; start = end; end = temp; }
+      return { start: start, end: end };
+    }
+    return { start: today, end: today };
+  }
+
+  function getAiExportTargetLabel(target, exerciseId) {
+    if (target === "strength") return "筋トレのみ";
+    if (target === "cardio") return "有酸素のみ";
+    if (target === "exercise") {
+      var exercise = getExercise(exerciseId);
+      return exercise ? exercise.name : "特定種目";
+    }
+    return "すべて";
+  }
+
+  function aiExportExerciseOptionsHtml() {
+    return data.exercises.slice().sort(function (a, b) {
+      if (a.category === "CARDIO" && b.category !== "CARDIO") return 1;
+      if (a.category !== "CARDIO" && b.category === "CARDIO") return -1;
+      return String(a.name).localeCompare(String(b.name), "ja");
+    }).map(function (exercise) {
+      var suffix = exercise.category === "CARDIO" ? "有酸素" : (CATEGORY_LABELS[exercise.category] || "筋トレ");
+      return '<option value="' + exercise.id + '">' + escapeHtml(exercise.name + "（" + suffix + "）") + '</option>';
+    }).join("");
+  }
+
+  function getAiExportOptions() {
+    var rangeType = $("#aiExportRange") ? $("#aiExportRange").value : "today";
+    var target = $("#aiExportTarget") ? $("#aiExportTarget").value : "all";
+    var range = getAiExportDateRange(rangeType);
+    return { rangeType: rangeType, startDate: range.start, endDate: range.end, target: target, exerciseId: target === "exercise" && $("#aiExportExercise") ? $("#aiExportExercise").value : "" };
+  }
+
+  function recordMatchesAiExportTarget(record, options) {
+    if (!record || options.target === "cardio") return false;
+    return options.target !== "exercise" || record.exerciseId === options.exerciseId;
+  }
+
+  function cardioMatchesAiExportTarget(cardio, options) {
+    if (!cardio || options.target === "strength") return false;
+    if (options.target !== "exercise") return true;
+    var exercise = getExercise(options.exerciseId);
+    return !!(exercise && exercise.category === "CARDIO" && cardioExerciseId(cardio.type) === exercise.id);
+  }
+
+  function getAiExportSessions(options) {
+    return data.sessions.filter(function (session) {
+      return session.date >= options.startDate && session.date <= options.endDate;
+    }).sort(function (a, b) {
+      var dateOrder = String(a.date || "").localeCompare(String(b.date || ""));
+      if (dateOrder) return dateOrder;
+      if (a.locationType !== b.locationType) return a.locationType === "gym" ? -1 : 1;
+      return String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
+    }).map(function (session) {
+      var records = getSessionRecords(session.id).filter(function (record) { return recordMatchesAiExportTarget(record, options) && getRecordSets(record.id).length; });
+      var cardios = getSessionCardios(session.id).filter(function (cardio) { return cardioMatchesAiExportTarget(cardio, options); });
+      var hasMemo = !!(session.memo && options.target !== "exercise");
+      if (!records.length && !cardios.length && !hasMemo) return null;
+      return { session: session, records: records, cardios: cardios };
+    }).filter(Boolean);
+  }
+
+  function formatWeightForAiExport(exercise, weightGram) {
+    if (exercise && exercise.category === "BODYWEIGHT") return "自重";
+    return formatNumberForInput(Number(weightGram || 0) / 1000, 0.1) + "kg";
+  }
+
+  function formatStrengthRecordForAiExport(record) {
+    var exercise = getExercise(record.exerciseId);
+    var lines = [exercise ? exercise.name : "不明な種目"];
+    getRecordSets(record.id).forEach(function (set, index) {
+      var parts = [formatWeightForAiExport(exercise, set.weight) + " × " + Number(set.reps || 0) + "回", "RIR " + (set.rir || "未入力"), "休憩" + Number(set.restSeconds || 0) + "秒"];
+      if (set.memo) parts.push("メモ：" + set.memo);
+      lines.push((Number(set.setNumber || 0) || index + 1) + "セット目：" + parts.join(" / "));
+    });
+    return lines.join("\n");
+  }
+
+  function formatCardioForAiExport(cardio) {
+    var result = calculateCardio(cardio);
+    var savedCalories = Number(cardio.calories);
+    var calories = Number.isFinite(savedCalories) && savedCalories > 0 ? savedCalories : result.calories;
+    var parts = [];
+    if (Number(cardio.durationMinutes || 0) > 0) parts.push(formatNumberForInput(Number(cardio.durationMinutes || 0), 1) + "分");
+    if (Number(cardio.distanceKm || 0) > 0) parts.push(formatNumberForInput(Number(cardio.distanceKm || 0), 0.1) + "km");
+    if (Number(cardio.inclinePercent || 0) > 0) parts.push("傾斜" + formatNumberForInput(Number(cardio.inclinePercent || 0), 0.5) + "%");
+    parts.push("約" + Math.round(calories) + "kcal");
+    if (cardio.memo) parts.push("メモ：" + cardio.memo);
+    return (cardio.type || "有酸素") + "：" + parts.join(" / ");
+  }
+
+  function buildAiExportText(options) {
+    options = options || getAiExportOptions();
+    var entries = getAiExportSessions(options);
+    if (!entries.length) return "指定した期間に記録がありません。";
+    var workoutDates = {};
+    var gymVisits = 0;
+    var homeVisits = 0;
+    var totalCalories = 0;
+    var totalVolume = 0;
+    var cardioDistance = 0;
+    entries.forEach(function (entry) {
+      workoutDates[entry.session.date] = true;
+      if (entry.session.locationType === "home") homeVisits += 1;
+      else gymVisits += 1;
+      totalCalories += calculateStrengthCaloriesForRecords(entry.records);
+      totalVolume += entry.records.reduce(function (sum, record) { return sum + calculateRecordStrengthVolume(record); }, 0);
+      entry.cardios.forEach(function (cardio) {
+        var savedCalories = Number(cardio.calories);
+        totalCalories += Number.isFinite(savedCalories) && savedCalories > 0 ? savedCalories : calculateCardio(cardio).calories;
+        cardioDistance += Number(cardio.distanceKm || 0);
+      });
+    });
+    var lines = ["【ジムログ トレーニング記録】", "期間：" + formatDateForAiExport(options.startDate) + "〜" + formatDateForAiExport(options.endDate), "対象：" + getAiExportTargetLabel(options.target, options.exerciseId), "【サマリー】", "トレーニング日数：" + Object.keys(workoutDates).length + "日", "ジム：" + gymVisits + "回", "自宅：" + homeVisits + "回", "概算消費カロリー：" + Math.round(totalCalories).toLocaleString("ja-JP") + "kcal", "総ボリューム：" + formatDraftVolume(totalVolume) + "kg", "有酸素距離：" + cardioDistance.toLocaleString("ja-JP", { maximumFractionDigits: 1 }) + "km"];
+    entries.forEach(function (entry) {
+      lines.push("");
+      lines.push("【" + formatDateForAiExport(entry.session.date) + " " + locationLabelForAiExport(entry.session.locationType) + "】");
+      entry.records.forEach(function (record) { lines.push(formatStrengthRecordForAiExport(record)); });
+      if (entry.cardios.length) {
+        lines.push("有酸素");
+        entry.cardios.forEach(function (cardio) { lines.push(formatCardioForAiExport(cardio)); });
+      }
+      if (entry.session.memo) {
+        lines.push("メモ：");
+        lines.push(entry.session.memo);
+      }
+    });
+    return lines.join("\n");
+  }
+
+  function updateAiExportPreview() {
+    var range = $("#aiExportRange");
+    var custom = $("#aiExportCustomDates");
+    var target = $("#aiExportTarget");
+    var exerciseField = $("#aiExportExerciseField");
+    if (custom && range) custom.classList.toggle("hidden", range.value !== "custom");
+    if (exerciseField && target) exerciseField.classList.toggle("hidden", target.value !== "exercise");
+    var text = buildAiExportText(getAiExportOptions());
+    var preview = $("#aiExportPreview");
+    if (preview) preview.value = text;
+    var status = $("#aiExportStatus");
+    if (status) status.textContent = text === "指定した期間に記録がありません。" ? text : "";
+    return text;
+  }
+
+  function openAiExportModal() {
+    var range = getAiExportDateRange("thisMonth");
+    $("#aiExportRange").value = "thisMonth";
+    $("#aiExportStartDate").value = range.start;
+    $("#aiExportEndDate").value = range.end;
+    $("#aiExportTarget").value = "all";
+    $("#aiExportExercise").innerHTML = aiExportExerciseOptionsHtml();
+    updateAiExportPreview();
+    closeModal("settingsMenuModal");
+    openModal("aiExportModal");
+  }
+
+  function fallbackCopyText(text) {
+    var preview = $("#aiExportPreview");
+    try {
+      if (preview) {
+        if (preview.removeAttribute) preview.removeAttribute("readonly");
+        preview.value = text;
+        preview.focus();
+        preview.select();
+      }
+      if (document.execCommand && document.execCommand("copy")) {
+        if (preview) preview.setAttribute("readonly", "readonly");
+        return true;
+      }
+    } catch (error) {
+      console.warn("Clipboard fallback failed", error);
+    }
+    if (preview) preview.setAttribute("readonly", "readonly");
+    return false;
+  }
+
+  function copyAiExportText() {
+    var text = updateAiExportPreview();
+    if (!text || !text.trim()) {
+      showToast("コピーする記録がありません");
+      return;
+    }
+    var onSuccess = function () {
+      var preview = $("#aiExportPreview");
+      if (preview) preview.setAttribute("readonly", "readonly");
+      showToast("コピーしました。ChatGPTなどに貼り付けて分析できます。");
+    };
+    var onFailure = function () {
+      var preview = $("#aiExportPreview");
+      if (preview) {
+        if (preview.removeAttribute) preview.removeAttribute("readonly");
+        preview.value = text;
+        preview.focus();
+        preview.select();
+      }
+      var status = $("#aiExportStatus");
+      if (status) status.textContent = "コピーできませんでした。テキストを手動で選択してください。";
+      showToast("コピーできませんでした。テキストを手動で選択してください。");
+    };
+    if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(onSuccess).catch(function () {
+        if (fallbackCopyText(text)) onSuccess();
+        else onFailure();
+      });
+      return;
+    }
+    if (fallbackCopyText(text)) onSuccess();
+    else onFailure();
+  }
+
   function renderHome() {
     renderMonthlySummary();
     renderCalendar();
@@ -4841,6 +5086,11 @@
     on("#backupDataButton", "click", function () { var button = this; runButtonLocked(button, function () { downloadBackupData("gymlog-backup"); }); });
     on("#restoreDataButton", "click", function () { $("#restoreDataInput").value = ""; $("#restoreDataInput").click(); });
     on("#restoreSnapshotButton", "click", restorePreRestoreSnapshot);
+    on("#aiExportButton", "click", openAiExportModal);
+    ["#aiExportRange", "#aiExportStartDate", "#aiExportEndDate", "#aiExportTarget", "#aiExportExercise"].forEach(function (selector) {
+      on(selector, "change", updateAiExportPreview);
+    });
+    on("#copyAiExportButton", "click", copyAiExportText);
     on("#restoreDataInput", "change", function () { readBackupFile(this.files && this.files[0]); });
     on("#exportCorruptDataButton", "click", downloadCorruptData);
     on("#recoveryRestoreButton", "click", function () { $("#restoreDataInput").value = ""; $("#restoreDataInput").click(); });
@@ -5580,6 +5830,8 @@
       calculateStrengthCaloriesForRecords: calculateStrengthCaloriesForRecords,
       calculateDraftStrengthVolume: calculateDraftStrengthVolume,
       calculateCardio: calculateCardio,
+      getAiExportDateRange: getAiExportDateRange,
+      buildAiExportText: buildAiExportText,
       savePreRestoreSnapshot: savePreRestoreSnapshot,
       applyPendingRestore: applyPendingRestore,
       blankData: blankData,

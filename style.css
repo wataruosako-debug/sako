@@ -1103,9 +1103,32 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   overflow-wrap: anywhere;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  line-height: 1.25;
+  text-overflow: clip;
+  line-height: 1.35;
 }
-.saved-item-text strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.draft-menu-card .saved-group-title strong,
+.draft-menu-card .saved-group-add strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}
+.draft-menu-card .saved-group-head {
+  align-items: flex-start;
+}
+.draft-menu-card .saved-group-add {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: flex-start;
+}
+.draft-menu-card .saved-group-add em {
+  margin-top: 2px;
+}
+.saved-item-text strong {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
 .saved-group-add small { margin-top: 2px; color: var(--text-muted); font-size: 9px; font-weight: 600; }
 .saved-group-add em { color: var(--brand-primary); font-size: 9px; font-style: normal; font-weight: 800; white-space: nowrap; }
 .saved-group-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
@@ -1371,6 +1394,63 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .profile-form .finish-button { margin-top: 4px; }
 .data-actions { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border); text-align: center; }
 .data-actions button { border: 0; color: var(--danger); background: transparent; font-size: 10px; }
+.ai-export-sheet { display: flex; flex-direction: column; }
+.ai-export-form {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+}
+.ai-export-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 800;
+}
+.ai-export-form input,
+.ai-export-form select,
+.ai-export-form textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  outline: 0;
+  color: var(--text-primary);
+  background: var(--surface-subtle);
+  font: inherit;
+}
+.ai-export-form input,
+.ai-export-form select {
+  min-height: 42px;
+  padding: 0 12px;
+}
+.ai-export-form textarea {
+  min-height: 220px;
+  max-height: 42vh;
+  padding: 12px;
+  overflow: auto;
+  color: var(--text-secondary);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Noto Sans Mono", monospace;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.55;
+  resize: vertical;
+  white-space: pre;
+}
+.ai-export-custom-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.ai-export-custom-dates.hidden,
+.ai-export-form label.hidden { display: none; }
+.ai-export-status {
+  min-height: 18px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
 
 .exercise-picker-sheet {
   display: flex;
