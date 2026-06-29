@@ -3412,6 +3412,50 @@
     }).join("");
   }
 
+  function addExerciseToDraftMenu(exerciseId) {
+    if (!draft) return false;
+    var exercise = getExercise(exerciseId);
+    if (!exercise) return false;
+    updateRecentExercise(exerciseId);
+    if (exercise.category === "CARDIO") {
+      draft.pendingCardioTypes = draft.pendingCardioTypes || [];
+      var alreadyRecorded = draft.cardios.some(function (cardio) { return cardio.type === exercise.name; });
+      var alreadyPending = draft.pendingCardioTypes.indexOf(exercise.name) >= 0;
+      if (!alreadyRecorded && !alreadyPending) draft.pendingCardioTypes.push(exercise.name);
+    } else {
+      ensureDraftRecord(exercise.id);
+    }
+    applyDraftGuideMenuOrder(draftGuideMenuEntries().map(function (entry) { return entry.key; }));
+    renderSavedSets();
+    renderSavedCardios();
+    renderGuideStartSummary();
+    saveDraftNow();
+    return true;
+  }
+
+  function openGuideStartExercisePicker() {
+    if (!draft) return;
+    exercisePickerMode = "guideStartAdd";
+    pendingExerciseId = null;
+    activeExerciseBodyPart = "chest";
+    $("#exerciseModalTitle").textContent = "別の種目を追加";
+    $("#confirmExerciseSelection").textContent = "完了";
+    $("#confirmExerciseSelection").classList.add("hidden");
+    $("#confirmExerciseSelection").disabled = true;
+    $("#exerciseSearch").value = "";
+    renderExerciseBodyPartTabs();
+    renderExerciseList();
+    openModal("exerciseModal");
+  }
+
+  function addExerciseFromGuideStartPicker(exerciseId) {
+    var added = addExerciseToDraftMenu(exerciseId);
+    pendingExerciseId = null;
+    exercisePickerMode = "workout";
+    closeModal("exerciseModal");
+    if (added) showToast("種目を追加しました");
+  }
+
   function openGuideHelp() {
     if (!isGuideModeEnabled()) {
       showToast("ガイドモードは設定でOFFです");
@@ -4295,7 +4339,7 @@
   function cancelExerciseSelection() {
     pendingExerciseId = null;
     routinePendingExerciseIds = [];
-    if (exercisePickerMode === "guideAdd" || exercisePickerMode === "guideReplace") {
+    if (exercisePickerMode === "guideAdd" || exercisePickerMode === "guideReplace" || exercisePickerMode === "guideStartAdd") {
       exercisePickerMode = "workout";
       closeModal("exerciseModal");
       return;
@@ -4314,6 +4358,13 @@
       pendingExerciseId = null;
       closeModal("exerciseModal");
       renderRoutineEditor();
+      return;
+    }
+    if (exercisePickerMode === "guideStartAdd") {
+      if (!pendingExerciseId) return;
+      var startExerciseId = pendingExerciseId;
+      pendingExerciseId = null;
+      addExerciseFromGuideStartPicker(startExerciseId);
       return;
     }
     if (exercisePickerMode === "guideAdd" || exercisePickerMode === "guideReplace") {
@@ -5506,6 +5557,10 @@
           addExerciseToGuide(guideAddExerciseId, true);
           return;
         }
+        if (exercisePickerMode === "guideStartAdd") {
+          addExerciseFromGuideStartPicker(option.dataset.exerciseId);
+          return;
+        }
         pendingExerciseId = option.dataset.exerciseId;
         $("#confirmExerciseSelection").disabled = false;
         renderExerciseList();
@@ -5565,6 +5620,10 @@
           closeModal("exerciseModal");
           return;
         }
+        if (exercisePickerMode === "guideStartAdd") {
+          addExerciseFromGuideStartPicker(existingExercise.id);
+          return;
+        }
         chooseExercise(existingExercise.id);
         showToast("同じ名前の種目を選択しました");
         return;
@@ -5581,6 +5640,8 @@
         else replaceGuideExercise(exercise.id);
         exercisePickerMode = "workout";
         closeModal("exerciseModal");
+      } else if (exercisePickerMode === "guideStartAdd") {
+        addExerciseFromGuideStartPicker(exercise.id);
       } else chooseExercise(exercise.id);
       showToast("新しい種目を追加しました");
     });
@@ -5713,6 +5774,7 @@
       });
     });
     on("#confirmGuideStart", "click", startGuideModeFromModal);
+    on("#guideStartAddExerciseButton", "click", openGuideStartExercisePicker);
     on("#editGuideMenuButton", "click", function () { closeModal("guideStartModal"); });
     on("#guideBackHomeButton", "click", openGuideExit);
     on("#guideExitButton", "click", openGuideExit);
@@ -5910,7 +5972,7 @@
   function handleModalCloseDelegatedClick(event) {
     var close = event.target.closest("[data-close-modal]");
     if (close) {
-      if (close.dataset.closeModal === "exerciseModal" && (exercisePickerMode === "routine" || exercisePickerMode === "guideAdd" || exercisePickerMode === "guideReplace")) cancelExerciseSelection();
+      if (close.dataset.closeModal === "exerciseModal" && (exercisePickerMode === "routine" || exercisePickerMode === "guideAdd" || exercisePickerMode === "guideReplace" || exercisePickerMode === "guideStartAdd")) cancelExerciseSelection();
       else {
         if (close.dataset.closeModal === "copyConflictModal") cancelPendingConflict();
         else if (close.dataset.closeModal === "copyDestinationModal") { copySourceSessionId = null; closeModal("copyDestinationModal"); }
@@ -5958,7 +6020,7 @@
       if (event.key !== "Escape") return;
       var open = $$(".modal.is-open");
       if (!open.length) return;
-      if (open[open.length - 1].id === "exerciseModal" && (exercisePickerMode === "routine" || exercisePickerMode === "guideAdd" || exercisePickerMode === "guideReplace")) cancelExerciseSelection();
+      if (open[open.length - 1].id === "exerciseModal" && (exercisePickerMode === "routine" || exercisePickerMode === "guideAdd" || exercisePickerMode === "guideReplace" || exercisePickerMode === "guideStartAdd")) cancelExerciseSelection();
       else if (open[open.length - 1].id === "nextSetConfirmModal") closeNextSetInput();
       else if (open[open.length - 1].id === "copyConflictModal") cancelPendingConflict();
       else if (open[open.length - 1].id === "copyDestinationModal") { copySourceSessionId = null; closeModal("copyDestinationModal"); }
