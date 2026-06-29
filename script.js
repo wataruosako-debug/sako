@@ -3027,7 +3027,8 @@
       status: "pending",
       currentSetIndex: 0,
       plannedSets: plannedSets && plannedSets.length ? plannedSets : [0, 1, 2].map(function (index) { return guideDefaultSetForExercise(exercise.id, index); }),
-      completedSets: []
+      completedSets: [],
+      isAddingExtraSets: false
     };
   }
 
@@ -3342,7 +3343,11 @@
       $("#guideFinishedExerciseName").textContent = guideItemName(item);
       $("#guideFinishedSetSummary").textContent = finishedMeta.completed.length + "セット目を完了しました";
       $("#guideChooseNextExerciseButton").textContent = hasNextSet ? "次のセットを行う" : "別の種目を行う";
+      $("#guideAddExtraSetButton").classList.toggle("hidden", hasNextSet);
       $("#guideEndMenuAfterSetButton").textContent = hasNextSet ? "別の種目を行う" : "メニューを終了";
+      $("#guideChooseNextExerciseButton").classList.toggle("finish-button", hasNextSet);
+      $("#guideChooseNextExerciseButton").classList.toggle("outline-button", !hasNextSet);
+      $("#guideAddExtraSetButton").classList.toggle("finish-button", !hasNextSet);
       renderGuideRestTimer();
       renderGuideMenuList();
       return;
@@ -3525,6 +3530,7 @@
     var item = guideItems(state).find(function (entry) { return entry.id === itemId; });
     if (!item || item.status === "skipped") return;
     stopRestTimer();
+    clearGuideExtraSetMode(state);
     guideSetSaveLocked = false;
     captureGuideInputToState();
     state.lastAction = null;
@@ -3564,6 +3570,7 @@
   }
 
   function showGuideNextExercisePicker() {
+    clearGuideExtraSetMode();
     moveGuideToSelectNext("alternate");
   }
 
@@ -3583,14 +3590,32 @@
     return guideItemCompletedSets(item).length < guideItemPlannedSets(item).length;
   }
 
+  function clearGuideExtraSetMode(state) {
+    var targetState = state || guideState();
+    if (!targetState) return;
+    guideItems(targetState).forEach(function (item) {
+      if (item && item.type === "strength") item.isAddingExtraSets = false;
+    });
+  }
+
   function handleGuideCompletePrimaryAction() {
     if (guideCompleteHasNextSet()) finishGuideRestAndContinue();
     else showGuideNextExercisePicker();
   }
 
+  function handleGuideAddExtraSetAction() {
+    var item = guideCurrentItem();
+    if (!item || item.type !== "strength") return;
+    item.isAddingExtraSets = true;
+    addExtraGuideSetToCurrentItem();
+  }
+
   function handleGuideCompleteSecondaryAction() {
     if (guideCompleteHasNextSet()) showGuideNextExercisePicker();
-    else openGuideExit();
+    else {
+      clearGuideExtraSetMode();
+      openGuideExit();
+    }
   }
 
   function rememberGuideSkipAction(item) {
@@ -3645,7 +3670,9 @@
     var state = guideState();
     var item = guideCurrentItem();
     if (!state || !item) return;
+    stopRestTimer();
     guideSetSaveLocked = false;
+    item.isAddingExtraSets = true;
     item.status = "active";
     state.status = "set";
     state.currentItemId = item.id;
@@ -3855,6 +3882,7 @@
     var state = guideState();
     if (!state) return;
     captureGuideInputToState();
+    clearGuideExtraSetMode(state);
     var lines = guideItems(state).map(function (item) {
       var detail = item.type === "cardio" ? (item.completedCardio ? "完了" : "有酸素") : guideItemCompletedSets(item).length + "セット";
       return guideStatusLabel(item.status) + "：" + guideItemName(item) + "　" + detail;
@@ -3891,6 +3919,7 @@
   function prepareGuideDraftForSave() {
     if (!isGuideActive()) return true;
     captureGuideInputToState();
+    clearGuideExtraSetMode(draft.guideState);
     var records = guideCompletedRecords();
     if (!records.length && !(draft.cardios || []).length) {
       showToast("完了したセットがありません");
@@ -3905,6 +3934,7 @@
   function convertGuideDraftToNormalInput(captureCurrentInput) {
     if (!isGuideActive()) return false;
     if (captureCurrentInput !== false) captureGuideInputToState();
+    clearGuideExtraSetMode(draft.guideState);
     guideItems(draft.guideState).forEach(function (item) {
       if (item.type !== "strength") return;
       var completed = guideItemCompletedSets(item);
@@ -5783,6 +5813,7 @@
     on("#guideMenuUndoLastActionButton", "click", undoLastGuideAction);
     on("#guideExercisePickerUndoButton", "click", undoLastGuideAction);
     on("#guideChooseNextExerciseButton", "click", handleGuideCompletePrimaryAction);
+    on("#guideAddExtraSetButton", "click", handleGuideAddExtraSetAction);
     on("#guideEndMenuAfterSetButton", "click", handleGuideCompleteSecondaryAction);
     on("#guideStartSummary", "click", function (event) {
       var button = event.target.closest("[data-guide-start-exercise]");

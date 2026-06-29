@@ -2117,6 +2117,15 @@ body.modal-open { overflow: hidden; }
   font-size: 14px;
   font-weight: 800;
 }
+.guide-complete-actions {
+  gap: 10px;
+}
+.guide-complete-actions button {
+  min-height: 48px;
+}
+.guide-extra-set-button {
+  background: var(--brand-primary);
+}
 .timer-setting-help {
   display: block;
   margin: -4px 0 8px 28px;
