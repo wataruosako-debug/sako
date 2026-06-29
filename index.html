@@ -28,7 +28,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=M+PLUS+Rounded+1c:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260628-04">
+  <link rel="stylesheet" href="style.css?v=20260629-01">
 </head>
 <body>
   <div class="app-shell">
@@ -393,16 +393,11 @@
 
           <section id="guideSelectNextCard" class="guide-card hidden">
             <button id="guideUndoLastActionButton" class="guide-undo-button hidden" type="button">戻る</button>
-            <h2 id="guideSelectNextTitle">次に行う種目を選んでください</h2>
+            <h2 id="guideSelectNextTitle">別の種目を選んでください</h2>
             <p id="guideSelectNextText">種目をタップするとすぐ始まります。</p>
             <div id="guideNextChoiceList" class="guide-choice-list" role="list" aria-label="次に行う種目"></div>
             <div class="guide-next-actions">
-              <button id="guideStartSelectedItem" class="finish-button hidden" type="button">選んだ種目を開始</button>
-              <button id="guideStartNextPending" class="outline-button hidden" type="button">次の候補を開始</button>
-              <button id="guideOpenDeferredList" class="outline-button hidden" type="button">後回し中の種目から選ぶ</button>
-              <button id="guideOpenMenuFromNext" class="outline-button hidden" type="button">メニュー一覧から選ぶ</button>
-              <button id="guideAddExerciseButton" class="outline-button outline-button--blue" type="button">別の種目を行う</button>
-              <button id="endGuideWorkoutButton" class="outline-button danger-text hidden" type="button">トレーニングを終了</button>
+              <button id="guideAddExerciseButton" class="outline-button outline-button--blue" type="button">メニュー外の種目を行う</button>
             </div>
           </section>
         </div>
@@ -662,15 +657,15 @@
     <div class="modal-backdrop" data-close-modal="guideStartModal"></div>
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="guideStartTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideStartModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">START GUIDE</p><h2 id="guideStartTitle">このメニューを開始しますか？</h2>
+      <p class="section-kicker">START GUIDE</p><h2 id="guideStartTitle">どの種目から始めますか？</h2>
       <div id="guideStartSummary" class="guide-start-summary"></div>
-      <fieldset class="guide-start-options">
+      <fieldset class="guide-start-options hidden">
         <legend>開始位置</legend>
         <label><input type="radio" name="guideStartMode" value="first" checked> 最初から</label>
         <label><input type="radio" name="guideStartMode" value="choose"> 開始する種目を選ぶ</label>
         <select id="guideStartExerciseSelect" class="hidden" aria-label="開始する種目"></select>
       </fieldset>
-      <div class="modal-actions"><button id="confirmGuideStart" class="finish-button" type="button">開始する</button><button id="editGuideMenuButton" class="outline-button" type="button">メニューを編集</button><button class="outline-button" type="button" data-close-modal="guideStartModal">キャンセル</button></div>
+      <div class="modal-actions"><button id="confirmGuideStart" class="finish-button" type="button">最初から開始</button><button id="editGuideMenuButton" class="outline-button" type="button">メニューを編集</button><button class="outline-button" type="button" data-close-modal="guideStartModal">キャンセル</button></div>
     </section>
   </div>
 
@@ -748,6 +743,6 @@
     </section>
   </div>
 
-  <script src="script.js?v=20260628-04"></script>
+  <script src="script.js?v=20260629-01"></script>
 </body>
 </html>
