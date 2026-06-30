@@ -161,7 +161,7 @@
         <header class="sub-header">
           <button id="backHomeButton" class="icon-button icon-button--back" type="button" aria-label="ホームへ戻る">‹</button>
           <div class="sub-header-title"><span id="locationBadge" class="location-badge">GYM</span><h1 id="workoutTitle">トレーニング記録</h1></div>
-          <button id="finishTopButton" class="text-button" type="button">完了</button>
+          <button id="finishTopButton" class="text-button" type="button">保存へ</button>
         </header>
 
         <div class="workout-body">
@@ -184,10 +184,19 @@
             <div id="savedCardioList" class="saved-list saved-cardio-list"></div>
             <div id="guideModeActions" class="guide-mode-actions hidden">
               <button id="startGuideModeButton" class="guide-start-button" type="button">ガイドモードで開始</button>
-              <button id="guideModeHelpButton" class="guide-help-button" type="button">ガイドモードとは？</button>
             </div>
-            <button id="chooseAnotherExercise" class="draft-menu-add-button draft-menu-add-button--bottom hidden" type="button">＋ 種目を追加</button>
-            <div class="routine-workout-actions"><button id="openRoutineListButton" type="button">ルーティーンから追加</button><button id="saveRoutineButton" type="button">ルーティーンとして保存</button></div>
+            <div class="draft-menu-edit-panel">
+              <p>メニュー編集</p>
+              <div class="draft-menu-edit-actions">
+                <button id="chooseAnotherExercise" class="draft-menu-add-button draft-menu-add-button--bottom hidden" type="button">種目を追加</button>
+                <button id="openRoutineListButton" type="button">ルーティーンから追加</button>
+                <button id="startDraftSortButton" type="button">並べ替え</button>
+                <button id="saveDraftSortButton" class="hidden" type="button">この順番で保存</button>
+                <button id="cancelDraftSortButton" class="hidden" type="button">並べ替えをキャンセル</button>
+                <button id="saveRoutineButton" type="button">ルーティーンとして保存</button>
+              </div>
+            </div>
+            <button id="guideModeHelpButton" class="guide-help-button guide-help-button--link" type="button">ガイドモードとは？</button>
           </section>
 
           <section class="flow-card exercise-section hidden">
@@ -335,18 +344,19 @@
               </div>
             </div>
 
+            <fieldset class="guide-input-block guide-rir-block">
+              <legend>あと何回できそう？</legend>
+              <div id="guideRirChoices" class="stacked-choices guide-rir-compact">
+                <button type="button" data-guide-rir="0"><strong>0回</strong><span>限界</span></button>
+                <button type="button" data-guide-rir="1"><strong>1回</strong><span>かなりキツい</span></button>
+                <button type="button" data-guide-rir="2-3"><strong>2〜3回</strong><span>結構キツい</span></button>
+                <button type="button" data-guide-rir="4+"><strong>4回以上</strong><span>まだ余裕</span></button>
+                <button type="button" data-guide-rir=""><strong>未入力</strong><span>あとで振り返る</span></button>
+              </div>
+            </fieldset>
+
             <details class="guide-details">
               <summary>詳細を入力する</summary>
-              <fieldset class="guide-input-block">
-                <legend>あと何回できそう？</legend>
-                <div id="guideRirChoices" class="stacked-choices">
-                  <button type="button" data-guide-rir="0"><strong>0回</strong><span>限界</span></button>
-                  <button type="button" data-guide-rir="1"><strong>1回</strong><span>かなりキツい</span></button>
-                  <button type="button" data-guide-rir="2-3"><strong>2〜3回</strong><span>結構キツい</span></button>
-                  <button type="button" data-guide-rir="4+"><strong>4回以上</strong><span>まだ余裕</span></button>
-                  <button type="button" data-guide-rir=""><strong>未入力</strong><span>あとで振り返る</span></button>
-                </div>
-              </fieldset>
               <fieldset class="guide-input-block">
                 <legend>休憩時間</legend>
                 <div id="guideRestChoices" class="choice-grid choice-grid--five choice-grid--small">
@@ -357,28 +367,34 @@
             </details>
 
             <button id="completeGuideSetButton" class="finish-button" type="button">このセットを完了</button>
-            <div class="guide-secondary-actions">
-              <button id="deferGuideItemButton" type="button">この種目を後回し</button>
-              <button id="replaceGuideItemButton" type="button">別の種目に変更</button>
-              <button id="skipGuideItemButton" type="button">今回はやらない</button>
-            </div>
+            <details class="guide-other-actions">
+              <summary>その他の操作</summary>
+              <div class="guide-secondary-actions">
+                <button id="deferGuideItemButton" type="button">この種目を後回し</button>
+                <button id="replaceGuideItemButton" type="button">別の種目に変更</button>
+                <button id="skipGuideItemButton" type="button">今回はやらない</button>
+              </div>
+            </details>
           </section>
 
           <section id="guideCardioCard" class="guide-card guide-cardio-card hidden">
             <p class="section-kicker">有酸素</p>
             <h2 id="guideCardioTitle">ウォーキング</h2>
             <div class="cardio-grid cardio-grid--guide">
-              <label><span>時間</span><div><input id="guideCardioDuration" type="number" min="0" step="1" inputmode="numeric"><b>分</b></div></label>
-              <label><span>距離</span><div><input id="guideCardioDistance" type="number" min="0" step="0.1" inputmode="decimal"><b>km</b></div></label>
-              <label><span>傾斜</span><div><input id="guideCardioIncline" type="number" min="0" step="0.5" inputmode="decimal"><b>%</b></div></label>
+              <label><span>時間</span><div class="numeric-stepper"><button type="button" data-guide-number-target="guideCardioDuration" data-guide-number-direction="-1" aria-label="時間を減らす">−</button><div class="numeric-stepper-value"><input id="guideCardioDuration" type="number" min="0" step="1" inputmode="numeric"><b>分</b></div><button type="button" data-guide-number-target="guideCardioDuration" data-guide-number-direction="1" aria-label="時間を増やす">＋</button></div><div class="large-step-row"><button type="button" data-guide-large-target="guideCardioDuration" data-guide-large-direction="-1" data-guide-large-step="10">−10分</button><button type="button" data-guide-large-target="guideCardioDuration" data-guide-large-direction="1" data-guide-large-step="10">＋10分</button></div></label>
+              <label><span>距離</span><div class="numeric-stepper"><button type="button" data-guide-number-target="guideCardioDistance" data-guide-number-direction="-1" aria-label="距離を減らす">−</button><div class="numeric-stepper-value"><input id="guideCardioDistance" type="number" min="0" step="0.1" inputmode="decimal"><b>km</b></div><button type="button" data-guide-number-target="guideCardioDistance" data-guide-number-direction="1" aria-label="距離を増やす">＋</button></div><div class="large-step-row"><button type="button" data-guide-large-target="guideCardioDistance" data-guide-large-direction="-1" data-guide-large-step="1">−1.0km</button><button type="button" data-guide-large-target="guideCardioDistance" data-guide-large-direction="1" data-guide-large-step="1">＋1.0km</button></div></label>
+              <label><span>傾斜</span><div class="numeric-stepper numeric-stepper--wide"><button type="button" data-guide-number-target="guideCardioIncline" data-guide-number-direction="-1" aria-label="傾斜を減らす">−</button><div class="numeric-stepper-value"><input id="guideCardioIncline" type="number" min="0" max="40" step="0.5" inputmode="decimal"><b>%</b></div><button type="button" data-guide-number-target="guideCardioIncline" data-guide-number-direction="1" aria-label="傾斜を増やす">＋</button></div><div class="large-step-row"><button type="button" data-guide-large-target="guideCardioIncline" data-guide-large-direction="-1" data-guide-large-step="10">−10%</button><button type="button" data-guide-large-target="guideCardioIncline" data-guide-large-direction="1" data-guide-large-step="10">＋10%</button></div></label>
               <label class="cardio-memo-field"><span>メモ</span><input id="guideCardioMemo" type="text" maxlength="80" placeholder="感覚をメモ"></label>
             </div>
             <p id="guideCardioPreview" class="cardio-preview">速度 <strong>--</strong> / 概算消費カロリー <strong>--</strong></p>
             <button id="completeGuideCardioButton" class="finish-button" type="button">この有酸素を完了</button>
-            <div class="guide-secondary-actions">
-              <button id="replaceGuideCardioButton" type="button">別の種目に変更</button>
-              <button id="skipGuideCardioButton" type="button">今回はやらない</button>
-            </div>
+            <details class="guide-other-actions">
+              <summary>その他の操作</summary>
+              <div class="guide-secondary-actions">
+                <button id="replaceGuideCardioButton" type="button">別の種目に変更</button>
+                <button id="skipGuideCardioButton" type="button">今回はやらない</button>
+              </div>
+            </details>
           </section>
 
           <section id="guideFinishedSetCard" class="guide-card guide-finished-card hidden">
@@ -603,7 +619,7 @@
     <section class="modal-sheet modal-sheet--tall ai-export-sheet" role="dialog" aria-modal="true" aria-labelledby="aiExportTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="aiExportModal" aria-label="閉じる">×</button>
       <p class="section-kicker">EXPORT TEXT</p><h2 id="aiExportTitle">AI分析用にテキスト出力</h2>
-      <p class="modal-lead">期間と対象を選ぶと、ChatGPTなどに貼り付けやすい記録テキストを作れます。</p>
+      <p class="modal-lead">コピー後、ChatGPTなどに貼り付けて分析できます。</p>
       <div class="ai-export-form">
         <label><span>期間</span><select id="aiExportRange"><option value="today">今日</option><option value="last7">直近7日</option><option value="last30">直近30日</option><option value="thisMonth">今月</option><option value="lastMonth">先月</option><option value="custom">任意期間</option></select></label>
         <div id="aiExportCustomDates" class="ai-export-custom-dates hidden">
@@ -659,6 +675,7 @@
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="guideStartTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideStartModal" aria-label="閉じる">×</button>
       <p class="section-kicker">START GUIDE</p><h2 id="guideStartTitle">どの種目から始めますか？</h2>
+      <p class="modal-lead">種目をタップするとすぐ始まります。</p>
       <div id="guideStartSummary" class="guide-start-summary"></div>
       <fieldset class="guide-start-options hidden">
         <legend>開始位置</legend>
@@ -666,7 +683,7 @@
         <label><input type="radio" name="guideStartMode" value="choose"> 開始する種目を選ぶ</label>
         <select id="guideStartExerciseSelect" class="hidden" aria-label="開始する種目"></select>
       </fieldset>
-      <div class="modal-actions"><button id="confirmGuideStart" class="finish-button" type="button">最初から開始</button><button id="guideStartAddExerciseButton" class="outline-button outline-button--blue" type="button">別の種目を追加</button><button id="editGuideMenuButton" class="outline-button" type="button">メニューを編集</button><button class="outline-button" type="button" data-close-modal="guideStartModal">キャンセル</button></div>
+      <div class="modal-actions"><button id="confirmGuideStart" class="finish-button hidden" type="button">最初から開始</button><button id="guideStartAddExerciseButton" class="outline-button outline-button--blue" type="button">メニュー外の種目を行う</button><button class="outline-button" type="button" data-close-modal="guideStartModal">キャンセル</button></div>
     </section>
   </div>
 
@@ -677,7 +694,7 @@
       <p class="section-kicker">GUIDE MENU</p><h2 id="guideMenuTitle">メニュー一覧</h2>
       <button id="guideMenuUndoLastActionButton" class="guide-undo-button hidden" type="button">戻る</button>
       <div id="guideMenuList" class="guide-menu-list"></div>
-      <button id="guideMenuAddExercise" class="outline-button outline-button--blue" type="button">別の種目を追加</button>
+      <button id="guideMenuAddExercise" class="outline-button outline-button--blue" type="button">メニュー外の種目を行う</button>
     </section>
   </div>
 
@@ -686,6 +703,7 @@
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="guideExitTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideExitModal" aria-label="閉じる">×</button>
       <p class="section-kicker">FINISH GUIDE</p><h2 id="guideExitTitle">今日のメニューを保存しますか？</h2>
+      <p class="modal-lead">ここまで入力したセットは保存途中として残ります。</p>
       <div id="guideExitSummary" class="guide-exit-summary"></div>
       <div class="modal-actions"><button id="saveGuideProgress" class="finish-button" type="button">保存して終了</button><button id="continueGuideButton" class="outline-button" type="button">今日のメニューに戻る</button><button id="cancelGuideExit" class="outline-button" type="button">キャンセル</button></div>
     </section>

@@ -1051,7 +1051,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .draft-stat--calories strong { color: var(--calorie-color); }
 .draft-stat--volume { border-color: color-mix(in srgb, var(--brand-primary) 24%, var(--border)); background: var(--brand-primary-soft); }
 .draft-stat--volume strong { color: var(--brand-primary); }
-.draft-menu-add-button, .saved-set-add-button, .empty-draft-actions button, .routine-workout-actions button, .planned-routine button, .summary-session-actions button {
+.draft-menu-add-button, .saved-set-add-button, .empty-draft-actions button, .routine-workout-actions button, .draft-menu-edit-actions button, .planned-routine button, .summary-session-actions button {
   border: 1px solid color-mix(in srgb, var(--brand-primary) 28%, var(--border));
   border-radius: 11px;
   color: var(--brand-primary);
@@ -1204,6 +1204,54 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .saved-group--cardio .saved-group-actions > span { color: var(--home-color-dark); background: var(--home-color-soft); }
 .routine-workout-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }
 .routine-workout-actions button { min-height: 40px; padding: 0 10px; color: var(--text-secondary); background: var(--surface-subtle); border-color: var(--border); }
+.draft-menu-edit-panel {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--surface-subtle);
+}
+.draft-menu-edit-panel p {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+.draft-menu-edit-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+.draft-menu-edit-actions button {
+  min-height: 40px;
+  padding: 0 9px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border-color: var(--border);
+}
+.guide-help-button--link {
+  width: 100%;
+  min-height: 40px;
+  margin: 8px 0 0;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 30%, var(--border));
+  border-radius: 12px;
+  color: var(--brand-primary);
+  background: var(--brand-primary-soft);
+  box-shadow: none;
+  font-size: 11px;
+  font-weight: 800;
+}
+.guide-help-button--link.is-seen {
+  width: auto;
+  min-height: 28px;
+  margin-right: auto;
+  padding: 0 8px;
+  border: 0;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 10px;
+}
 .two-column-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .two-column-inputs label > div { position: relative; display: flex; align-items: center; }
 .two-column-inputs label input { padding-right: 33px; }
@@ -1223,7 +1271,21 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 #weightInput, .numeric-stepper input { appearance: textfield; -moz-appearance: textfield; }
 #weightInput::-webkit-inner-spin-button, #weightInput::-webkit-outer-spin-button,
 .numeric-stepper input::-webkit-inner-spin-button, .numeric-stepper input::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
-.calorie-preview { display: flex; justify-content: space-between; gap: 8px; padding: 10px 11px; border-radius: 11px; color: var(--text-muted); background: var(--surface-subtle); font-size: 9px; }
+.calorie-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 6px 10px;
+  padding: 10px 11px;
+  border-radius: 11px;
+  color: var(--text-muted);
+  background: var(--surface-subtle);
+  font-size: 9px;
+}
+.calorie-preview span {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
 .calorie-preview strong { color: var(--text-primary); font-size: 10px; }
 .session-memo { margin: 18px 2px 12px; }
 .session-memo textarea { resize: vertical; }
@@ -1791,6 +1853,29 @@ body.modal-open { overflow: hidden; }
   font-weight: 700;
   box-shadow: none;
 }
+.guide-help-button.guide-help-button--link {
+  width: 100%;
+  min-height: 40px;
+  margin: 8px 0 0;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 30%, var(--border));
+  border-radius: 12px;
+  color: var(--brand-primary);
+  background: var(--brand-primary-soft);
+  font-size: 11px;
+  font-weight: 800;
+}
+.guide-help-button.guide-help-button--link.is-seen {
+  width: auto;
+  min-height: 28px;
+  margin-right: auto;
+  padding: 0 8px;
+  border: 0;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 10px;
+  font-weight: 700;
+}
 #guideWorkoutScreen { padding: 0 0 calc(28px + env(safe-area-inset-bottom)); }
 .guide-body {
   display: grid;
@@ -1989,6 +2074,39 @@ body.modal-open { overflow: hidden; }
 .guide-details[open] summary { border-bottom: 1px solid var(--border); }
 .guide-details .guide-input-block { margin: 12px 12px 0; }
 .guide-details .memo-field { margin: 12px; }
+.guide-rir-block {
+  margin-top: 12px;
+}
+.guide-rir-compact {
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+.guide-rir-compact button {
+  min-height: 42px;
+  padding: 9px 10px;
+}
+.guide-other-actions {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.guide-other-actions summary {
+  min-height: 42px;
+  padding: 12px 14px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+}
+.guide-other-actions[open] {
+  padding-bottom: 10px;
+}
+.guide-other-actions[open] summary {
+  border-bottom: 1px solid var(--border);
+}
+.guide-other-actions .guide-secondary-actions {
+  margin: 10px;
+}
 .guide-secondary-actions, .guide-next-actions {
   display: grid;
   gap: 8px;
@@ -2041,7 +2159,7 @@ body.modal-open { overflow: hidden; }
   font-size: 11px;
   font-weight: 800;
 }
-.cardio-grid--guide label > div {
+.cardio-grid--guide label > div:not(.large-step-row):not(.numeric-stepper) {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -2061,6 +2179,43 @@ body.modal-open { overflow: hidden; }
   font-size: 16px;
   font-weight: 700;
 }
+.cardio-grid--guide .numeric-stepper {
+  display: grid !important;
+  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  overflow: hidden;
+  background: var(--surface-subtle);
+}
+.cardio-grid--guide .numeric-stepper > button {
+  min-height: 44px;
+  border: 0;
+  color: var(--brand-primary);
+  background: var(--brand-primary-soft);
+  font-size: 18px;
+  font-weight: 800;
+}
+.cardio-grid--guide .numeric-stepper-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.cardio-grid--guide .numeric-stepper-value input {
+  min-height: 44px;
+  padding: 0;
+  text-align: right;
+}
+.cardio-grid--guide .large-step-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-top: 7px;
+}
+.cardio-grid--guide .large-step-row button {
+  min-height: 36px;
+}
 .cardio-grid--guide b { color: var(--text-muted); font-size: 11px; }
 .cardio-grid--guide .cardio-memo-field { display: block; }
 .cardio-grid--guide .cardio-memo-field input {
@@ -2069,6 +2224,17 @@ body.modal-open { overflow: hidden; }
   border: 1px solid var(--border);
   border-radius: var(--radius-input);
   background: var(--surface-subtle);
+}
+.guide-cardio-card .cardio-preview {
+  display: grid;
+  gap: 5px;
+  justify-content: stretch;
+  line-height: 1.45;
+}
+.guide-cardio-card .cardio-preview span {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
 }
 .guide-undo-button {
   justify-self: start;
@@ -2171,10 +2337,11 @@ body.modal-open { overflow: hidden; }
 }
 .guide-start-item {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 8px;
 }
+.guide-start-item .drag-handle { display: none; }
 .guide-start-item-main {
   display: grid;
   gap: 3px;
@@ -2252,6 +2419,13 @@ body.modal-open { overflow: hidden; }
   line-height: 1;
 }
 .drag-handle:active { cursor: grabbing; }
+.draft-menu-card:not(.is-sorting) .saved-group-head > .drag-handle,
+.draft-menu-card:not(.is-sorting) .saved-group-reorder {
+  display: none;
+}
+.draft-menu-card.is-sorting .saved-group-add {
+  pointer-events: none;
+}
 [data-sort-item].is-dragging {
   opacity: .72;
   transform: scale(.99);
