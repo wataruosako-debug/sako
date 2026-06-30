@@ -4481,6 +4481,14 @@
       completedSetNumber: completedSetNumber,
       nextExistingSetTempId: nextExistingSetTempId
     };
+    var actions = $("#nextSetActions");
+    if (actions) actions.classList.toggle("is-edit-actions", !!wasUpdate);
+    $("#nextSetYesButton").classList.toggle("finish-button", !wasUpdate);
+    $("#nextSetYesButton").classList.toggle("outline-button", !!wasUpdate);
+    $("#nextSetPickExerciseButton").classList.toggle("finish-button", false);
+    $("#nextSetPickExerciseButton").classList.toggle("outline-button", true);
+    $("#nextSetNoButton").classList.toggle("finish-button", false);
+    $("#nextSetNoButton").classList.toggle("outline-button", true);
     $("#nextSetConfirmTitle").textContent = wasUpdate
       ? exercise.name + "の" + completedSetNumber + "セット目を更新しました"
       : exercise.name + " " + completedSetNumber + "セット目を保存しました";
@@ -4601,17 +4609,16 @@
       editingRef.set.restSeconds = setValues.restSeconds;
       editingRef.set.memo = setValues.memo;
       var editedExerciseId = editingRef.record.exerciseId;
+      var updatedSetNumber = editingRef.set.setNumber;
       resetWorkoutEditorState();
       expandedDraftExerciseId = editedExerciseId;
       clearNextSetActionState();
-      closeModal("nextSetConfirmModal");
       renderSelectedExercise();
       renderSavedSets();
       updateDraftCalories();
       saveDraftNow();
       showPersonalBestBanner(updateBest, updateBestKey);
-      showToast("変更を保存しました");
-      setTimeout(function () { $("#savedSetsSection").scrollIntoView({ behavior: "smooth", block: "start" }); }, 50);
+      showNextSetConfirmation(exercise.id, updatedSetNumber, true);
       return;
     }
     editingSetTempId = null;
