@@ -4242,9 +4242,9 @@
     $("#setEditorSuffix").textContent = editingRef ? "を編集中" : "を入力";
     $("#previousSetSummary").textContent = inputSet ? "前回の記録：" + previousWeight + " × " + Number(inputSet.reps || 0) + "回" : "前回の記録はありません";
     $("#setEditorCard").classList.toggle("is-editing", !!editingRef);
-    $("#saveSetButton").textContent = editingRef ? editingRef.set.setNumber + "セット目を更新" : nextNumber + "セット目を保存";
+    $("#saveSetButton").textContent = editingRef ? "変更を保存" : nextNumber + "セット目を保存";
     $("#cancelSetEditButton").classList.toggle("hidden", !editingRef);
-    $("#setSaveHint").textContent = editingRef ? "このセットを上書きします" : "保存後、次のセットを確認します";
+    $("#setSaveHint").textContent = editingRef ? "保存後、種目詳細に戻ります" : "保存後、次のセットを確認します";
     $("#weightBlock").classList.toggle("hidden", exercise.category === "BODYWEIGHT");
     $("#weightStepLabel").textContent = "10kg / 1kg / 0.5kg";
     $("#weightInput").step = 0.5;
@@ -4600,14 +4600,18 @@
       editingRef.set.rir = setValues.rir;
       editingRef.set.restSeconds = setValues.restSeconds;
       editingRef.set.memo = setValues.memo;
-      var updatedSetNumber = editingRef.set.setNumber;
+      var editedExerciseId = editingRef.record.exerciseId;
       resetWorkoutEditorState();
+      expandedDraftExerciseId = editedExerciseId;
+      clearNextSetActionState();
+      closeModal("nextSetConfirmModal");
       renderSelectedExercise();
       renderSavedSets();
       updateDraftCalories();
       saveDraftNow();
       showPersonalBestBanner(updateBest, updateBestKey);
-      showNextSetConfirmation(exercise.id, updatedSetNumber, true);
+      showToast("変更を保存しました");
+      setTimeout(function () { $("#savedSetsSection").scrollIntoView({ behavior: "smooth", block: "start" }); }, 50);
       return;
     }
     editingSetTempId = null;
@@ -4643,7 +4647,8 @@
     $("#setMemo").value = editingRef.set.memo || "";
     $("#currentSetLabel").textContent = (exercise ? exercise.name + " " : "") + "セット" + editingRef.set.setNumber;
     $("#setEditorSuffix").textContent = "を編集中";
-    $("#saveSetButton").textContent = editingRef.set.setNumber + "セット目を更新";
+    $("#saveSetButton").textContent = "変更を保存";
+    $("#setSaveHint").textContent = "保存後、種目詳細に戻ります";
     $("#cancelSetEditButton").classList.remove("hidden");
     renderSetChoices();
     renderSavedSets();
