@@ -3610,6 +3610,7 @@
   }
 
   function showGuideNextExercisePicker() {
+    stopRestTimer();
     clearGuideExtraSetMode();
     moveGuideToSelectNext("alternate");
   }
@@ -3868,6 +3869,7 @@
     state.updatedAt = nowIso();
     showPersonalBestBanner(best, newSet.tempId + ":" + (best ? best.metric + ":" + best.value : ""));
     showGuideSetSavedNotice(newSet, completed.length + 1, isFinalSet);
+    startRestTimer(newSet.restSeconds);
     if (isFinalSet) {
       item.status = "completed";
       renderGuideWorkout();
@@ -3876,7 +3878,6 @@
       releaseGuideSetSaveLockLater();
       return;
     }
-    startRestTimer(newSet.restSeconds);
     renderGuideWorkout();
     animateGuideSetStage();
     saveDraftNow();
@@ -3921,6 +3922,7 @@
   function openGuideExit() {
     var state = guideState();
     if (!state) return;
+    stopRestTimer();
     captureGuideInputToState();
     clearGuideExtraSetMode(state);
     var lines = guideItems(state).map(function (item) {
