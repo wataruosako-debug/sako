@@ -1657,21 +1657,19 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .danger-button { min-height: 42px; background: var(--danger); box-shadow: none; font-size: 11px; }
 .next-set-actions { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 16px; }
 .next-set-actions .finish-button, .next-set-actions .outline-button { min-height: 44px; margin: 0; }
-.next-set-actions.is-edit-actions #nextSetPickExerciseButton { order: 1; }
-.next-set-actions.is-edit-actions #nextSetYesButton { order: 2; }
-.next-set-actions.is-edit-actions #nextSetNoButton { order: 3; }
 .next-set-actions.is-edit-actions .finish-button,
 .next-set-actions.is-edit-actions .outline-button {
   border: 1px solid var(--border);
   color: var(--text-primary);
   background: var(--surface-subtle);
   box-shadow: none;
+  font-weight: 800;
 }
 .next-set-actions.is-edit-actions .finish-button:hover,
 .next-set-actions.is-edit-actions .outline-button:hover {
-  border-color: color-mix(in srgb, var(--brand-primary) 32%, var(--border));
-  color: var(--brand-primary);
-  background: var(--brand-primary-soft);
+  border-color: color-mix(in srgb, var(--text-secondary) 24%, var(--border));
+  color: var(--text-primary);
+  background: var(--surface);
 }
 .timer-option-list { display: grid; gap: 8px; }
 .timer-option-subsettings {

@@ -4545,6 +4545,23 @@
     button.classList.toggle("hidden", !!hidden);
   }
 
+  function arrangeNextSetActionButtons(wasUpdate) {
+    var actions = $("#nextSetActions");
+    var addButton = $("#nextSetYesButton");
+    var editButton = $("#nextSetPickExerciseButton");
+    var backButton = $("#nextSetNoButton");
+    if (!actions || !addButton || !editButton || !backButton) return;
+    if (wasUpdate) {
+      actions.appendChild(editButton);
+      actions.appendChild(addButton);
+      actions.appendChild(backButton);
+      return;
+    }
+    actions.appendChild(addButton);
+    actions.appendChild(editButton);
+    actions.appendChild(backButton);
+  }
+
   function showNextSetConfirmation(exerciseId, completedSetNumber, wasUpdate) {
     if (nextSetActionState || !draft) return;
     var exercise = getExercise(exerciseId);
@@ -4566,18 +4583,19 @@
     $("#nextSetPickExerciseButton").classList.toggle("outline-button", true);
     $("#nextSetNoButton").classList.toggle("finish-button", false);
     $("#nextSetNoButton").classList.toggle("outline-button", true);
+    arrangeNextSetActionButtons(wasUpdate);
     $("#nextSetConfirmTitle").textContent = wasUpdate
       ? exercise.name + "の" + completedSetNumber + "セット目を更新しました"
       : exercise.name + " " + completedSetNumber + "セット目を保存しました";
     $("#nextSetConfirmMessage").textContent = "次はどうしますか？";
     if (wasUpdate) {
-      configureNextSetButton("#nextSetYesButton", "この種目に新しいセットを追加", false);
       configureNextSetButton("#nextSetPickExerciseButton", "次のセットを編集", !nextExistingSetTempId);
-      configureNextSetButton("#nextSetNoButton", "今日のメニューへ戻る", false);
+      configureNextSetButton("#nextSetYesButton", "この種目に新しいセットを追加", false);
+      configureNextSetButton("#nextSetNoButton", "今日のメニューに戻る", false);
     } else {
       configureNextSetButton("#nextSetYesButton", "同じ種目の次セットを入力", false);
       configureNextSetButton("#nextSetPickExerciseButton", "次の種目を選ぶ", false);
-      configureNextSetButton("#nextSetNoButton", "今日のメニューへ戻る", false);
+      configureNextSetButton("#nextSetNoButton", "今日のメニューに戻る", false);
     }
     openModal("nextSetConfirmModal");
   }
