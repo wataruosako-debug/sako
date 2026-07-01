@@ -1768,6 +1768,14 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .rest-timer-panel > div:first-child { display: grid; gap: 1px; min-width: 64px; }
 .rest-timer-panel span { color: var(--text-muted); font-size: 10px; font-weight: 700; }
 .rest-timer-panel strong { font-family: "Inter Tight", sans-serif; font-size: 25px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.rest-timer-panel.is-overtime {
+  border-color: color-mix(in srgb, var(--danger) 38%, var(--border));
+  background: color-mix(in srgb, var(--danger-soft) 70%, var(--surface-raised));
+}
+.rest-timer-panel.is-overtime span,
+.rest-timer-panel.is-overtime strong {
+  color: var(--danger);
+}
 .rest-timer-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .rest-timer-actions button {
   min-height: 38px;
@@ -2314,6 +2322,10 @@ body.modal-open { overflow: hidden; }
     linear-gradient(135deg, color-mix(in srgb, var(--brand-primary) 14%, var(--surface)), var(--surface));
   animation: guide-rest-pulse 680ms ease;
 }
+.guide-rest-timer.is-overtime {
+  border-color: color-mix(in srgb, var(--danger) 38%, var(--border));
+  background: color-mix(in srgb, var(--danger-soft) 72%, var(--surface));
+}
 .guide-rest-timer > div:first-child {
   display: flex;
   align-items: baseline;
@@ -2322,6 +2334,11 @@ body.modal-open { overflow: hidden; }
 }
 .guide-rest-timer span { color: var(--text-secondary); font-size: 11px; font-weight: 800; }
 .guide-rest-timer.is-finished span { color: var(--brand-primary); }
+.guide-rest-timer.is-overtime span,
+.guide-rest-timer.is-overtime #guideRestTimerTime,
+.guide-rest-timer.is-overtime strong {
+  color: var(--danger);
+}
 .guide-rest-timer strong {
   color: var(--text-primary);
   font-family: "Inter Tight", sans-serif;

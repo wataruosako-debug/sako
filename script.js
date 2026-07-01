@@ -647,7 +647,7 @@
   var nextSetExerciseId = null;
   var nextSetActionState = null;
   var exerciseSearchTimer = null;
-  var restTimerState = { status: "idle", totalSeconds: 0, remainingSeconds: 0, endAt: 0, intervalId: null };
+  var restTimerState = { status: "idle", totalSeconds: 0, remainingSeconds: 0, endAt: 0, intervalId: null, finishedNotified: false };
   var guideAudioState = { context: null, unlocked: false };
   var guideRestTimerDebugKey = "";
   var guideSetSaveLocked = false;
@@ -3326,11 +3326,15 @@
     }
     if (!showTimer) {
       box.classList.remove("is-finished");
+      box.classList.remove("is-overtime");
       return;
     }
-    box.classList.toggle("is-finished", restTimerState.status === "finished");
-    $("#guideRestTimerLabel").textContent = restTimerState.status === "finished" ? guideRestTimerFinishedMessage() : "休憩中";
-    $("#guideRestTimerTime").textContent = formatRestTimerTime(calculateRestTimerRemaining(restTimerState));
+    var remaining = calculateRestTimerRemaining(restTimerState);
+    var isOvertime = remaining < 0;
+    box.classList.toggle("is-finished", false);
+    box.classList.toggle("is-overtime", isOvertime);
+    $("#guideRestTimerLabel").textContent = isOvertime ? "休憩時間を過ぎています" : "休憩中";
+    $("#guideRestTimerTime").textContent = formatRestTimerTime(remaining);
     $("#guideRestPause").textContent = restTimerState.status === "paused" ? "再開" : "一時停止";
   }
 
@@ -3584,12 +3588,13 @@
     saveDraftNow();
   }
 
-  function activateGuideItem(itemId) {
+  function activateGuideItem(itemId, options) {
+    options = options || {};
     var state = guideState();
     if (!state) return;
     var item = guideItems(state).find(function (entry) { return entry.id === itemId; });
     if (!item || item.status === "skipped") return;
-    stopRestTimer();
+    if (options.keepRestTimer !== true) stopRestTimer();
     clearGuideExtraSetMode(state);
     guideSetSaveLocked = false;
     captureGuideInputToState();
@@ -3638,9 +3643,8 @@
   function finishGuideRestAndContinue() {
     var state = guideState();
     var item = guideCurrentItem();
-    stopRestTimer();
     if (state && item && state.status === "itemComplete" && item.status !== "completed" && item.status !== "skipped") {
-      activateGuideItem(item.id);
+      activateGuideItem(item.id, { keepRestTimer: true });
     }
   }
 
@@ -3731,7 +3735,6 @@
     var state = guideState();
     var item = guideCurrentItem();
     if (!state || !item) return;
-    stopRestTimer();
     guideSetSaveLocked = false;
     item.isAddingExtraSets = true;
     item.status = "active";
@@ -5129,16 +5132,18 @@
   }
 
   function formatRestTimerTime(seconds) {
-    var total = Math.max(0, Math.ceil(Number(seconds || 0)));
+    var value = Math.ceil(Number(seconds || 0));
+    var sign = value < 0 ? "-" : "";
+    var total = Math.abs(value);
     var minutes = Math.floor(total / 60);
     var remainder = total % 60;
-    return String(minutes).padStart(2, "0") + ":" + String(remainder).padStart(2, "0");
+    return sign + String(minutes).padStart(2, "0") + ":" + String(remainder).padStart(2, "0");
   }
 
   function calculateRestTimerRemaining(state, now) {
     if (!state || state.status === "idle") return 0;
-    if (state.status === "paused") return Math.max(0, Math.ceil(Number(state.remainingSeconds || 0)));
-    return Math.max(0, Math.ceil((Number(state.endAt || 0) - (now || Date.now())) / 1000));
+    if (state.status === "paused") return Math.ceil(Number(state.remainingSeconds || 0));
+    return Math.ceil((Number(state.endAt || 0) - (now || Date.now())) / 1000);
   }
 
   function clearRestTimerInterval() {
@@ -5155,9 +5160,14 @@
     var guideScreenActive = isGuideActive() && $("#guideWorkoutScreen") && $("#guideWorkoutScreen").classList.contains("screen--active");
     panel.classList.toggle("hidden", !isActive || guideScreenActive);
     if (guideScreenActive) renderGuideRestTimer();
-    if (!isActive) return;
+    if (!isActive) {
+      panel.classList.remove("is-overtime");
+      return;
+    }
     var remaining = calculateRestTimerRemaining(restTimerState);
-    $("#restTimerLabel").textContent = restTimerState.status === "finished" ? "休憩終了" : "休憩中";
+    var isOvertime = remaining < 0;
+    panel.classList.toggle("is-overtime", isOvertime);
+    $("#restTimerLabel").textContent = isOvertime ? "休憩時間を過ぎています" : "休憩中";
     $("#restTimerTime").textContent = formatRestTimerTime(remaining);
     $("#restTimerPauseButton").textContent = restTimerState.status === "paused" ? "再開" : "一時停止";
   }
@@ -5238,15 +5248,14 @@
       stopRestTimer();
       return;
     }
-    clearRestTimerInterval();
-    restTimerState.status = "finished";
-    restTimerState.remainingSeconds = 0;
+    if (restTimerState.finishedNotified) {
+      renderRestTimer();
+      return;
+    }
+    restTimerState.finishedNotified = true;
     renderRestTimer();
     tryRestTimerVibration();
     playRestTimerEndSound();
-    setTimeout(function () {
-      if (restTimerState.status === "finished") stopRestTimer();
-    }, 1800);
   }
 
   function tickRestTimer() {
@@ -5257,7 +5266,7 @@
     if (restTimerState.status !== "running") return;
     restTimerState.remainingSeconds = calculateRestTimerRemaining(restTimerState);
     renderRestTimer();
-    if (restTimerState.remainingSeconds <= 0) finishRestTimer();
+    if (restTimerState.remainingSeconds <= 0 && !restTimerState.finishedNotified) finishRestTimer();
   }
 
   function startRestTimer(seconds) {
@@ -5281,7 +5290,8 @@
       totalSeconds: totalSeconds,
       remainingSeconds: totalSeconds,
       endAt: Date.now() + totalSeconds * 1000,
-      intervalId: null
+      intervalId: null,
+      finishedNotified: false
     };
     restTimerState.intervalId = setInterval(tickRestTimer, 1000);
     renderRestTimer();
@@ -5290,7 +5300,7 @@
 
   function stopRestTimer() {
     clearRestTimerInterval();
-    restTimerState = { status: "idle", totalSeconds: 0, remainingSeconds: 0, endAt: 0, intervalId: null };
+    restTimerState = { status: "idle", totalSeconds: 0, remainingSeconds: 0, endAt: 0, intervalId: null, finishedNotified: false };
     renderRestTimer();
     if (isGuideActive()) renderGuideRestTimer();
   }
@@ -5306,7 +5316,7 @@
     }
     if (restTimerState.status === "paused") {
       restTimerState.status = "running";
-      restTimerState.endAt = Date.now() + Math.max(0, Number(restTimerState.remainingSeconds || 0)) * 1000;
+      restTimerState.endAt = Date.now() + Number(restTimerState.remainingSeconds || 0) * 1000;
       clearRestTimerInterval();
       restTimerState.intervalId = setInterval(tickRestTimer, 1000);
       tickRestTimer();
@@ -5315,10 +5325,11 @@
 
   function addRestTimerSeconds(seconds) {
     if (!isRestTimerEnabled()) return;
-    if (restTimerState.status === "idle" || restTimerState.status === "finished") return;
+    if (restTimerState.status === "idle") return;
     var next = calculateRestTimerRemaining(restTimerState) + Math.max(0, Number(seconds || 0));
     restTimerState.remainingSeconds = next;
     restTimerState.totalSeconds = Math.max(restTimerState.totalSeconds, next);
+    if (next > 0) restTimerState.finishedNotified = false;
     if (restTimerState.status === "running") restTimerState.endAt = Date.now() + next * 1000;
     renderRestTimer();
   }
@@ -6134,7 +6145,7 @@
     on("#guideRestAdd10", "click", function () { addRestTimerSeconds(10); });
     on("#guideRestAdd30", "click", function () { addRestTimerSeconds(30); });
     on("#guideRestPause", "click", pauseRestTimer);
-    on("#guideRestEnd", "click", finishGuideRestAndContinue);
+    on("#guideRestEnd", "click", stopRestTimer);
     on("#guideMenuList", "click", function (event) {
       var button = event.target.closest("[data-guide-start-item]");
       if (!button) return;
