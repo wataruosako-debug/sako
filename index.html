@@ -170,7 +170,9 @@
           <section id="savedSetsSection" class="flow-card draft-menu-card">
             <div class="section-title-row draft-menu-title-row">
               <div><p class="section-kicker">TODAY'S MENU</p><h2>今日のメニュー</h2><small class="draft-menu-hint">セットを追加・編集 <b id="setCountBadge">0件</b></small></div>
+              <div class="draft-menu-top-actions"><button id="startDraftSortButton" type="button">並べ替え</button></div>
             </div>
+            <div id="draftSortActionBar" class="draft-sort-action-bar hidden"><button id="saveDraftSortButton" type="button">この順番で保存</button><button id="cancelDraftSortButton" type="button">キャンセル</button></div>
             <div id="draftStatsSummary" class="draft-stats-summary" aria-live="polite">
               <div class="draft-stat draft-stat--calories"><span>概算カロリー</span><strong><b id="sessionCaloriesTop">0</b><small>kcal</small></strong></div>
               <div class="draft-stat draft-stat--volume"><span>総ボリューム</span><strong><b id="sessionVolumeTop">0</b><small>kg</small></strong></div>
@@ -190,9 +192,6 @@
               <div class="draft-menu-edit-actions">
                 <button id="chooseAnotherExercise" class="draft-menu-add-button draft-menu-add-button--bottom hidden" type="button">種目を追加</button>
                 <button id="openRoutineListButton" type="button">ルーティーンから追加</button>
-                <button id="startDraftSortButton" type="button">並べ替え</button>
-                <button id="saveDraftSortButton" class="hidden" type="button">この順番で保存</button>
-                <button id="cancelDraftSortButton" class="hidden" type="button">並べ替えをキャンセル</button>
                 <button id="saveRoutineButton" type="button">ルーティーンとして保存</button>
               </div>
             </div>
@@ -295,6 +294,16 @@
             <button id="guideMenuListButton" class="outline-button guide-menu-button" type="button">メニュー一覧</button>
           </section>
 
+          <div id="guideRestTimer" class="guide-rest-timer hidden" role="status" aria-live="polite">
+            <div><span id="guideRestTimerLabel">休憩中</span><strong id="guideRestTimerTime">00:00</strong></div>
+            <div class="guide-rest-actions">
+              <button id="guideRestAdd10" type="button" aria-label="休憩時間を10秒追加">＋10秒</button>
+              <button id="guideRestAdd30" type="button" aria-label="休憩時間を30秒追加">＋30秒</button>
+              <button id="guideRestPause" type="button" aria-label="休憩タイマーを一時停止または再開">一時停止</button>
+              <button id="guideRestEnd" type="button" aria-label="休憩を終了">休憩終了</button>
+            </div>
+          </div>
+
           <section id="guideSetCard" class="guide-card guide-set-stage is-active">
             <div id="guideSetTopAnchor" class="guide-set-anchor" aria-hidden="true"></div>
             <div class="guide-set-head">
@@ -313,16 +322,6 @@
               </section>
             </div>
             <div id="guideSetSavedNotice" class="guide-set-saved-notice hidden" role="status" aria-live="polite"></div>
-
-            <div id="guideRestTimer" class="guide-rest-timer hidden" role="status" aria-live="polite">
-              <div><span id="guideRestTimerLabel">休憩中</span><strong id="guideRestTimerTime">00:00</strong></div>
-              <div class="guide-rest-actions">
-                <button id="guideRestAdd10" type="button" aria-label="休憩時間を10秒追加">＋10秒</button>
-                <button id="guideRestAdd30" type="button" aria-label="休憩時間を30秒追加">＋30秒</button>
-                <button id="guideRestPause" type="button" aria-label="休憩タイマーを一時停止または再開">一時停止</button>
-                <button id="guideRestEnd" type="button" aria-label="休憩を終了">休憩終了</button>
-              </div>
-            </div>
 
             <div id="guideWeightBlock" class="guide-input-block">
               <div class="label-row"><label for="guideWeightInput">重量</label><small id="guideWeightStepLabel">10kg / 1kg / 0.5kg</small></div>

@@ -649,6 +649,7 @@
   var exerciseSearchTimer = null;
   var restTimerState = { status: "idle", totalSeconds: 0, remainingSeconds: 0, endAt: 0, intervalId: null };
   var guideAudioState = { context: null, unlocked: false };
+  var guideRestTimerDebugKey = "";
   var guideSetSaveLocked = false;
   var guideSetLockTimer = null;
   var guideSetNoticeTimer = null;
@@ -3299,11 +3300,30 @@
     });
   }
 
+  function debugGuideTimer(message, details) {
+    if (typeof console === "undefined" || typeof console.debug !== "function") return;
+    console.debug("[GuideTimer] " + message, details || {});
+  }
+
   function renderGuideRestTimer() {
     var box = $("#guideRestTimer");
     if (!box) return;
     var showTimer = isRestTimerEnabled() && isGuideActive() && restTimerState.status !== "idle";
     box.classList.toggle("hidden", !showTimer);
+    var debugKey = [
+      isGuideActive() ? "guide" : "normal",
+      restTimerState.status,
+      showTimer ? "visible" : "hidden"
+    ].join(":");
+    if (debugKey !== guideRestTimerDebugKey) {
+      guideRestTimerDebugKey = debugKey;
+      debugGuideTimer("render", {
+        guideActive: isGuideActive(),
+        visible: showTimer,
+        status: restTimerState.status,
+        remainingSeconds: calculateRestTimerRemaining(restTimerState)
+      });
+    }
     if (!showTimer) {
       box.classList.remove("is-finished");
       return;
@@ -3869,6 +3889,16 @@
     state.updatedAt = nowIso();
     showPersonalBestBanner(best, newSet.tempId + ":" + (best ? best.metric + ":" + best.value : ""));
     showGuideSetSavedNotice(newSet, completed.length + 1, isFinalSet);
+    debugGuideTimer("set completed", {
+      exercise: guideItemName(item),
+      setNumber: completed.length,
+      isFinalSet: isFinalSet,
+      restSeconds: newSet.restSeconds,
+      restTimerEnabled: isRestTimerEnabled(),
+      autoStartRestTimer: uiSettings.autoStartRestTimer,
+      guideActive: isGuideActive(),
+      statusBefore: restTimerState.status
+    });
     startRestTimer(newSet.restSeconds);
     if (isFinalSet) {
       item.status = "completed";
@@ -4773,9 +4803,11 @@
   function renderDraftSortControls() {
     var section = $("#savedSetsSection");
     if (section) section.classList.toggle("is-sorting", !!draftSortMode);
+    var actionBar = $("#draftSortActionBar");
     var startButton = $("#startDraftSortButton");
     var saveButton = $("#saveDraftSortButton");
     var cancelButton = $("#cancelDraftSortButton");
+    if (actionBar) actionBar.classList.toggle("hidden", !draftSortMode);
     if (startButton) startButton.classList.toggle("hidden", !!draftSortMode);
     if (saveButton) saveButton.classList.toggle("hidden", !draftSortMode);
     if (cancelButton) cancelButton.classList.toggle("hidden", !draftSortMode);
@@ -5230,7 +5262,19 @@
 
   function startRestTimer(seconds) {
     var totalSeconds = Math.max(0, Math.round(Number(seconds || 0)));
-    if (!isRestTimerEnabled() || !uiSettings.autoStartRestTimer || totalSeconds < 1) return;
+    if (isGuideActive()) {
+      debugGuideTimer("startRestTimer called", {
+        seconds: totalSeconds,
+        restTimerEnabled: isRestTimerEnabled(),
+        autoStartRestTimer: uiSettings.autoStartRestTimer,
+        guideActive: true,
+        status: restTimerState.status
+      });
+    }
+    if (!isRestTimerEnabled() || !uiSettings.autoStartRestTimer || totalSeconds < 1) {
+      if (isGuideActive()) renderGuideRestTimer();
+      return;
+    }
     clearRestTimerInterval();
     restTimerState = {
       status: "running",
@@ -5241,12 +5285,14 @@
     };
     restTimerState.intervalId = setInterval(tickRestTimer, 1000);
     renderRestTimer();
+    if (isGuideActive()) renderGuideRestTimer();
   }
 
   function stopRestTimer() {
     clearRestTimerInterval();
     restTimerState = { status: "idle", totalSeconds: 0, remainingSeconds: 0, endAt: 0, intervalId: null };
     renderRestTimer();
+    if (isGuideActive()) renderGuideRestTimer();
   }
 
   function pauseRestTimer() {
