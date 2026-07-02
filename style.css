@@ -1404,17 +1404,17 @@ body.is-keyboard-focus .workout-body {
   border-color: var(--border);
 }
 .guide-help-button--link {
-  width: 100%;
+  width: auto;
   min-height: var(--btn-md);
   margin: 8px 0 0;
-  padding: 0 12px;
-  border: 1px solid color-mix(in srgb, var(--brand-primary) 30%, var(--border));
-  border-radius: var(--radius-input);
-  color: var(--brand-primary);
-  background: var(--brand-primary-soft);
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: transparent;
   box-shadow: none;
-  font-size: var(--fs-body);
-  font-weight: 800;
+  font-size: var(--fs-caption);
+  font-weight: 700;
 }
 .guide-help-button--link.is-seen {
   width: auto;
@@ -2034,16 +2034,16 @@ body.modal-open { overflow: hidden; }
   box-shadow: none;
 }
 .guide-help-button.guide-help-button--link {
-  width: 100%;
+  width: auto;
   min-height: var(--btn-md);
   margin: 8px 0 0;
-  padding: 0 12px;
-  border: 1px solid color-mix(in srgb, var(--brand-primary) 30%, var(--border));
-  border-radius: var(--radius-input);
-  color: var(--brand-primary);
-  background: var(--brand-primary-soft);
-  font-size: var(--fs-body);
-  font-weight: 800;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: var(--fs-caption);
+  font-weight: 700;
 }
 .guide-help-button.guide-help-button--link.is-seen {
   width: auto;

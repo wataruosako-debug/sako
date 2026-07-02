@@ -4962,7 +4962,6 @@
     renderSavedSets();
     updateDraftCalories();
     saveDraftNow();
-    startRestTimer(setValues.restSeconds);
     showPersonalBestBanner(newBest, newSet.tempId + ":" + (newBest ? newBest.metric + ":" + newBest.value : ""));
     showNextSetConfirmation(exercise.id, savedSetNumber, false);
   }
