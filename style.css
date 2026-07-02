@@ -601,6 +601,21 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   scroll-padding-top: calc(84px + env(safe-area-inset-top));
   scroll-padding-bottom: calc(118px + env(safe-area-inset-bottom));
 }
+
+#savedSetsSection,
+#setEditorCard,
+#cardioEditorCard,
+#guideRestTimer,
+#guideSetTopAnchor,
+#guideSetCard,
+#guideCardioCard,
+#guideFinishedSetCard,
+#guideSelectNextCard,
+#guideCompletedDetailCard {
+  scroll-margin-top: calc(92px + env(safe-area-inset-top));
+  scroll-margin-bottom: calc(132px + env(safe-area-inset-bottom));
+}
+
 .sub-header {
   position: sticky;
   top: 0;
@@ -990,11 +1005,34 @@ body.is-keyboard-focus .workout-body {
   font-weight: 800;
   box-shadow: 0 8px 20px color-mix(in srgb, var(--brand-primary) 20%, transparent);
 }
-.save-set-button { min-height: 48px; margin-top: 14px; font-size: 13px; }
+.save-set-button { min-height: 52px; margin-top: 14px; font-size: 13px; }
 .finish-button { min-height: 51px; font-size: 13px; }
+
+#setEditorCard .save-set-button,
+#cardioEditorCard .save-set-button,
+#guideSetCard .finish-button,
+#guideCardioCard .finish-button {
+  position: sticky;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  z-index: 12;
+  box-shadow:
+    0 -10px 20px color-mix(in srgb, var(--surface) 72%, transparent),
+    0 10px 22px color-mix(in srgb, var(--brand-primary) 22%, transparent);
+}
+
+#setEditorCard .save-set-button,
+#cardioEditorCard .save-set-button {
+  margin-top: 16px;
+}
+
+#guideSetCard .finish-button,
+#guideCardioCard .finish-button {
+  margin-top: 14px;
+}
+
 .cancel-set-edit-button {
   width: 100%;
-  min-height: 40px;
+  min-height: 44px;
   margin-top: 7px;
   border: 1px solid color-mix(in srgb, var(--brand-primary) 22%, var(--border));
   border-radius: 12px;
@@ -1044,7 +1082,7 @@ body.is-keyboard-focus .workout-body {
 }
 .draft-menu-top-actions button,
 .draft-sort-action-bar button {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 11px;
   border: 1px solid color-mix(in srgb, var(--brand-primary) 28%, var(--border));
   border-radius: 999px;
@@ -1062,7 +1100,7 @@ body.is-keyboard-focus .workout-body {
 }
 .draft-sort-action-bar.hidden { display: none; }
 .draft-sort-action-bar button {
-  min-height: 40px;
+  min-height: 44px;
   border-radius: 12px;
 }
 .draft-sort-action-bar button:last-child {
@@ -1117,7 +1155,7 @@ body.is-keyboard-focus .workout-body {
   font-size: 10px;
   font-weight: 800;
 }
-.draft-menu-add-button { flex: 0 0 auto; min-height: 37px; padding: 0 11px; white-space: nowrap; }
+.draft-menu-add-button { flex: 0 0 auto; min-height: 44px; padding: 0 12px; white-space: nowrap; }
 .draft-menu-add-button--bottom {
   display: block;
   width: 100%;
@@ -1203,7 +1241,7 @@ body.is-keyboard-focus .workout-body {
 }
 .saved-group-add small { margin-top: 2px; color: var(--text-muted); font-size: 9px; font-weight: 600; }
 .saved-group-add em { color: var(--brand-primary); font-size: 9px; font-style: normal; font-weight: 800; white-space: nowrap; }
-.saved-group-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+.saved-group-actions { display: flex; flex: 0 0 auto; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .saved-group-actions > span { padding: 4px 7px; border-radius: 999px; color: var(--text-muted); background: var(--surface); font-size: 9px; font-weight: 800; white-space: nowrap; }
 .saved-group-reorder { display: flex; align-items: center; gap: 4px; }
 .saved-group-reorder button {
@@ -1219,7 +1257,7 @@ body.is-keyboard-focus .workout-body {
   font-weight: 800;
 }
 .saved-group-reorder button:disabled { opacity: .35; }
-.saved-group-remove { min-height: 28px; padding: 0 8px; border: 0; border-radius: 999px; color: var(--danger); background: var(--danger-soft); font-size: 9px; font-weight: 800; }
+.saved-group-remove { min-height: 36px; padding: 0 11px; border: 0; border-radius: 999px; color: var(--danger); background: var(--danger-soft); font-size: 9px; font-weight: 800; }
 .saved-current-label { padding: 5px 11px; border-top: 1px solid var(--border); color: var(--text-muted); background: var(--surface); font-size: 9px; font-weight: 700; }
 .saved-group-note { margin: 0; padding: 0 12px 10px; color: var(--text-muted); background: var(--surface-subtle); font-size: 10px; line-height: 1.5; }
 .saved-set-add-button { display: block; width: calc(100% - 16px); min-height: 44px; margin: 8px; padding: 0 12px; text-align: center; }
@@ -1235,10 +1273,25 @@ body.is-keyboard-focus .workout-body {
 .saved-item--editable { cursor: pointer; }
 .saved-item--editable:hover { background: var(--surface-subtle); }
 .saved-item.is-editing { background: var(--brand-primary-soft); box-shadow: inset 3px 0 0 var(--brand-primary); }
+.saved-item.is-recently-saved {
+  background: color-mix(in srgb, var(--brand-accent-soft) 72%, var(--surface));
+  box-shadow: inset 3px 0 0 var(--brand-accent);
+  animation: saved-row-confirm 520ms ease;
+}
 .saved-item-main { display: grid; grid-template-columns: 25px minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; min-width: 0; min-height: 44px; padding: 9px 8px 9px 10px; text-align: left; border: 0; background: transparent; }
 .set-index { display: grid; place-items: center; width: 23px; height: 23px; border-radius: 50%; color: var(--brand-primary); background: var(--brand-primary-soft); font-family: "Inter Tight", sans-serif; font-size: 9px; font-weight: 800; }
 .saved-item-text strong { font-size: 11px; }
-.saved-item-text small { overflow: hidden; color: var(--text-muted); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.saved-item-text small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 9px;
+  line-height: 1.35;
+  text-overflow: clip;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 .edit-cue { padding: 3px 6px; border-radius: 999px; color: var(--brand-primary); background: var(--brand-primary-soft); font-size: 8px; font-weight: 800; }
 .delete-mini { width: 38px; height: 38px; margin-right: 7px; border: 0; border-radius: 50%; color: var(--text-muted); background: var(--surface-subtle); font-size: 16px; }
 .outline-button {
@@ -1261,7 +1314,7 @@ body.is-keyboard-focus .workout-body {
 .saved-group--cardio .saved-group-head > span,
 .saved-group--cardio .saved-group-actions > span { color: var(--home-color-dark); background: var(--home-color-soft); }
 .routine-workout-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }
-.routine-workout-actions button { min-height: 40px; padding: 0 10px; color: var(--text-secondary); background: var(--surface-subtle); border-color: var(--border); }
+.routine-workout-actions button { min-height: 44px; padding: 0 10px; color: var(--text-secondary); background: var(--surface-subtle); border-color: var(--border); }
 .draft-menu-edit-panel {
   margin-top: 12px;
   padding: 10px;
@@ -1281,7 +1334,7 @@ body.is-keyboard-focus .workout-body {
   gap: 7px;
 }
 .draft-menu-edit-actions button {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 9px;
   color: var(--text-secondary);
   background: var(--surface);
@@ -1289,7 +1342,7 @@ body.is-keyboard-focus .workout-body {
 }
 .guide-help-button--link {
   width: 100%;
-  min-height: 40px;
+  min-height: 44px;
   margin: 8px 0 0;
   padding: 0 12px;
   border: 1px solid color-mix(in srgb, var(--brand-primary) 30%, var(--border));
@@ -1302,7 +1355,7 @@ body.is-keyboard-focus .workout-body {
 }
 .guide-help-button--link.is-seen {
   width: auto;
-  min-height: 28px;
+  min-height: 44px;
   margin-right: auto;
   padding: 0 8px;
   border: 0;
@@ -1318,7 +1371,7 @@ body.is-keyboard-focus .workout-body {
   display: grid !important;
   grid-template-columns: 31px minmax(0, 1fr) 31px;
   align-items: stretch;
-  min-height: 42px;
+  min-height: 44px;
   border-radius: 11px;
 }
 .numeric-stepper--wide { grid-template-columns: 38px minmax(0, 1fr) 38px; }
@@ -1416,7 +1469,7 @@ body.is-keyboard-focus .workout-body {
 .routine-editor-name strong { font-size: 11px; }
 .routine-editor-name small { color: var(--text-muted); font-size: 9px; }
 .routine-editor-controls { display: flex; gap: 4px; }
-.routine-editor-controls button { min-width: 31px; height: 32px; padding: 0 7px; border-radius: 8px; font-size: 10px; font-weight: 800; }
+.routine-editor-controls button { min-width: 38px; min-height: 38px; padding: 0 8px; border-radius: 10px; font-size: 10px; font-weight: 800; }
 .routine-editor-controls .routine-editor-remove, .danger-text { color: var(--danger); }
 .record-menu-list, .routine-menu-list, .settings-menu-list, .routine-list { display: grid; gap: 10px; margin: 16px 0; }
 .record-menu-button, .routine-menu-button, .settings-menu-list button {
@@ -1475,8 +1528,8 @@ body.is-keyboard-focus .workout-body {
 .routine-card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 8px; }
 .routine-card--compact .routine-card-actions { margin: 0; padding: 0 12px 12px; }
 .routine-card-actions .routine-edit-button { margin: 0; }
-.routine-delete-button { min-height: 38px; border: 1px solid color-mix(in srgb, var(--danger) 25%, var(--border)); border-radius: 10px; color: var(--danger); background: var(--danger-soft); font-size: 10px; font-weight: 800; }
-.routine-edit-button { width: 100%; min-height: 38px; margin-top: 8px; padding: 0 10px; border: 1px solid var(--border); border-radius: 10px; color: var(--text-secondary); background: var(--surface); font-size: 10px; font-weight: 800; }
+.routine-delete-button { min-height: 44px; border: 1px solid color-mix(in srgb, var(--danger) 25%, var(--border)); border-radius: 10px; color: var(--danger); background: var(--danger-soft); font-size: 10px; font-weight: 800; }
+.routine-edit-button { width: 100%; min-height: 44px; margin-top: 8px; padding: 0 10px; border: 1px solid var(--border); border-radius: 10px; color: var(--text-secondary); background: var(--surface); font-size: 10px; font-weight: 800; }
 .routine-detail { display: grid; gap: 14px; }
 .routine-detail-label, .routine-detail-question {
   margin: 0;
@@ -1522,7 +1575,7 @@ body.is-keyboard-focus .workout-body {
 .planned-routine > div { display: flex; flex-direction: column; }
 .planned-routine strong { font-size: 12px; }
 .planned-routine small { margin-top: 2px; color: var(--text-muted); font-size: 10px; }
-.planned-routine button { min-height: 37px; }
+.planned-routine button { min-height: 44px; }
 .planned-routine button:last-child { border-color: color-mix(in srgb, var(--danger) 24%, var(--border)); color: var(--danger); background: var(--danger-soft); }
 .profile-form { display: grid; gap: 13px; }
 .profile-form .finish-button { margin-top: 4px; }
@@ -1895,7 +1948,7 @@ body.modal-open { overflow: hidden; }
   margin-top: 10px;
 }
 .guide-start-button {
-  min-height: 44px;
+  min-height: 48px;
   border-radius: 13px;
   font-size: 11px;
   font-weight: 800;
@@ -1919,7 +1972,7 @@ body.modal-open { overflow: hidden; }
 }
 .guide-help-button.guide-help-button--link {
   width: 100%;
-  min-height: 40px;
+  min-height: 44px;
   margin: 8px 0 0;
   padding: 0 12px;
   border: 1px solid color-mix(in srgb, var(--brand-primary) 30%, var(--border));
@@ -1931,7 +1984,7 @@ body.modal-open { overflow: hidden; }
 }
 .guide-help-button.guide-help-button--link.is-seen {
   width: auto;
-  min-height: 28px;
+  min-height: 34px;
   margin-right: auto;
   padding: 0 8px;
   border: 0;
@@ -1961,11 +2014,16 @@ body.is-keyboard-focus .guide-body {
   box-shadow: var(--shadow-card);
 }
 .guide-progress-card {
+  position: sticky;
+  top: calc(69px + env(safe-area-inset-top));
+  z-index: 18;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   padding: 14px;
+  background: color-mix(in srgb, var(--surface) 94%, var(--canvas));
+  backdrop-filter: blur(16px);
 }
 .guide-progress-card h2, .guide-card h2 {
   margin: 0;
@@ -2196,9 +2254,9 @@ body.is-keyboard-focus .guide-body {
   margin-top: 8px;
 }
 .guide-choice-group > p {
-  margin: 0;
+  margin: 0 2px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
 }
 .guide-choice-item {
@@ -2207,8 +2265,8 @@ body.is-keyboard-focus .guide-body {
   align-items: center;
   gap: 10px;
   width: 100%;
-  min-height: 54px;
-  padding: 10px 12px;
+  min-height: 60px;
+  padding: 11px 12px;
   border: 1px solid var(--border);
   border-radius: 14px;
   color: var(--text-primary);
@@ -2222,7 +2280,7 @@ body.is-keyboard-focus .guide-body {
 }
 .guide-choice-item.is-completed:not(.is-selected) {
   border-color: color-mix(in srgb, var(--brand-primary) 20%, var(--border));
-  background: var(--surface-subtle);
+  background: color-mix(in srgb, var(--brand-primary-soft) 34%, var(--surface-subtle));
 }
 .guide-choice-marker {
   display: grid;
@@ -2233,6 +2291,10 @@ body.is-keyboard-focus .guide-body {
   color: var(--brand-primary);
   background: var(--brand-primary-soft);
   font-weight: 800;
+}
+.guide-choice-item.is-completed .guide-choice-marker {
+  color: var(--primary-button-text);
+  background: var(--brand-primary);
 }
 .guide-choice-item strong { display: block; overflow-wrap: anywhere; font-size: 13px; line-height: 1.35; }
 .guide-choice-item small { display: block; margin-top: 3px; color: var(--text-muted); font-size: 10px; font-weight: 700; }
@@ -2430,6 +2492,10 @@ body.is-keyboard-focus .guide-body {
 .guide-finished-card {
   display: grid;
   gap: 10px;
+  border-color: color-mix(in srgb, var(--brand-primary) 28%, var(--border));
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--brand-primary) 12%, transparent), transparent 46%),
+    var(--surface);
 }
 .guide-finished-card h2 {
   font-size: 24px;
@@ -2448,6 +2514,9 @@ body.is-keyboard-focus .guide-body {
 }
 .guide-extra-set-button {
   background: var(--brand-primary);
+}
+.guide-complete-actions .finish-button {
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--brand-primary) 18%, transparent);
 }
 .timer-setting-help {
   display: block;
@@ -2529,10 +2598,21 @@ body.is-keyboard-focus .guide-body {
   border-radius: 14px;
   background: var(--surface-subtle);
 }
+.guide-menu-row.is-active {
+  border-color: color-mix(in srgb, var(--brand-primary) 36%, var(--border));
+  background: color-mix(in srgb, var(--brand-primary-soft) 44%, var(--surface-subtle));
+}
+.guide-menu-row.is-completed {
+  border-color: color-mix(in srgb, var(--brand-primary) 22%, var(--border));
+  background: color-mix(in srgb, var(--brand-primary-soft) 28%, var(--surface-subtle));
+}
+.guide-menu-row.is-skipped {
+  opacity: .72;
+}
 .guide-menu-row strong { display: block; overflow-wrap: anywhere; font-size: 12px; line-height: 1.35; }
 .guide-menu-row small { display: block; color: var(--text-muted); font-size: 10px; line-height: 1.35; }
 .guide-menu-row button {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 11px;
   border: 0;
   border-radius: 10px;
@@ -2546,7 +2626,7 @@ body.is-keyboard-focus .guide-body {
   place-items: center;
   width: 38px;
   min-width: 38px;
-  min-height: 42px;
+  min-height: 44px;
   border: 1px solid var(--border);
   border-radius: 12px;
   color: var(--text-muted);
@@ -2593,6 +2673,10 @@ button, input, select, textarea, .stat-card, .flow-card, .modal-sheet, .calendar
   0% { opacity: 0; transform: translateY(-6px); }
   100% { opacity: 1; transform: translateY(0); }
 }
+@keyframes saved-row-confirm {
+  0% { transform: translateX(3px); }
+  100% { transform: translateX(0); }
+}
 @keyframes guide-rest-pulse {
   0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand-primary) 22%, transparent); }
   100% { box-shadow: 0 0 0 13px transparent; }
@@ -2620,6 +2704,13 @@ button, input, select, textarea, .stat-card, .flow-card, .modal-sheet, .calendar
   .visit-breakdown, .calorie-breakdown, .monthly-volume-breakdown { font-size: 8.5px; }
   .legend { gap: 9px; font-size: 9px; }
   .progress-action strong { font-size: 9px; }
+  .guide-rest-timer {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+  .guide-rest-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 700px) {
@@ -2631,7 +2722,7 @@ button, input, select, textarea, .stat-card, .flow-card, .modal-sheet, .calendar
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .guide-set-stage, .guide-rest-timer, .guide-set-saved-notice {
+  .guide-set-stage, .guide-rest-timer, .guide-set-saved-notice, .saved-item.is-recently-saved {
     animation: none !important;
     transition: none !important;
   }
