@@ -2174,6 +2174,19 @@ body.modal-open { overflow: hidden; }
   gap: 8px;
   margin-top: 14px;
 }
+.guide-choice-group {
+  display: grid;
+  gap: 8px;
+}
+.guide-choice-group + .guide-choice-group {
+  margin-top: 8px;
+}
+.guide-choice-group > p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+}
 .guide-choice-item {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
@@ -2193,7 +2206,10 @@ body.modal-open { overflow: hidden; }
   background: var(--brand-primary-soft);
   box-shadow: inset 0 0 0 1px var(--brand-primary);
 }
-.guide-choice-item.is-completed:not(.is-selected) { background: var(--surface-subtle); }
+.guide-choice-item.is-completed:not(.is-selected) {
+  border-color: color-mix(in srgb, var(--brand-primary) 20%, var(--border));
+  background: var(--surface-subtle);
+}
 .guide-choice-marker {
   display: grid;
   place-items: center;
@@ -2206,6 +2222,44 @@ body.modal-open { overflow: hidden; }
 }
 .guide-choice-item strong { display: block; overflow-wrap: anywhere; font-size: 13px; line-height: 1.35; }
 .guide-choice-item small { display: block; margin-top: 3px; color: var(--text-muted); font-size: 10px; font-weight: 700; }
+.guide-completed-detail-card {
+  display: grid;
+  gap: 10px;
+}
+.guide-completed-detail-card h2 {
+  margin: 0;
+  font-size: 24px;
+}
+.guide-completed-detail-card p:not(.section-kicker) {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 800;
+}
+.guide-completed-set-list {
+  display: grid;
+  gap: 8px;
+}
+.guide-completed-set-row {
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface-subtle);
+}
+.guide-completed-set-row strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.guide-completed-set-row small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.guide-detail-actions button.hidden { display: none; }
 .guide-cardio-card { display: grid; gap: 12px; }
 .cardio-grid--guide { display: grid; gap: 10px; }
 .cardio-grid--guide label {
@@ -2308,6 +2362,9 @@ body.modal-open { overflow: hidden; }
 .guide-secondary-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .guide-secondary-actions button { min-height: 42px; padding: 0 8px; }
 .guide-rest-timer {
+  position: sticky;
+  top: 74px;
+  z-index: 19;
   display: grid;
   gap: 9px;
   margin: 0;
@@ -2315,6 +2372,7 @@ body.modal-open { overflow: hidden; }
   border: 1px solid color-mix(in srgb, var(--brand-accent) 38%, var(--border));
   border-radius: var(--radius-panel);
   background: color-mix(in srgb, var(--brand-accent-soft) 68%, var(--surface));
+  box-shadow: var(--shadow-card);
 }
 .guide-rest-timer.is-finished {
   border-color: color-mix(in srgb, var(--brand-primary) 48%, var(--border));
