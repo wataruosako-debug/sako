@@ -746,6 +746,7 @@ body.is-keyboard-focus .workout-body {
   border: 1px solid var(--border);
   border-radius: var(--radius-input);
   background: var(--surface-subtle);
+  font-size: 16px;
 }
 .progress-controls select {
   width: 100%;
@@ -774,7 +775,7 @@ body.is-keyboard-focus .workout-body {
 .progress-custom-range input {
   min-height: 39px;
   padding: 8px;
-  font-size: var(--fs-caption);
+  font-size: 16px;
   font-weight: 600;
 }
 .metric-help {
@@ -906,7 +907,7 @@ body.is-keyboard-focus .workout-body {
   justify-content: space-between;
   margin: 0 3px 11px;
 }
-.date-field input { max-width: 150px; padding: 7px 9px; font-size: var(--fs-caption); }
+.date-field input { max-width: 150px; padding: 7px 9px; font-size: 16px; }
 .flow-card { margin-bottom: 12px; padding: 17px; }
 .flow-step-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .step-number { flex: 0 0 26px; height: 26px; border-radius: var(--radius-small); font-size: var(--fs-caption); font-weight: 800; }
@@ -1055,6 +1056,7 @@ body.is-keyboard-focus .workout-body {
   width: 100%;
   padding: 11px 12px;
   outline: 0;
+  font-size: 16px;
 }
 .save-set-button, .finish-button, .danger-button {
   width: 100%;
@@ -1479,7 +1481,7 @@ body.is-keyboard-focus .workout-body {
 .modal.is-open { display: flex; }
 #exerciseModal { z-index: 110; }
 #addExerciseModal { z-index: 120; }
-#confirmModal, #nextSetConfirmModal { z-index: 130; }
+#confirmModal, #nextSetConfirmModal, #guideLeaveItemModal { z-index: 130; }
 .modal-backdrop { position: absolute; inset: 0; background: var(--modal-backdrop); backdrop-filter: blur(4px); animation: fade-in .18s ease-out; }
 .modal-sheet {
   position: relative;
@@ -1761,7 +1763,7 @@ body.is-keyboard-focus .workout-body {
   background: var(--surface-subtle);
   border: 1px solid var(--border);
   border-radius: var(--radius-input);
-  font-size: var(--fs-caption);
+  font-size: 16px;
   font-weight: 600;
 }
 .exercise-search::placeholder { color: var(--text-muted); }
@@ -2503,16 +2505,15 @@ body.is-keyboard-focus .guide-body {
   top: calc(72px + env(safe-area-inset-top));
   z-index: 19;
   display: grid;
-  grid-template-columns: minmax(84px, 0.72fr) minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin: 0;
-  padding: 9px 10px;
+  padding: 14px 14px 12px;
   border: 1px solid color-mix(in srgb, var(--brand-accent) 38%, var(--border));
   border-radius: var(--radius-panel);
   background: color-mix(in srgb, var(--surface-raised) 88%, var(--brand-accent-soft));
   box-shadow: var(--shadow-floating);
   backdrop-filter: blur(16px);
+  text-align: center;
 }
 .guide-rest-timer.is-finished {
   border-color: color-mix(in srgb, var(--brand-primary) 48%, var(--border));
@@ -2524,12 +2525,12 @@ body.is-keyboard-focus .guide-body {
   border-color: color-mix(in srgb, var(--danger) 38%, var(--border));
   background: color-mix(in srgb, var(--danger-soft) 72%, var(--surface));
 }
-.guide-rest-timer > div:first-child {
+.guide-rest-display {
   display: grid;
   gap: 2px;
-  min-width: 0;
+  justify-items: center;
 }
-.guide-rest-timer span { color: var(--text-secondary); font-size: var(--fs-micro); font-weight: 800; }
+.guide-rest-timer span { color: var(--text-secondary); font-size: var(--fs-caption); font-weight: 800; }
 .guide-rest-timer.is-finished span { color: var(--brand-primary); }
 .guide-rest-timer.is-overtime span,
 .guide-rest-timer.is-overtime #guideRestTimerTime,
@@ -2539,17 +2540,18 @@ body.is-keyboard-focus .guide-body {
 .guide-rest-timer strong {
   color: var(--text-primary);
   font-family: "Inter Tight", sans-serif;
-  font-size: clamp(24px, 6.8vw, 31px);
+  font-size: clamp(44px, 15vw, 64px);
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
 }
 .guide-rest-actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: var(--gap-sm);
 }
-.guide-rest-actions button { min-height: var(--btn-md); padding: 0 4px; font-size: var(--fs-caption); }
+.guide-rest-actions button { min-height: var(--btn-md); padding: 0 8px; font-size: var(--fs-body); }
 .guide-finished-card {
   display: grid;
   gap: 10px;

@@ -3441,7 +3441,13 @@
     var currentIndex = item ? items.indexOf(item) : -1;
     var completedItems = items.filter(function (entry) { return entry.status === "completed" || entry.status === "skipped"; }).length;
     $("#guideProgressText").textContent = (Math.max(0, currentIndex) + 1) + " / " + items.length + "種目";
-    $("#guideCurrentTitle").textContent = detailItem ? guideItemName(detailItem) : (item ? guideItemName(item) : "次の種目を選択");
+    $("#guideCurrentTitle").textContent = detailItem
+      ? "完了した種目"
+      : (state.status === "set" ? "セット記録中"
+        : state.status === "cardio" ? "有酸素を記録中"
+        : state.status === "itemComplete" ? "セット完了"
+        : item ? "実施中"
+        : "次の種目を選択");
     $("#guideProgressBadge").textContent = completedItems + "/" + items.length;
     var showSet = !!item && state.status === "set";
     var showCardio = !!item && state.status === "cardio";
@@ -3706,10 +3712,62 @@
     saveDraftNow();
   }
 
-  function showGuideNextExercisePicker() {
+  function guideItemNeedsLeaveConfirm(item) {
+    if (!item || item.type !== "strength") return false;
+    if (item.status === "completed" || item.status === "skipped") return false;
+    var completed = guideItemCompletedSets(item).length;
+    var planned = guideItemPlannedSets(item).length;
+    return completed >= 1 && completed < planned;
+  }
+
+  function setGuideLeaveItemMessage(item) {
+    var completed = guideItemCompletedSets(item).length;
+    var planned = guideItemPlannedSets(item).length;
+    $("#guideLeaveItemMessage").textContent =
+      guideItemName(item) + " は " + completed + " / " + planned + "セット完了しています。残りはどうしますか？";
+  }
+
+  function proceedGuideToNextExercise() {
     stopRestTimer();
     clearGuideExtraSetMode();
     moveGuideToSelectNext("alternate");
+  }
+
+  function showGuideNextExercisePicker() {
+    var item = guideCurrentItem();
+    if (guideItemNeedsLeaveConfirm(item)) {
+      captureGuideInputToState();
+      setGuideLeaveItemMessage(item);
+      openModal("guideLeaveItemModal");
+      return;
+    }
+    proceedGuideToNextExercise();
+  }
+
+  function confirmGuideLeaveAsFinished() {
+    var item = guideCurrentItem();
+    var state = guideState();
+    if (item && state) markGuideItemCompleted(item, state);
+    closeModal("guideLeaveItemModal");
+    proceedGuideToNextExercise();
+  }
+
+  function confirmGuideLeaveAsDeferred() {
+    var item = guideCurrentItem();
+    var state = guideState();
+    if (item) {
+      item.status = "deferred";
+      item.isAddingExtraSets = false;
+      if (state && Array.isArray(state.menuItems)) {
+        var index = state.menuItems.indexOf(item);
+        if (index >= 0) {
+          state.menuItems.splice(index, 1);
+          state.menuItems.push(item);
+        }
+      }
+    }
+    closeModal("guideLeaveItemModal");
+    proceedGuideToNextExercise();
   }
 
   function finishGuideRestAndContinue() {
@@ -3961,6 +4019,11 @@
     var state = guideState();
     captureGuideInputToState();
     if (state) state.lastAction = null;
+    if (guideItemNeedsLeaveConfirm(item)) {
+      setGuideLeaveItemMessage(item);
+      openModal("guideLeaveItemModal");
+      return;
+    }
     item.status = "deferred";
     item.isAddingExtraSets = false;
     moveGuideToSelectNext();
@@ -4243,8 +4306,9 @@
 
   function addExerciseToGuide(exerciseId, activate) {
     var state = guideState();
-    var item = createGuideItemFromExercise(exerciseId);
+    var item = createGuideItemFromExercise(exerciseId, [guideDefaultSetForExercise(exerciseId, 0)]);
     if (!state || !item) return;
+    if (item.type === "strength") item.isMenuExternal = true;
     state.menuItems.push(item);
     if (activate) activateGuideItem(item.id);
     else {
@@ -6224,6 +6288,9 @@
     on("#guideChooseNextExerciseButton", "click", handleGuideCompletePrimaryAction);
     on("#guideAddExtraSetButton", "click", handleGuideAddExtraSetAction);
     on("#guideEndMenuAfterSetButton", "click", handleGuideCompleteSecondaryAction);
+    on("#guideLeaveFinishButton", "click", confirmGuideLeaveAsFinished);
+    on("#guideLeaveDeferButton", "click", confirmGuideLeaveAsDeferred);
+    on("#guideLeaveCancelButton", "click", function () { closeModal("guideLeaveItemModal"); });
     on("#guideStartSummary", "click", function (event) {
       var button = event.target.closest("[data-guide-start-exercise]");
       if (!button) return;
@@ -6295,8 +6362,6 @@
       captureGuideInputToState();
       scheduleDraftSave();
     });
-    on("#guideRestAdd10", "click", function () { addRestTimerSeconds(10); });
-    on("#guideRestAdd30", "click", function () { addRestTimerSeconds(30); });
     on("#guideRestPause", "click", pauseRestTimer);
     on("#guideRestEnd", "click", stopRestTimer);
     on("#guideMenuList", "click", function (event) {

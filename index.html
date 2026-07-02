@@ -28,7 +28,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=M+PLUS+Rounded+1c:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260702-05">
+  <link rel="stylesheet" href="style.css?v=20260702-06">
 </head>
 <body>
   <div class="app-shell">
@@ -295,10 +295,11 @@
           </section>
 
           <div id="guideRestTimer" class="guide-rest-timer hidden" role="status" aria-live="polite">
-            <div><span id="guideRestTimerLabel">休憩中</span><strong id="guideRestTimerTime">00:00</strong></div>
+            <div class="guide-rest-display">
+              <span id="guideRestTimerLabel">休憩中</span>
+              <strong id="guideRestTimerTime">00:00</strong>
+            </div>
             <div class="guide-rest-actions">
-              <button id="guideRestAdd10" type="button" aria-label="休憩時間を10秒追加">＋10秒</button>
-              <button id="guideRestAdd30" type="button" aria-label="休憩時間を30秒追加">＋30秒</button>
               <button id="guideRestPause" type="button" aria-label="休憩タイマーを一時停止または再開">一時停止</button>
               <button id="guideRestEnd" type="button" aria-label="休憩を終了">休憩終了</button>
             </div>
@@ -772,6 +773,20 @@
     </section>
   </div>
 
-  <script src="script.js?v=20260702-05"></script>
+  <div id="guideLeaveItemModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="guideLeaveItemModal"></div>
+    <section class="modal-sheet modal-sheet--confirm" role="alertdialog" aria-modal="true" aria-labelledby="guideLeaveItemTitle" aria-describedby="guideLeaveItemMessage">
+      <div class="modal-handle"></div>
+      <h2 id="guideLeaveItemTitle">この種目はどうしますか？</h2>
+      <p id="guideLeaveItemMessage" class="modal-lead"></p>
+      <div class="modal-actions">
+        <button id="guideLeaveFinishButton" class="finish-button" type="button">この種目を終了する</button>
+        <button id="guideLeaveDeferButton" class="outline-button outline-button--blue" type="button">後でまたやる</button>
+        <button id="guideLeaveCancelButton" class="outline-button" type="button" data-close-modal="guideLeaveItemModal">キャンセル</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="script.js?v=20260702-06"></script>
 </body>
 </html>
