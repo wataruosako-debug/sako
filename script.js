@@ -6440,9 +6440,45 @@
     });
   }
 
+  function hasKeyboardSafeFocusedElement() {
+    var active = document.activeElement;
+    return !!(active && active.matches && active.matches("input, textarea, select") && active.closest("#workoutScreen, #guideWorkoutScreen"));
+  }
+
+  function scrollInputCardIntoComfortView(target) {
+    if (!target || !target.closest || !target.closest("#workoutScreen, #guideWorkoutScreen")) return;
+    var card = target.closest("#setEditorCard, #cardioEditorCard, #guideSetCard, #guideCardioCard, .guide-input-block, .guide-details, .session-memo, .memo-field");
+    var node = card || target;
+    var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    node.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "center"
+    });
+  }
+
+  function bindKeyboardSafeFocusEvents() {
+    document.addEventListener("focusin", function (event) {
+      var target = event.target;
+      if (!target || !target.matches || !target.matches("input, textarea, select")) return;
+      if (!target.closest("#workoutScreen, #guideWorkoutScreen")) return;
+      document.body.classList.add("is-keyboard-focus");
+      [180, 460].forEach(function (delay) {
+        setTimeout(function () {
+          if (document.activeElement === target) scrollInputCardIntoComfortView(target);
+        }, delay);
+      });
+    });
+    document.addEventListener("focusout", function () {
+      setTimeout(function () {
+        if (!hasKeyboardSafeFocusedElement()) document.body.classList.remove("is-keyboard-focus");
+      }, 90);
+    });
+  }
+
   function bindConfirmAndKeyboardEvents() {
     on("#confirmCancel", "click", cancelConfirmModal);
     on("#confirmAccept", "click", function () { acceptConfirmModal(this); });
+    bindKeyboardSafeFocusEvents();
     document.addEventListener("keydown", function (event) {
       if (event.key !== "Escape") return;
       var open = $$(".modal.is-open");
