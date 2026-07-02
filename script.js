@@ -646,6 +646,8 @@
   var draftSaveTimer = null;
   var nextSetExerciseId = null;
   var nextSetActionState = null;
+  var recentlySavedSetTempId = null;
+  var recentlySavedSetTimer = null;
   var exerciseSearchTimer = null;
   var restTimerState = { status: "idle", totalSeconds: 0, remainingSeconds: 0, endAt: 0, intervalId: null, finishedNotified: false };
   var guideAudioState = { context: null, unlocked: false };
@@ -4045,10 +4047,10 @@
     list.innerHTML = guideItems(state).map(function (item) {
       var completed = guideItemCompletedSets(item).length;
       var total = guideItemPlannedSets(item).length;
-      var action = item.status === "skipped" ? "" : '<button type="button" data-guide-start-item="' + item.id + '">' + (item.status === "completed" ? "もう1セット" : "開始") + '</button>';
+      var action = item.status === "skipped" ? "" : '<button type="button" data-guide-start-item="' + item.id + '">' + (item.status === "completed" ? "セット追加" : "開始") + '</button>';
       var smallText = guideChoiceProgressText(item);
       var statusLabel = item.status === "pending" ? "" : '<span class="guide-menu-status">' + guideStatusLabel(item.status) + '</span>';
-      return '<div class="guide-menu-row" data-sort-item="' + item.id + '"><button class="drag-handle" type="button" data-sort-handle aria-label="' + escapeHtml(guideItemName(item)) + 'を並べ替え">☰</button><div><strong>' + escapeHtml(guideItemName(item)) + '</strong><small>' + escapeHtml(smallText) + '</small>' + statusLabel + '</div>' + action + '</div>';
+      return '<div class="guide-menu-row is-' + escapeHtml(item.status || "pending") + '" data-sort-item="' + item.id + '"><button class="drag-handle" type="button" data-sort-handle aria-label="' + escapeHtml(guideItemName(item)) + 'を並べ替え">☰</button><div><strong>' + escapeHtml(guideItemName(item)) + '</strong><small>' + escapeHtml(smallText) + '</small>' + statusLabel + '</div>' + action + '</div>';
     }).join("");
     enableSortableList(list, {
       onChange: function (order) {
@@ -4820,6 +4822,16 @@
     setTimeout(function () { $("#savedSetsSection").scrollIntoView({ behavior: "smooth", block: "start" }); }, 50);
   }
 
+  function rememberRecentlySavedSet(tempId) {
+    if (!tempId) return;
+    recentlySavedSetTempId = tempId;
+    if (recentlySavedSetTimer) clearTimeout(recentlySavedSetTimer);
+    recentlySavedSetTimer = setTimeout(function () {
+      recentlySavedSetTempId = null;
+      if (draft) renderSavedSets();
+    }, 2200);
+  }
+
   function saveCurrentSet(skipWarning) {
     var exercise = getExercise(selectedExerciseId);
     if (!exercise) return;
@@ -4858,6 +4870,7 @@
       editingRef.set.memo = setValues.memo;
       var editedExerciseId = editingRef.record.exerciseId;
       var updatedSetNumber = editingRef.set.setNumber;
+      rememberRecentlySavedSet(editingSetTempId);
       resetWorkoutEditorState();
       expandedDraftExerciseId = editedExerciseId;
       clearNextSetActionState();
@@ -4877,6 +4890,7 @@
       rir: setValues.rir, restSeconds: setValues.restSeconds, memo: setValues.memo
     };
     record.sets.push(newSet);
+    rememberRecentlySavedSet(newSet.tempId);
     var savedSetNumber = record.sets.length;
     resetWorkoutEditorState();
     renderSelectedExercise();
@@ -5020,7 +5034,8 @@
       var setRows = record.sets.map(function (set) {
         var weightText = exercise && exercise.category === "BODYWEIGHT" ? "自重" : (Number(set.weight) / 1000).toFixed(1) + "kg";
         var editingClass = set.tempId === editingSetTempId ? " is-editing" : "";
-        return '<div class="saved-item saved-item--editable' + editingClass + '" data-edit-set="' + set.tempId + '"><button class="saved-item-main" type="button" aria-label="セット' + set.setNumber + 'を編集"><span class="set-index">' + set.setNumber + '</span><span class="saved-item-text"><strong>' + weightText + ' × ' + set.reps + '回</strong><small>' + RIR_LABELS[set.rir || ""] + '・休憩' + set.restSeconds + '秒' + (set.memo ? '・' + escapeHtml(set.memo) : '') + '</small></span><span class="edit-cue">編集</span></button><button class="delete-mini" type="button" data-delete-set="' + set.tempId + '" aria-label="セットを削除">×</button></div>';
+        var recentClass = set.tempId === recentlySavedSetTempId ? " is-recently-saved" : "";
+        return '<div class="saved-item saved-item--editable' + editingClass + recentClass + '" data-edit-set="' + set.tempId + '"><button class="saved-item-main" type="button" aria-label="セット' + set.setNumber + 'を編集"><span class="set-index">' + set.setNumber + '</span><span class="saved-item-text"><strong>' + weightText + ' × ' + set.reps + '回</strong><small>' + RIR_LABELS[set.rir || ""] + '・休憩' + set.restSeconds + '秒' + (set.memo ? '・' + escapeHtml(set.memo) : '') + '</small></span><span class="edit-cue">編集</span></button><button class="delete-mini" type="button" data-delete-set="' + set.tempId + '" aria-label="セットを削除">×</button></div>';
       }).join("");
       var content = isExpanded && record.sets.length ? '<div class="saved-current-label">今回の記録</div>' + setRows : '';
       var actionLabel = record.sets.length ? "＋ セットを追加" : "セットを入力";
@@ -5628,6 +5643,18 @@
     commitWorkoutSave({ warningConfirmed: options.warningConfirmed === true, skipConflictCheck: true });
   }
 
+  function workoutSavedToastText(oldSession, records, cardios, calories, volumeKg) {
+    var setCount = (records || []).reduce(function (sum, record) { return sum + record.sets.length; }, 0);
+    var cardioCount = (cardios || []).length;
+    var parts = [];
+    if (setCount) parts.push(setCount + "セット");
+    if (cardioCount) parts.push("有酸素" + cardioCount + "件");
+    if (Number(volumeKg || 0) > 0) parts.push(formatDraftVolume(volumeKg) + "kg");
+    if (Number(calories || 0) > 0) parts.push(Math.round(calories).toLocaleString("ja-JP") + "kcal");
+    var prefix = oldSession ? "トレーニングを更新しました" : "トレーニングを保存しました";
+    return prefix + "。おつかれさまでした" + (parts.length ? "（" + parts.join("・") + "）" : "");
+  }
+
   function commitWorkoutSave(options) {
     options = options || {};
     if (!draft) return;
@@ -5672,7 +5699,7 @@
     calendarCursor.setDate(1);
     renderHome();
     showScreen("home");
-    showToast(oldSession ? "トレーニングを更新しました" : "トレーニングを保存しました");
+    showToast(workoutSavedToastText(oldSession, validRecords, preparedCardios, totalCalories, calculateDraftStrengthVolume(validRecords)));
   }
 
   function renderDaySummary(dateValue) {
