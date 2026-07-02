@@ -4824,6 +4824,7 @@
 
   function rememberRecentlySavedSet(tempId) {
     if (!tempId) return;
+    navigator.vibrate?.(15);
     recentlySavedSetTempId = tempId;
     if (recentlySavedSetTimer) clearTimeout(recentlySavedSetTimer);
     recentlySavedSetTimer = setTimeout(function () {
