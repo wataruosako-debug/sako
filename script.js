@@ -4656,6 +4656,9 @@
     });
     $$("#rirChoices button").forEach(function (button) { button.classList.toggle("is-selected", selectedRir !== null && button.dataset.rir === selectedRir); });
     $$("#restChoices button").forEach(function (button) { button.classList.toggle("is-selected", Number(button.dataset.rest) === Number(selectedRest)); });
+    // 折りたたみ中でも設定値が分かるようsummaryに休憩秒数を表示する
+    var restSummary = $("#setDetailsRestSummary");
+    if (restSummary) restSummary.textContent = "（休憩 " + Number(selectedRest) + "秒）";
   }
 
   function chooseExercise(exerciseId) {
@@ -4971,6 +4974,8 @@
     if (!draft || !getExercise(exerciseId)) return;
     resetWorkoutEditorState({ selectedExerciseId: exerciseId, isAddingSet: true });
     renderSelectedExercise();
+    var nextSetDetails = $("#setEditorDetails");
+    if (nextSetDetails) nextSetDetails.open = false;
     $("#setMemo").value = "";
     renderSetChoices();
     renderSavedSets();
@@ -5121,6 +5126,9 @@
     $("#saveSetButton").textContent = "変更を保存";
     $("#setSaveHint").textContent = "保存後、種目詳細に戻ります";
     $("#cancelSetEditButton").classList.remove("hidden");
+    // 編集対象セットにメモがある場合は折りたたみを開いて見えるようにする
+    var editDetails = $("#setEditorDetails");
+    if (editDetails) editDetails.open = !!editingRef.set.memo;
     renderSetChoices();
     renderSavedSets();
     saveDraftNow();

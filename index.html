@@ -236,7 +236,7 @@
 
             <fieldset class="input-block">
               <legend>あと何回できそう？</legend>
-              <div id="rirChoices" class="stacked-choices">
+              <div id="rirChoices" class="stacked-choices guide-rir-compact">
                 <button type="button" data-rir="0"><strong>0回</strong><span>限界！</span></button>
                 <button type="button" data-rir="1"><strong>1回</strong><span>かなりキツい</span></button>
                 <button type="button" data-rir="2-3"><strong>2〜3回</strong><span>結構キツい</span></button>
@@ -245,14 +245,16 @@
               </div>
             </fieldset>
 
-            <fieldset class="input-block">
-              <legend>休憩時間</legend>
-              <div id="restChoices" class="choice-grid choice-grid--five choice-grid--small">
-                <button type="button" data-rest="30">30秒</button><button type="button" data-rest="60">60秒</button><button type="button" data-rest="90" class="is-selected">90秒</button><button type="button" data-rest="120">120秒</button><button type="button" data-rest="180">180秒</button>
-              </div>
-            </fieldset>
-
-            <label class="memo-field"><span>セットメモ <small>任意</small></span><input id="setMemo" type="text" maxlength="80" placeholder="フォームや感覚をメモ"></label>
+            <details id="setEditorDetails" class="guide-details set-editor-details">
+              <summary>詳細を入力する<span id="setDetailsRestSummary">（休憩 90秒）</span></summary>
+              <fieldset class="input-block">
+                <legend>休憩時間</legend>
+                <div id="restChoices" class="choice-grid choice-grid--five choice-grid--small">
+                  <button type="button" data-rest="30">30秒</button><button type="button" data-rest="60">60秒</button><button type="button" data-rest="90" class="is-selected">90秒</button><button type="button" data-rest="120">120秒</button><button type="button" data-rest="180">180秒</button>
+                </div>
+              </fieldset>
+              <label class="memo-field"><span>セットメモ <small>任意</small></span><input id="setMemo" type="text" maxlength="80" placeholder="フォームや感覚をメモ"></label>
+            </details>
             <button id="saveSetButton" class="save-set-button" type="button">保存して次へ</button>
             <button id="cancelSetEditButton" class="cancel-set-edit-button hidden" type="button">編集をやめる</button>
             <p id="setSaveHint" class="copy-hint">保存後、次のセットを確認します</p>

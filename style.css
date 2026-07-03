@@ -2332,6 +2332,28 @@ body.is-keyboard-focus .guide-body {
 .guide-details[open] summary { border-bottom: 1px solid var(--border); }
 .guide-details .guide-input-block { margin: 12px 12px 0; }
 .guide-details .memo-field { margin: 12px; }
+/* 通常セット入力フォームの休憩・メモ折りたたみ(ガイドモードと同じ見た目) */
+.set-editor-details .input-block { margin: 12px 12px 0; padding: 0; border-top: 0; }
+.set-editor-details summary span { margin-left: 2px; color: var(--text-muted); font-weight: 700; }
+/* タスク7: 通常セット入力フォームの圧縮。390×844でカード先頭から保存ボタンまで1画面に収める。
+   タップターゲットは44px以上を維持。ガイドモード側には影響しない(#setEditorCardスコープ) */
+#setEditorCard { padding: 14px 17px; }
+#setEditorCard .flow-step-head { margin-bottom: 6px; }
+#setEditorCard .input-block { padding: 8px 0; }
+#setEditorCard .input-block legend { margin-bottom: 5px; }
+#setEditorCard .large-step-row button, #setEditorCard .choice-grid button { min-height: 44px; }
+#setEditorCard .large-step-row { margin-top: 6px; }
+#setEditorCard .large-step-row--top { margin: 0 0 6px; }
+#setEditorCard .counter-control, #setEditorCard .reps-counter-control { grid-template-columns: 56px 1fr 56px; min-height: 56px; }
+#setEditorCard .reps-counter-control + .choice-grid { margin-top: 6px; }
+#setEditorCard .save-set-button { margin-top: 6px; }
+#setEditorCard .set-editor-details { margin-top: 6px; }
+#setEditorCard .set-editor-details summary { min-height: 44px; padding: 11px 14px; }
+/* RIR 5択のコンパクト表示: ラベルを横並びにして各行44pxに圧縮(2列+最終行フル幅) */
+#rirChoices.guide-rir-compact { grid-template-columns: 1fr 1fr; }
+#rirChoices.guide-rir-compact button { flex-direction: row; align-items: center; gap: 6px; min-height: 44px; padding: 6px 10px; }
+#rirChoices.guide-rir-compact button:last-child { min-height: 44px; }
+#rirChoices.guide-rir-compact span { margin-top: 0; }
 .guide-rir-block {
   margin-top: 12px;
 }
