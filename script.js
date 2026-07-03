@@ -8,7 +8,7 @@
   var DRAFT_STORAGE_KEY = "gymlog-draft-v1";
   var PRE_RESTORE_STORAGE_KEY = "gymlog-pre-restore-v1";
   var UI_SETTINGS_KEY = "gymlog-ui-settings-v1";
-  var DEFAULT_UI_SETTINGS = { appearance: "system", colorTheme: "urban-blue", restTimerEnabled: true, autoStartRestTimer: true, restTimerSound: false, restTimerVibration: true, guideModeEnabled: true, guideHelpSeen: false };
+  var DEFAULT_UI_SETTINGS = { appearance: "system", colorTheme: "urban-blue", restTimerEnabled: true, autoStartRestTimer: true, restTimerSound: false, restTimerVibration: true, guideModeEnabled: true, guideHelpSeen: false, keepScreenAwake: true };
   var APPEARANCE_OPTIONS = ["system", "light", "dark"];
   var COLOR_THEME_OPTIONS = ["urban-blue", "midnight", "graphite-lime"];
   var APPEARANCE_LABELS = { system: "端末に合わせる", light: "ライト", dark: "ダーク" };
@@ -114,7 +114,8 @@
       restTimerSound: Object.prototype.hasOwnProperty.call(settings, "restTimerSound") ? !!settings.restTimerSound : DEFAULT_UI_SETTINGS.restTimerSound,
       restTimerVibration: Object.prototype.hasOwnProperty.call(settings, "restTimerVibration") ? !!settings.restTimerVibration : DEFAULT_UI_SETTINGS.restTimerVibration,
       guideModeEnabled: Object.prototype.hasOwnProperty.call(settings, "guideModeEnabled") ? !!settings.guideModeEnabled : DEFAULT_UI_SETTINGS.guideModeEnabled,
-      guideHelpSeen: Object.prototype.hasOwnProperty.call(settings, "guideHelpSeen") ? !!settings.guideHelpSeen : DEFAULT_UI_SETTINGS.guideHelpSeen
+      guideHelpSeen: Object.prototype.hasOwnProperty.call(settings, "guideHelpSeen") ? !!settings.guideHelpSeen : DEFAULT_UI_SETTINGS.guideHelpSeen,
+      keepScreenAwake: Object.prototype.hasOwnProperty.call(settings, "keepScreenAwake") ? !!settings.keepScreenAwake : DEFAULT_UI_SETTINGS.keepScreenAwake
     };
   }
   function loadUiSettings() {
@@ -131,6 +132,41 @@
   }
   function isGuideModeEnabled() {
     return uiSettings.guideModeEnabled !== false;
+  }
+  function isKeepScreenAwakeEnabled() {
+    return uiSettings.keepScreenAwake !== false;
+  }
+
+  /* 記録中の画面スリープ防止(Screen Wake Lock API) */
+  var wakeLockSentinel = null;
+  var wakeLockRequestPending = false;
+  function isWorkoutScreenActive() {
+    var workout = $("#workoutScreen");
+    var guide = $("#guideWorkoutScreen");
+    return !!((workout && workout.classList.contains("screen--active")) || (guide && guide.classList.contains("screen--active")));
+  }
+  function releaseScreenWakeLock() {
+    if (!wakeLockSentinel) return;
+    var sentinel = wakeLockSentinel;
+    wakeLockSentinel = null;
+    try { sentinel.release().catch(function () { /* 解放失敗は無視 */ }); } catch (error) { /* 非対応環境では静かにスキップ */ }
+  }
+  function syncScreenWakeLock() {
+    var shouldHold = isKeepScreenAwakeEnabled() && isWorkoutScreenActive() && document.visibilityState === "visible";
+    if (!shouldHold) { releaseScreenWakeLock(); return; }
+    if (!navigator.wakeLock || typeof navigator.wakeLock.request !== "function") return;
+    if (wakeLockSentinel || wakeLockRequestPending) return;
+    wakeLockRequestPending = true;
+    navigator.wakeLock.request("screen").then(function (sentinel) {
+      wakeLockRequestPending = false;
+      wakeLockSentinel = sentinel;
+      sentinel.addEventListener("release", function () { if (wakeLockSentinel === sentinel) wakeLockSentinel = null; });
+      // 取得完了までに記録画面以外へ遷移・設定OFFされていた場合は即解放する
+      if (!(isKeepScreenAwakeEnabled() && isWorkoutScreenActive() && document.visibilityState === "visible")) releaseScreenWakeLock();
+    }).catch(function () {
+      // 取得失敗(省電力モード等)はエラーを出さず静かにスキップ
+      wakeLockRequestPending = false;
+    });
   }
   function saveUiSettings(settings) {
     try {
@@ -182,6 +218,8 @@
     }
     var guideEnabled = $("#guideModeEnabled");
     if (guideEnabled) guideEnabled.checked = isGuideModeEnabled();
+    var keepAwake = $("#keepScreenAwake");
+    if (keepAwake) keepAwake.checked = isKeepScreenAwakeEnabled();
   }
   function applyUiSettings(settings) {
     uiSettings = normalizeUiSettings(settings);
@@ -196,6 +234,7 @@
     if (!isRestTimerEnabled() && restTimerState && restTimerState.status !== "idle") stopRestTimer();
     renderAppearanceSettings();
     updateTodayMenuSummary();
+    syncScreenWakeLock();
   }
   function setAppearanceSetting(appearance) {
     applyUiSettings(Object.assign({}, uiSettings, { appearance: appearance }));
@@ -216,7 +255,7 @@
     next[key] = !!value;
     applyUiSettings(next);
     if (key === "restTimerSound" && value) unlockWorkoutAudio();
-    if (saveUiSettings(uiSettings)) showToast(key === "guideModeEnabled" ? "ガイドモード設定を保存しました" : "タイマー設定を保存しました");
+    if (saveUiSettings(uiSettings)) showToast(key === "guideModeEnabled" ? "ガイドモード設定を保存しました" : (key === "keepScreenAwake" ? "画面スリープ設定を保存しました" : "タイマー設定を保存しました"));
   }
   function applyGuideModeEnabled(enabled) {
     applyUiSettings(Object.assign({}, uiSettings, { guideModeEnabled: !!enabled }));
@@ -2115,6 +2154,7 @@
     $$(".screen").forEach(function (screen) { screen.classList.remove("screen--active"); });
     $("#" + name + "Screen").classList.add("screen--active");
     window.scrollTo(0, 0);
+    syncScreenWakeLock();
   }
 
   /* Progress analysis and chart rendering */
@@ -6808,6 +6848,8 @@
     bindConfirmAndKeyboardEvents();
     on("#undoSnackbarButton", "click", undoSnackbarRestore);
     on("#closeWorkoutSummaryButton", "click", function () { closeModal("workoutSummaryModal"); });
+    // バックグラウンド→フォアグラウンド復帰でWake Lockが自動解放されるため再取得する
+    document.addEventListener("visibilitychange", syncScreenWakeLock);
   }
 
   function changeWeightByStep(direction, step) {
