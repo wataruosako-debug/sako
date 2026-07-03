@@ -273,6 +273,47 @@
     var rounded = Math.round(value * factor) / factor;
     return precision ? rounded.toFixed(precision) : String(Math.round(rounded));
   }
+  var HOLD_REPEAT_DELAY_MS = 400;
+  var HOLD_REPEAT_START_INTERVAL_MS = 150;
+  var HOLD_REPEAT_MIN_INTERVAL_MS = 50;
+  var HOLD_REPEAT_ACCELERATION_MS = 20;
+  function bindHoldRepeat(target, onStep) {
+    var button = typeof target === "string" ? $(target) : target;
+    if (!button) {
+      console.warn("Element not found:", target);
+      return null;
+    }
+    var holdTimer = null;
+    var repeatTimer = null;
+    var repeatCount = 0;
+    var suppressClick = false;
+    function stopHold() {
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      if (repeatTimer) { clearTimeout(repeatTimer); repeatTimer = null; }
+    }
+    function repeatStep() {
+      suppressClick = true;
+      onStep();
+      repeatCount += 1;
+      var interval = Math.max(HOLD_REPEAT_MIN_INTERVAL_MS, HOLD_REPEAT_START_INTERVAL_MS - Math.floor(repeatCount / 10) * HOLD_REPEAT_ACCELERATION_MS);
+      repeatTimer = setTimeout(repeatStep, interval);
+    }
+    button.addEventListener("pointerdown", function (event) {
+      if (event.button != null && event.button !== 0) return;
+      stopHold();
+      suppressClick = false;
+      repeatCount = 0;
+      holdTimer = setTimeout(function () { holdTimer = null; repeatStep(); }, HOLD_REPEAT_DELAY_MS);
+    });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(function (type) { button.addEventListener(type, stopHold); });
+    button.addEventListener("click", function () {
+      // リピート発火後に指を離した時のclickでは二重加算しない
+      if (suppressClick) { suppressClick = false; return; }
+      onStep();
+    });
+    button.addEventListener("contextmenu", function (event) { event.preventDefault(); });
+    return button;
+  }
   function incrementInputValue(inputElement, step, min) {
     var current = getNumericInputValue(inputElement);
     var next = Math.max(min == null ? 0 : min, current + step);
@@ -6160,16 +6201,16 @@
   }
 
   function bindStrengthSetInputEvents() {
-    on("#weightMinus", "click", function () { changeWeightByStep(-1, 1); });
-    on("#weightPlus", "click", function () { changeWeightByStep(1, 1); });
-    on("#weightMinusLarge", "click", function () { changeWeightByStep(-1, 10); });
-    on("#weightPlusLarge", "click", function () { changeWeightByStep(1, 10); });
-    on("#weightMinusSmall", "click", function () { changeWeightByStep(-1, 0.5); });
-    on("#weightPlusSmall", "click", function () { changeWeightByStep(1, 0.5); });
-    on("#repsMinus", "click", function () { changeReps(-1); });
-    on("#repsPlus", "click", function () { changeReps(1); });
-    on("#repsMinusLarge", "click", function () { changeRepsLarge(-1); });
-    on("#repsPlusLarge", "click", function () { changeRepsLarge(1); });
+    bindHoldRepeat("#weightMinus", function () { changeWeightByStep(-1, 1); });
+    bindHoldRepeat("#weightPlus", function () { changeWeightByStep(1, 1); });
+    bindHoldRepeat("#weightMinusLarge", function () { changeWeightByStep(-1, 10); });
+    bindHoldRepeat("#weightPlusLarge", function () { changeWeightByStep(1, 10); });
+    bindHoldRepeat("#weightMinusSmall", function () { changeWeightByStep(-1, 0.5); });
+    bindHoldRepeat("#weightPlusSmall", function () { changeWeightByStep(1, 0.5); });
+    bindHoldRepeat("#repsMinus", function () { changeReps(-1); });
+    bindHoldRepeat("#repsPlus", function () { changeReps(1); });
+    bindHoldRepeat("#repsMinusLarge", function () { changeRepsLarge(-1); });
+    bindHoldRepeat("#repsPlusLarge", function () { changeRepsLarge(1); });
     on("#weightInput", "focus", function () {
       if (getNumericInputValue(this) === 0) this.value = "";
     });
@@ -6195,12 +6236,12 @@
   function bindCardioEvents() {
     ["#cardioType", "#cardioDuration", "#cardioDistance", "#cardioIncline", "#cardioMemo"].forEach(function (selector) { on(selector, "input", handleCardioInputChange); });
     $$('[data-number-target]').forEach(function (button) {
-      button.addEventListener("click", function () {
+      bindHoldRepeat(button, function () {
         changeNumericInput(button.dataset.numberTarget, Number(button.dataset.numberDirection));
       });
     });
     $$('[data-large-target]').forEach(function (button) {
-      button.addEventListener("click", function () {
+      bindHoldRepeat(button, function () {
         changeNumericInputByStep(button.dataset.largeTarget, Number(button.dataset.largeDirection), Number(button.dataset.largeStep));
       });
     });
@@ -6343,14 +6384,14 @@
     on("#saveGuideAndDisableButton", "click", function () { var button = this; runButtonLocked(button, saveGuideAndDisableMode); });
     on("#discardGuideAndDisableButton", "click", function () { var button = this; runButtonLocked(button, discardGuideAndDisableMode); });
     on("#cancelGuideDisableButton", "click", cancelGuideModeDisable);
-    on("#guideWeightMinus", "click", function () { changeGuideWeight(-1, 1); });
-    on("#guideWeightPlus", "click", function () { changeGuideWeight(1, 1); });
-    on("#guideWeightMinusLarge", "click", function () { changeGuideWeight(-1, 10); });
-    on("#guideWeightPlusLarge", "click", function () { changeGuideWeight(1, 10); });
-    on("#guideWeightMinusSmall", "click", function () { changeGuideWeight(-1, 0.5); });
-    on("#guideWeightPlusSmall", "click", function () { changeGuideWeight(1, 0.5); });
-    on("#guideRepsMinus", "click", function () { changeGuideReps(-1); });
-    on("#guideRepsPlus", "click", function () { changeGuideReps(1); });
+    bindHoldRepeat("#guideWeightMinus", function () { changeGuideWeight(-1, 1); });
+    bindHoldRepeat("#guideWeightPlus", function () { changeGuideWeight(1, 1); });
+    bindHoldRepeat("#guideWeightMinusLarge", function () { changeGuideWeight(-1, 10); });
+    bindHoldRepeat("#guideWeightPlusLarge", function () { changeGuideWeight(1, 10); });
+    bindHoldRepeat("#guideWeightMinusSmall", function () { changeGuideWeight(-1, 0.5); });
+    bindHoldRepeat("#guideWeightPlusSmall", function () { changeGuideWeight(1, 0.5); });
+    bindHoldRepeat("#guideRepsMinus", function () { changeGuideReps(-1); });
+    bindHoldRepeat("#guideRepsPlus", function () { changeGuideReps(1); });
     on("#guideWeightInput", "input", function () { captureGuideInputToState(); scheduleDraftSave(); });
     on("#guideWeightInput", "blur", function () { this.value = Math.max(0, getNumericInputValue(this)).toFixed(1); captureGuideInputToState(); scheduleDraftSave(); });
     on("#guideRepsInput", "input", function () { captureGuideInputToState(); scheduleDraftSave(); });
@@ -6359,12 +6400,12 @@
       on(selector, "input", function () { updateGuideCardioPreview(); captureGuideCardioInputToState(); scheduleDraftSave(); });
     });
     $$('[data-guide-number-target]').forEach(function (button) {
-      button.addEventListener("click", function () {
+      bindHoldRepeat(button, function () {
         changeGuideCardioInput(button.dataset.guideNumberTarget, Number(button.dataset.guideNumberDirection));
       });
     });
     $$('[data-guide-large-target]').forEach(function (button) {
-      button.addEventListener("click", function () {
+      bindHoldRepeat(button, function () {
         changeGuideCardioInput(button.dataset.guideLargeTarget, Number(button.dataset.guideLargeDirection), Number(button.dataset.guideLargeStep));
       });
     });

@@ -976,6 +976,7 @@ body.is-keyboard-focus .workout-body {
   touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
+  -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
 }
 /* 押下時の即時フィードバック（片手・非注視でも反応が分かるように） */
