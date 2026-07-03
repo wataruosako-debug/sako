@@ -2150,10 +2150,21 @@
     $("#calendarGrid").innerHTML = html;
   }
 
+  function updateTabBar(name) {
+    var tabbar = $(".tabbar");
+    if (!tabbar) return;
+    // 記録中(通常/ガイド)はタブバーを非表示にし、誤タップを防ぐ
+    tabbar.classList.toggle("hidden", name === "workout" || name === "guideWorkout");
+    $$(".tabbar-item").forEach(function (item) {
+      item.classList.toggle("is-active", item.dataset.tab === name);
+    });
+  }
+
   function showScreen(name) {
     $$(".screen").forEach(function (screen) { screen.classList.remove("screen--active"); });
     $("#" + name + "Screen").classList.add("screen--active");
     window.scrollTo(0, 0);
+    updateTabBar(name);
     syncScreenWakeLock();
   }
 
@@ -6078,6 +6089,7 @@
 
   function bindHomeMenuEvents() {
     on("#homeSettingsButton", "click", openSettingsScreen);
+    on("#homeTabButton", "click", function () { renderHome(); showScreen("home"); });
     on("#homeRoutineMenuButton", "click", function () { openModal("routineMenuModal"); });
     on("#homeRecordMenuButton", "click", function () { openModal("recordMenuModal"); });
     on("#homeRoutineCreateButton", "click", function () { closeModal("routineMenuModal"); openRoutineCreator(false); });

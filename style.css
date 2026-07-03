@@ -245,7 +245,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
-  padding: max(14px, env(safe-area-inset-top)) 10px calc(var(--ad-reserved-height) + env(safe-area-inset-bottom));
+  padding: max(14px, env(safe-area-inset-top)) 10px calc(72px + env(safe-area-inset-bottom));
 }
 
 .topbar, .sub-header { display: flex; align-items: center; justify-content: space-between; }
@@ -624,6 +624,85 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   content: "";
 }
 .progress-action--record .progress-action-icon { color: var(--brand-primary); background: transparent; }
+
+/* ボトムタブバー（Clean Tab §2） */
+.tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 560px);
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: center;
+  padding: 8px 18px calc(10px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.tabbar.hidden { display: none; }
+.tabbar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+}
+.tabbar-item small { font-size: var(--fs-micro); font-weight: 700; }
+.tabbar-item.is-active { color: var(--brand-primary); }
+.tabbar-icon { display: inline-flex; }
+.tabbar-icon svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tabbar-item--record .tabbar-fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  margin-top: -28px;
+  border-radius: 50%;
+  color: #FFFFFF;
+  background: var(--brand-primary);
+  font-size: 26px;
+  line-height: 1;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--brand-primary) 40%, transparent);
+}
+.tabbar-item--record.is-active { color: var(--brand-primary); }
+
+/* ホームのルーティーンアクセスカード（home-shortcutsの置き換え） */
+.home-routine-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+}
+.home-routine-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  color: var(--brand-primary);
+  background: var(--brand-primary-soft);
+}
+.home-routine-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.home-routine-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.home-routine-text strong { color: var(--text-primary); font-size: var(--fs-body); font-weight: 800; }
+.home-routine-text small { color: var(--text-muted); font-size: var(--fs-micro); font-weight: 600; }
+.home-routine-chevron { color: var(--text-muted); font-size: var(--fs-title); }
 
 #progressScreen, #workoutScreen {
   padding: 0 0 calc(28px + env(safe-area-inset-bottom));
@@ -2880,7 +2959,7 @@ button, input, select, textarea, .stat-card, .flow-card, .modal-sheet, .calendar
    タップターゲット44px以上(日付セル・ショートカット・カレンダーnav)は維持し、
    セル以外の余白・アイコンサイズで圧縮する */
 @media (max-height: 700px) {
-  #homeScreen { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+  #homeScreen { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
   #homeScreen .topbar { min-height: 40px; margin-bottom: 5px; }
   #homeScreen .topbar h1 { font-size: 22px; }
   .monthly-summary-head { margin-bottom: 5px; }

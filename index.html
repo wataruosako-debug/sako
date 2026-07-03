@@ -93,20 +93,11 @@
           <div class="legend"><span><i class="legend-dot legend-dot--gym"></i>ジム</span><span><i class="legend-dot legend-dot--home"></i>自宅</span><span><i class="today-ring"></i>今日</span></div>
         </section>
 
-        <nav class="home-shortcuts" aria-label="主要メニュー">
-          <button id="homeRoutineMenuButton" class="progress-action" type="button">
-            <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4h8m-7 0a2 2 0 0 0-2 2v1h10V6a2 2 0 0 0-2-2"/><path d="M6 7h12v13H6z"/><path d="m9 12 1.5 1.5L14 10"/><path d="M9 17h6"/></svg></span><strong>ルーティーン</strong>
-          </button>
-          <button id="homeRecordMenuButton" class="progress-action progress-action--record" type="button">
-            <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.4 2.6a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg></span><strong>記録</strong>
-          </button>
-          <button id="openProgressButton" class="progress-action" type="button">
-            <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span><strong>成長を見る</strong>
-          </button>
-          <button id="homeSettingsButton" class="progress-action" type="button">
-            <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.3 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 3.1h5l.3-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1Z"/></svg></span><strong>設定</strong>
-          </button>
-        </nav>
+        <button id="homeRoutineMenuButton" class="home-routine-card" type="button">
+          <span class="home-routine-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4h8m-7 0a2 2 0 0 0-2 2v1h10V6a2 2 0 0 0-2-2"/><path d="M6 7h12v13H6z"/><path d="m9 12 1.5 1.5L14 10"/><path d="M9 17h6"/></svg></span>
+          <span class="home-routine-text"><strong>ルーティーン</strong><small>登録メニューから記録・編集</small></span>
+          <span class="home-routine-chevron" aria-hidden="true">›</span>
+        </button>
       </section>
 
       <section id="progressScreen" class="screen" aria-labelledby="progressTitle">
@@ -516,6 +507,21 @@
         </div>
       </section>
     </main>
+
+    <nav class="tabbar" aria-label="メインナビゲーション">
+      <button id="homeTabButton" class="tabbar-item is-active" data-tab="home" type="button">
+        <span class="tabbar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9h12v-9"/></svg></span><small>ホーム</small>
+      </button>
+      <button id="homeRecordMenuButton" class="tabbar-item tabbar-item--record" data-tab="record" type="button">
+        <span class="tabbar-fab" aria-hidden="true">＋</span><small>記録</small>
+      </button>
+      <button id="openProgressButton" class="tabbar-item" data-tab="progress" type="button">
+        <span class="tabbar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span><small>成長</small>
+      </button>
+      <button id="homeSettingsButton" class="tabbar-item" data-tab="settings" type="button">
+        <span class="tabbar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.3 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 3.1h5l.3-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1Z"/></svg></span><small>設定</small>
+      </button>
+    </nav>
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
