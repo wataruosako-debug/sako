@@ -4168,7 +4168,9 @@
     state.currentItemId = item.id;
     state.selectedNextItemId = null;
     state.updatedAt = nowIso();
-    showPersonalBestBanner(best, newSet.tempId + ":" + (best ? best.metric + ":" + best.value : ""));
+    var guideBestKey = newSet.tempId + ":" + (best ? best.metric + ":" + best.value : "");
+    recordDraftPrEvent(best, guideBestKey);
+    showPersonalBestBanner(best, guideBestKey);
     showGuideSetSavedNotice(newSet, completed.length + 1, isFinalSet);
     debugGuideTimer("set completed", {
       exercise: guideItemName(item),
@@ -5036,6 +5038,7 @@
       renderSavedSets();
       updateDraftCalories();
       saveDraftNow();
+      recordDraftPrEvent(updateBest, updateBestKey);
       showPersonalBestBanner(updateBest, updateBestKey);
       showNextSetConfirmation(exercise.id, updatedSetNumber, true);
       return;
@@ -5055,7 +5058,9 @@
     renderSavedSets();
     updateDraftCalories();
     saveDraftNow();
-    showPersonalBestBanner(newBest, newSet.tempId + ":" + (newBest ? newBest.metric + ":" + newBest.value : ""));
+    var newBestKey = newSet.tempId + ":" + (newBest ? newBest.metric + ":" + newBest.value : "");
+    recordDraftPrEvent(newBest, newBestKey);
+    showPersonalBestBanner(newBest, newBestKey);
     showNextSetConfirmation(exercise.id, savedSetNumber, false);
   }
 
@@ -5740,6 +5745,21 @@
     return Number(value || 0).toFixed(decimals) + unit;
   }
 
+  function recordDraftPrEvent(best, notificationKey) {
+    if (!best || !draft || !notificationKey) return;
+    var events = draft.prEvents = draft.prEvents || [];
+    if (events.some(function (event) { return event.key === notificationKey; })) return;
+    events.push({
+      key: notificationKey,
+      exerciseName: best.exercise.name,
+      metric: best.metric,
+      value: best.value,
+      previous: best.previous,
+      unit: best.unit,
+      decimals: best.decimals
+    });
+  }
+
   function showPersonalBestBanner(result, notificationKey) {
     if (!result || !notificationKey || personalBestShownKeys[notificationKey]) return;
     personalBestShownKeys[notificationKey] = true;
@@ -5856,6 +5876,9 @@
     commitWorkoutSave({ warningConfirmed: options.warningConfirmed === true, skipConflictCheck: true });
   }
 
+  // ワークアウト保存完了時の表示はトーストから完了サマリーモーダル(showWorkoutSummary)に
+  // 置き換わったため、commitWorkoutSaveからは呼ばれなくなった。
+  // トースト形式の完了通知が必要なケースが再度出た場合に備えて実装は残している。
   function workoutSavedToastText(oldSession, records, cardios, calories, volumeKg) {
     var setCount = (records || []).reduce(function (sum, record) { return sum + record.sets.length; }, 0);
     var cardioCount = (cardios || []).length;
@@ -5866,6 +5889,35 @@
     if (Number(calories || 0) > 0) parts.push(Math.round(calories).toLocaleString("ja-JP") + "kcal");
     var prefix = oldSession ? "トレーニングを更新しました" : "トレーニングを保存しました";
     return prefix + "。おつかれさまでした" + (parts.length ? "（" + parts.join("・") + "）" : "");
+  }
+
+  function showWorkoutSummary(summary) {
+    var setCount = (summary.records || []).reduce(function (sum, record) { return sum + record.sets.length; }, 0);
+    var cardios = summary.cardios || [];
+    var totalDistanceKm = cardios.reduce(function (sum, prepared) { return sum + Number(prepared.cardio.distanceKm || 0); }, 0);
+    $("#workoutSummaryLead").textContent = summary.wasUpdate ? "トレーニングを更新しました。" : "今日のトレーニングを保存しました。";
+    // PR更新があれば最上部に表示。同じ種目・指標のPRは最後(=最高値)の1件のみ
+    var latestPrByKey = {};
+    (summary.prEvents || []).forEach(function (event) { latestPrByKey[event.exerciseName + ":" + event.metric] = event; });
+    var prList = Object.keys(latestPrByKey).map(function (key) { return latestPrByKey[key]; });
+    var prBlock = $("#workoutSummaryPr");
+    if (prList.length) {
+      prBlock.innerHTML = prList.map(function (event) {
+        return '<p><strong>' + escapeHtml(event.exerciseName) + '</strong> ' + escapeHtml(event.metric) + ' ' + formatBestValue(event.value, event.decimals, event.unit) + ' 自己ベスト更新！</p>';
+      }).join("");
+      prBlock.classList.remove("hidden");
+    } else {
+      prBlock.innerHTML = "";
+      prBlock.classList.add("hidden");
+    }
+    var statsHtml = '<div><span>総セット数</span><strong>' + setCount.toLocaleString("ja-JP") + '<small>セット</small></strong></div>' +
+      '<div><span>総ボリューム</span><strong>' + formatDraftVolume(summary.volumeKg) + '<small>kg</small></strong></div>' +
+      '<div><span>概算消費カロリー</span><strong>' + Math.round(summary.calories || 0).toLocaleString("ja-JP") + '<small>kcal</small></strong></div>';
+    if (cardios.length) {
+      statsHtml += '<div><span>有酸素運動</span><strong>' + cardios.length + '<small>件</small>' + (totalDistanceKm > 0 ? '・' + (Math.round(totalDistanceKm * 10) / 10).toLocaleString("ja-JP", { maximumFractionDigits: 1 }) + '<small>km</small>' : '') + '</strong></div>';
+    }
+    $("#workoutSummaryStats").innerHTML = statsHtml;
+    openModal("workoutSummaryModal");
   }
 
   function commitWorkoutSave(options) {
@@ -5905,6 +5957,7 @@
     pendingSaveConflict = null;
     clearSavedDraft();
     var savedSessionDate = draft.date;
+    var savedPrEvents = (draft.prEvents || []).slice();
     draft = null;
     routineEditingId = null;
     resetWorkoutEditorState();
@@ -5912,7 +5965,14 @@
     calendarCursor.setDate(1);
     renderHome();
     showScreen("home");
-    showToast(workoutSavedToastText(oldSession, validRecords, preparedCardios, totalCalories, calculateDraftStrengthVolume(validRecords)));
+    showWorkoutSummary({
+      wasUpdate: !!oldSession,
+      records: validRecords,
+      cardios: preparedCardios,
+      calories: totalCalories,
+      volumeKg: calculateDraftStrengthVolume(validRecords),
+      prEvents: savedPrEvents
+    });
   }
 
   function renderDaySummary(dateValue) {
@@ -6747,6 +6807,7 @@
     bindGlobalClickEvents();
     bindConfirmAndKeyboardEvents();
     on("#undoSnackbarButton", "click", undoSnackbarRestore);
+    on("#closeWorkoutSummaryButton", "click", function () { closeModal("workoutSummaryModal"); });
   }
 
   function changeWeightByStep(direction, step) {

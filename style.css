@@ -1940,6 +1940,36 @@ body.is-keyboard-focus .workout-body {
   background: var(--surface);
   font-size: var(--fs-subtitle);
 }
+/* ワークアウト完了サマリー */
+.workout-summary-pr {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 12px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--best-gold) 45%, var(--border));
+  border-radius: var(--radius-panel);
+  background: color-mix(in srgb, var(--surface-raised) 88%, var(--best-gold) 12%);
+}
+.workout-summary-pr p { margin: 0; color: var(--text-primary); font-size: var(--fs-caption); font-weight: 700; line-height: 1.5; }
+.workout-summary-pr strong { color: var(--best-gold); font-weight: 800; }
+.workout-summary-stats {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 16px;
+}
+.workout-summary-stats > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--surface-subtle);
+}
+.workout-summary-stats span { color: var(--text-muted); font-size: var(--fs-caption); font-weight: 700; }
+.workout-summary-stats strong { font-family: "Inter Tight", sans-serif; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.workout-summary-stats strong small { margin-left: 2px; font-size: var(--fs-caption); font-weight: 700; }
 .toast {
   position: fixed;
   z-index: 200;
