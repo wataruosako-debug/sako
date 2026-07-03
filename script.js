@@ -542,8 +542,32 @@
     });
   }
 
+  function presetRoutines(exercises) {
+    var stamp = nowIso();
+    var idByName = {};
+    exercises.forEach(function (exercise) { idByName[exercise.name] = exercise.id; });
+    var presets = [
+      { name: "胸・腕の日", exerciseNames: ["ベンチプレス", "チェストプレス", "アームカール", "トライセプスプレス"] },
+      { name: "背中・肩の日", exerciseNames: ["ラットプルダウン", "シーテッドロー", "ショルダープレス", "サイドレイズ"] },
+      { name: "脚・腹の日", exerciseNames: ["スクワット", "レッグプレス", "レッグカール", "クランチ"] }
+    ];
+    return presets.map(function (preset) {
+      var ids = preset.exerciseNames.map(function (name) { return idByName[name]; }).filter(Boolean);
+      if (!ids.length) return null;
+      return {
+        id: makeId("routine"),
+        name: preset.name,
+        locationType: "gym",
+        exercises: ids.map(function (exerciseId, index) { return { exerciseId: exerciseId, orderIndex: index }; }),
+        createdAt: stamp,
+        updatedAt: stamp
+      };
+    }).filter(Boolean);
+  }
+
   function blankData() {
-    return { version: CURRENT_DATA_VERSION, profile: null, exercises: seedExercises(), sessions: [], records: [], sets: [], cardios: [], recentExerciseIds: [], routines: [], scheduledRoutines: [] };
+    var exercises = seedExercises();
+    return { version: CURRENT_DATA_VERSION, profile: null, exercises: exercises, sessions: [], records: [], sets: [], cardios: [], recentExerciseIds: [], routines: presetRoutines(exercises), scheduledRoutines: [] };
   }
 
   function loadData() {
