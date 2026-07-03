@@ -6462,8 +6462,6 @@
     bindHoldRepeat("#weightPlusSmall", function () { changeWeightByStep(1, 0.5); });
     bindHoldRepeat("#repsMinus", function () { changeReps(-1); });
     bindHoldRepeat("#repsPlus", function () { changeReps(1); });
-    bindHoldRepeat("#repsMinusLarge", function () { changeRepsLarge(-1); });
-    bindHoldRepeat("#repsPlusLarge", function () { changeRepsLarge(1); });
     on("#weightInput", "focus", function () {
       if (getNumericInputValue(this) === 0) this.value = "";
     });
@@ -6940,14 +6938,6 @@
     scheduleDraftSave();
   }
 
-  function changeRepsLarge(direction) {
-    var input = $("#repsInput");
-    var current = Math.round(getNumericInputValue(input));
-    if (current < 1) current = 10;
-    input.value = Math.max(1, current + direction * 10);
-    renderSetChoices();
-    scheduleDraftSave();
-  }
 
   function formatWeightInput() {
     var input = $("#weightInput");
