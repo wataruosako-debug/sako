@@ -12,8 +12,8 @@
   --home-color-soft: #E7FAF7;
   --gym-calendar-color: var(--brand-primary);
   --primary-button-text: #FFFFFF;
-  --canvas: #F1F3F6;
-  --page-background: #E7EBF2;
+  --canvas: #F5F7FA;
+  --page-background: #F5F7FA;
   --surface: #FFFFFF;
   --surface-subtle: #F7F9FC;
   --surface-raised: #FFFFFF;
@@ -32,9 +32,9 @@
   --planned: #8B5CF6;
   --best-gold: #F59E0B;
   --modal-backdrop: rgba(13, 27, 42, .48);
-  --shadow-card: 0 10px 26px rgba(13, 27, 42, .055);
+  --shadow-card: 0 8px 24px rgba(13, 27, 42, .05);
   --shadow-floating: 0 24px 64px rgba(13, 27, 42, .14);
-  --radius-card: 20px;
+  --radius-card: 22px;
   --radius-panel: 16px;
   --radius-button: 13px;
   --radius-input: 12px;
@@ -65,13 +65,17 @@
   --fs-body: 15px;     /* 本文・ボタンラベルの基準 */
   --fs-subtitle: 17px; /* カード見出し */
   --fs-title: 21px;    /* セクション見出し */
-  --fs-display: 30px;  /* 数値表示（重量など） */
+  --fs-hero: 28px;     /* 画面タイトル（ホーム・成長・設定の見出し） */
+  --fs-display: 48px;  /* 数値表示（重量・タイマーなど、数字主役化） */
 
   /* ===== 余白・間隔（8pxグリッド） ===== */
   --gap-xs: 4px;
   --gap-sm: 8px;       /* タップターゲット間の最小間隔。WCAG準拠 */
   --gap-md: 12px;
   --gap-lg: 16px;
+
+  /* ===== ボトムタブバー（Clean Tab） ===== */
+  --tabbar-height: 84px;
 
   /* ===== 角丸（既存の --radius-* を活用。直値を禁止するための基準） ===== */
   /* --radius-card:20px / --radius-panel:16px / --radius-button:13px */
@@ -126,8 +130,8 @@ body.has-ad-banner {
 
 [data-appearance="light"] {
   color-scheme: light;
-  --canvas: #F1F3F6;
-  --page-background: #E7EBF2;
+  --canvas: #F5F7FA;
+  --page-background: #F5F7FA;
   --surface: #FFFFFF;
   --surface-subtle: #F7F9FC;
   --surface-raised: #FFFFFF;
@@ -138,7 +142,7 @@ body.has-ad-banner {
   --border: #E6EBF2;
   --border-strong: #CBD5E1;
   --modal-backdrop: rgba(13, 27, 42, .48);
-  --shadow-card: 0 10px 26px rgba(13, 27, 42, .055);
+  --shadow-card: 0 8px 24px rgba(13, 27, 42, .05);
   --shadow-floating: 0 24px 64px rgba(13, 27, 42, .14);
 }
 
@@ -210,7 +214,7 @@ body {
   min-height: 100vh;
   color: var(--text-primary);
   background: var(--page-background);
-  font-family: "M PLUS Rounded 1c", -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+  font-family: "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -232,10 +236,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   min-height: 100vh;
   margin: 0 auto;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 16% -8%, color-mix(in srgb, var(--brand-primary) 7%, transparent), transparent 30%),
-    linear-gradient(180deg, var(--canvas) 0%, var(--page-background) 100%);
-  box-shadow: var(--shadow-floating);
+  background: var(--canvas);
 }
 .screen { display: none; min-height: 100vh; padding: 20px 18px calc(22px + env(safe-area-inset-bottom)); }
 .screen--active { display: block; }
@@ -244,7 +245,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
-  padding: max(14px, env(safe-area-inset-top)) 10px calc(var(--ad-reserved-height) + env(safe-area-inset-bottom));
+  padding: max(14px, env(safe-area-inset-top)) 10px calc(72px + env(safe-area-inset-bottom));
 }
 
 .topbar, .sub-header { display: flex; align-items: center; justify-content: space-between; }
@@ -258,10 +259,17 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .topbar h1 {
   margin: 0;
   color: var(--text-primary);
-  font-size: clamp(30px, 7.6vw, 38px);
-  font-weight: 800;
+  font-size: var(--fs-hero);
+  font-weight: 900;
   line-height: 1.1;
-  letter-spacing: -.055em;
+  letter-spacing: -.03em;
+}
+.topbar-month {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  font-family: "Inter Tight", sans-serif;
+  font-size: var(--fs-caption);
+  font-weight: 700;
 }
 
 .monthly-summary-head {
@@ -292,6 +300,80 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   gap: 9px;
   margin-bottom: 13px;
 }
+
+/* Clean Tab §3: ヒーローカード（運動日数リング）＋サブカード2枚 */
+.home-summary { margin-bottom: 12px; }
+.hero-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.hero-ring {
+  position: relative;
+  flex-shrink: 0;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: conic-gradient(var(--brand-primary) var(--ring-progress, 0%), var(--surface-subtle) 0);
+}
+.hero-ring.is-complete { background: conic-gradient(var(--home-color) var(--ring-progress, 0%), var(--surface-subtle) 0); }
+.hero-ring::after {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+.hero-ring-center {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+}
+.hero-ring-center strong {
+  font-family: "Inter Tight", sans-serif;
+  font-size: var(--fs-display);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.hero-ring-center small { color: var(--text-muted); font-size: var(--fs-caption); font-weight: 700; }
+.hero-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.hero-label { margin: 0; color: var(--text-primary); font-size: var(--fs-body); font-weight: 800; }
+.hero-goal { margin: 0; color: var(--text-muted); font-size: var(--fs-caption); font-weight: 700; }
+.hero-goal b { color: var(--text-secondary); font-family: "Inter Tight", sans-serif; }
+.hero-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.hero-chip {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: var(--fs-micro);
+  font-weight: 700;
+}
+.hero-chip b { font-family: "Inter Tight", sans-serif; }
+.hero-chip--gym { color: var(--brand-primary); background: var(--brand-primary-soft); }
+.hero-chip--home { color: var(--home-color-dark); background: var(--home-color-soft); }
+.home-subcards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-top: 9px;
+}
+.home-subcards .stat-card { min-height: 0; padding: 10px 10px 9px; text-align: center; }
+.home-subcards .stat-content { align-items: center; }
+.home-subcards .stat-icon { width: 30px; height: 30px; margin-bottom: 5px; }
+.home-subcards .stat-icon svg { width: 17px; height: 17px; }
+.home-subcards .stat-content p { margin: 0 0 3px; font-size: var(--fs-micro); font-weight: 700; }
+.stat-card-hint { margin-top: 4px; color: var(--text-muted); font-size: var(--fs-micro); font-weight: 600; }
+.hero-ring { width: 80px; height: 80px; }
+.hero-ring::after { inset: 8px; }
 .stat-card {
   display: flex;
   flex-direction: column;
@@ -499,39 +581,21 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 }
 .calendar-day:disabled { cursor: default; }
 .calendar-day--outside { color: var(--text-disabled); font-weight: 500; }
-.calendar-day--gym, .calendar-day--home, .calendar-day--both { color: var(--text-primary); background: transparent; }
-.calendar-day--gym::before, .calendar-day--home::before {
-  position: absolute;
-  bottom: 3px;
-  left: 50%;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  content: "";
-  transform: translateX(-50%);
-}
-.calendar-day--gym::before { background: var(--gym-calendar-color); }
-.calendar-day--home::before { background: var(--home-color); }
-.calendar-day--both::before, .calendar-day--both::after {
-  position: absolute;
-  bottom: 3px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  content: "";
-}
-.calendar-day--both::before { left: calc(50% - 7px); background: var(--gym-calendar-color); }
-.calendar-day--both::after { left: calc(50% + 2px); background: var(--home-color); }
-.calendar-day--planned { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--planned) 55%, transparent); }
-.calendar-day--today {
+/* Clean Tab §3: 記録日はドットではなく日付セル全体を塗る（ジム=青/自宅=ティール） */
+.calendar-day--has-record { color: #FFFFFF; font-weight: 700; }
+.calendar-day--gym { background: var(--gym-calendar-color); }
+.calendar-day--home { background: var(--home-color); }
+.calendar-day--both { background: linear-gradient(108deg, var(--gym-calendar-color) 0 50%, var(--home-color) 50% 100%); }
+.calendar-day--planned:not(.calendar-day--has-record) { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--planned) 55%, transparent); }
+/* 今日：記録があればリングで、なければ塗りで示す */
+.calendar-day--today:not(.calendar-day--has-record) {
   color: var(--primary-button-text);
   background: var(--brand-primary);
   box-shadow: 0 10px 20px color-mix(in srgb, var(--brand-primary) 24%, transparent);
 }
-.calendar-day--today.calendar-day--gym::before,
-.calendar-day--today.calendar-day--home::before,
-.calendar-day--today.calendar-day--both::before { background: #FFFFFF; }
-.calendar-day--today.calendar-day--both::after { background: var(--brand-accent); }
+.calendar-day--today.calendar-day--has-record {
+  box-shadow: inset 0 0 0 2.5px #FFFFFF, 0 0 0 2px var(--brand-primary);
+}
 .legend {
   display: flex;
   align-items: center;
@@ -623,6 +687,85 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   content: "";
 }
 .progress-action--record .progress-action-icon { color: var(--brand-primary); background: transparent; }
+
+/* ボトムタブバー（Clean Tab §2） */
+.tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 560px);
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: center;
+  padding: 8px 18px calc(10px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.tabbar.hidden { display: none; }
+.tabbar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+}
+.tabbar-item small { font-size: var(--fs-micro); font-weight: 700; }
+.tabbar-item.is-active { color: var(--brand-primary); }
+.tabbar-icon { display: inline-flex; }
+.tabbar-icon svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tabbar-item--record .tabbar-fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  margin-top: -28px;
+  border-radius: 50%;
+  color: #FFFFFF;
+  background: var(--brand-primary);
+  font-size: 26px;
+  line-height: 1;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--brand-primary) 40%, transparent);
+}
+.tabbar-item--record.is-active { color: var(--brand-primary); }
+
+/* ホームのルーティーンアクセスカード（home-shortcutsの置き換え） */
+.home-routine-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+}
+.home-routine-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  color: var(--brand-primary);
+  background: var(--brand-primary-soft);
+}
+.home-routine-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.home-routine-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.home-routine-text strong { color: var(--text-primary); font-size: var(--fs-body); font-weight: 800; }
+.home-routine-text small { color: var(--text-muted); font-size: var(--fs-micro); font-weight: 600; }
+.home-routine-chevron { color: var(--text-muted); font-size: var(--fs-title); }
 
 #progressScreen, #workoutScreen {
   padding: 0 0 calc(28px + env(safe-area-inset-bottom));
@@ -1645,6 +1788,30 @@ body.is-keyboard-focus .workout-body {
 .profile-form .finish-button { margin-top: 4px; }
 .data-actions { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border); text-align: center; }
 .data-actions button { border: 0; color: var(--danger); background: transparent; font-size: var(--fs-caption); }
+
+/* 設定画面（Clean Tab §5: モーダル→画面に統合） */
+.settings-body { padding: 4px 18px calc(var(--tabbar-height) + env(safe-area-inset-bottom)); }
+.settings-group { margin-top: 18px; }
+.settings-group:first-child { margin-top: 8px; }
+.settings-group-title { margin: 0 0 10px; color: var(--text-secondary); font-size: var(--fs-caption); font-weight: 800; }
+.settings-group .appearance-section { margin-top: 10px; }
+.settings-group .appearance-section:first-of-type { margin-top: 0; }
+.settings-profile-card {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 15px 16px; border: 1px solid var(--border); border-radius: var(--radius-panel);
+  background: var(--surface); box-shadow: var(--shadow-card); text-align: left;
+}
+.settings-profile-info { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.settings-profile-info strong { color: var(--text-primary); font-size: var(--fs-body); font-weight: 800; }
+.settings-profile-info small { color: var(--text-muted); font-size: var(--fs-caption); font-weight: 600; }
+.settings-profile-chevron { color: var(--text-muted); font-size: var(--fs-title); }
+.settings-danger-button {
+  width: 100%; margin-top: 14px; min-height: var(--btn-md);
+  border: 1px solid color-mix(in srgb, var(--danger) 24%, var(--border)); border-radius: var(--radius-button);
+  color: var(--danger); background: var(--danger-soft); font-size: var(--fs-caption); font-weight: 800;
+}
+.settings-select-field { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-primary); font-size: var(--fs-caption); font-weight: 700; }
+.settings-select-field select { min-height: var(--btn-md); padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-input); background: var(--surface-subtle); color: var(--text-primary); font-weight: 700; }
 .ai-export-sheet {
   display: flex;
   flex-direction: column;
@@ -2857,22 +3024,23 @@ button, input, select, textarea, .stat-card, .flow-card, .modal-sheet, .calendar
    タップターゲット44px以上(日付セル・ショートカット・カレンダーnav)は維持し、
    セル以外の余白・アイコンサイズで圧縮する */
 @media (max-height: 700px) {
-  #homeScreen { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
-  #homeScreen .topbar { min-height: 40px; margin-bottom: 5px; }
+  #homeScreen { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  #homeScreen .topbar { min-height: 36px; margin-bottom: 4px; }
   #homeScreen .topbar h1 { font-size: 22px; }
-  .monthly-summary-head { margin-bottom: 5px; }
-  .stats-grid { gap: 6px; margin-bottom: 6px; }
-  .stat-card { min-height: 96px; padding: 8px 7px 6px; }
-  .stat-icon { width: 26px; height: 26px; margin-bottom: 4px; }
-  .stat-icon svg { width: 17px; height: 17px; }
+  .home-summary { margin-bottom: 8px; }
+  .hero-card { padding: 10px 12px; gap: 12px; }
+  .hero-ring { width: 66px; height: 66px; }
+  .hero-ring::after { inset: 7px; }
+  .hero-chips { margin-top: 0; }
+  .home-subcards { gap: 6px; margin-top: 6px; }
+  .home-subcards .stat-card { padding: 8px 7px 6px; }
+  .home-subcards .stat-icon { width: 24px; height: 24px; margin-bottom: 3px; }
+  .home-subcards .stat-icon svg { width: 15px; height: 15px; }
   .calendar-card { padding: 8px 12px 6px; }
   .calendar-head { margin-bottom: 4px; }
   .weekdays { margin-bottom: 3px; }
   .legend { margin-top: 4px; }
-  .home-shortcuts { margin-top: 6px; padding: 3px; }
-  .progress-action { min-height: 48px; gap: 2px; padding: 4px 2px 3px; }
-  .progress-action-icon { width: 24px; height: 24px; }
-  .visit-breakdown, .calorie-breakdown, .monthly-volume-breakdown { gap: 2px; padding-top: 5px; }
+  .home-routine-card { margin-top: 6px; padding: 8px 14px; }
 }
 
 @media (max-width: 400px) {

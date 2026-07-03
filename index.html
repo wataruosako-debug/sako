@@ -27,7 +27,7 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=M+PLUS+Rounded+1c:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=20260702-07">
 </head>
 <body>
@@ -35,51 +35,43 @@
     <main id="app" class="app" aria-live="polite">
       <section id="homeScreen" class="screen screen--active" aria-labelledby="homeTitle">
         <header class="topbar">
-          <div class="brand-wrap">
-            <div>
-              <h1 id="homeTitle">ジムログ</h1>
-            </div>
-          </div>
+          <h1 id="homeTitle">ジムログ</h1>
+          <span id="homeHeaderMonth" class="topbar-month"></span>
         </header>
 
-        <div class="monthly-summary-head">
-          <h2>今月のサマリー</h2>
-          <span id="monthlySummaryMonth"></span>
-        </div>
-
-        <section class="stats-grid" aria-label="表示中の月の記録">
-          <article class="stat-card stat-card--blue">
-            <div class="stat-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="2"/><path d="M7 21v-5l5-3 5 3v5"/><path d="M6 5v4M18 5v4M3 7h18"/><path d="M8 11l4 2 4-2"/></svg>
+        <section class="home-summary" aria-label="表示中の月の記録">
+          <article class="hero-card">
+            <div id="monthlyGoalRing" class="hero-ring" role="img" aria-label="今月の運動日数と目標の進捗">
+              <div class="hero-ring-center"><strong id="monthlyVisits" class="summary-metric-value">0</strong><small>日</small></div>
             </div>
-              <div class="stat-content"><p id="monthlySummaryLabel">今月の運動</p><span class="stat-value"><strong id="monthlyVisits" class="summary-metric-value">0</strong><small class="summary-metric-unit">日</small></span><small id="monthlyVisitBreakdown" class="visit-breakdown"><span class="visit-breakdown--gym">ジム <b id="monthlyGymVisits">0</b>回</span><span class="visit-breakdown--home">自宅 <b id="monthlyHomeVisits">0</b>回</span></small></div>
-          </article>
-          <article id="monthlyCaloriesCard" class="stat-card stat-card--orange stat-card--interactive" role="button" tabindex="0" aria-label="表示中の月の消費カロリー推移を見る">
-            <div class="stat-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M12 22c4 0 7-2.8 7-6.7 0-2.6-1.4-5.1-4.2-7.5.1 2.2-.7 3.6-2.1 4.5.2-3.7-1.8-7-5.2-10.3.3 3.9-2.5 6.7-2.5 10.8C5 18.1 8.1 22 12 22Z"/><path d="M9.5 18.3c0 1.6 1.1 2.7 2.5 2.7s2.5-1.1 2.5-2.7c0-1.3-.7-2.5-2.2-3.8.1 1.1-.3 1.8-1 2.3.1-1.8-.8-3.4-2.2-5 .1 2-1.1 3.5.4 6.5Z"/></svg>
-            </div>
-              <div class="stat-content"><p id="monthlyCaloriesLabel">概算消費カロリー</p><span class="stat-value"><strong id="monthlyCalories" class="summary-metric-value">0</strong><small class="summary-metric-unit">kcal</small></span><small class="calorie-breakdown"><span class="calorie-breakdown--strength">筋トレ <b id="monthlyStrengthCalories">0</b>kcal</span><span class="calorie-breakdown--cardio">有酸素 <b id="monthlyCardioCalories">0</b>kcal</span></small></div>
-          </article>
-          <article id="monthlyVolumeCard" class="stat-card stat-card--volume stat-card--interactive" role="button" tabindex="0" aria-label="表示中の月の総ボリューム推移を見る">
-            <div class="stat-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v5c0 1.7 3.1 3 7 3s7-1.3 7-3V5"/><path d="M5 10v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/><path d="M5 15v3c0 1.7 3.1 3 7 3s7-1.3 7-3v-3"/></svg>
-            </div>
-            <div class="stat-content stat-content--volume">
-              <p id="monthlyVolumeLabel" class="volume-title">今月の月間ボリューム</p>
-              <div class="monthly-volume-total"><strong><b id="monthlyTotalVolume" class="summary-metric-value">0</b><small class="summary-metric-unit">kg</small></strong></div>
-              <div class="monthly-volume-breakdown">
-                <span class="monthly-volume--upper">上半身 <b id="monthlyUpperVolume">0</b><small>kg</small></span>
-                <span class="monthly-volume--lower">下半身 <b id="monthlyLowerVolume">0</b><small>kg</small></span>
-                <span class="monthly-volume--cardio">有酸素 <b id="monthlyCardioDistance">0.0</b><small>km</small></span>
+            <div class="hero-info">
+              <p id="monthlySummaryLabel" class="hero-label">今月の運動</p>
+              <p class="hero-goal">目標 <b id="monthlyGoalLabel">12</b>日</p>
+              <div class="hero-chips">
+                <span class="hero-chip hero-chip--gym">ジム <b id="monthlyGymVisits">0</b>回</span>
+                <span class="hero-chip hero-chip--home">自宅 <b id="monthlyHomeVisits">0</b>回</span>
               </div>
             </div>
           </article>
+          <div class="home-subcards">
+            <article id="monthlyCaloriesCard" class="stat-card stat-card--orange stat-card--interactive" role="button" tabindex="0" aria-label="表示中の月の消費カロリー推移を見る">
+              <div class="stat-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 22c4 0 7-2.8 7-6.7 0-2.6-1.4-5.1-4.2-7.5.1 2.2-.7 3.6-2.1 4.5.2-3.7-1.8-7-5.2-10.3.3 3.9-2.5 6.7-2.5 10.8C5 18.1 8.1 22 12 22Z"/><path d="M9.5 18.3c0 1.6 1.1 2.7 2.5 2.7s2.5-1.1 2.5-2.7c0-1.3-.7-2.5-2.2-3.8.1 1.1-.3 1.8-1 2.3.1-1.8-.8-3.4-2.2-5 .1 2-1.1 3.5.4 6.5Z"/></svg>
+              </div>
+              <div class="stat-content"><p id="monthlyCaloriesLabel">概算消費カロリー</p><span class="stat-value"><strong id="monthlyCalories" class="summary-metric-value">0</strong><small class="summary-metric-unit">kcal</small></span></div>
+            </article>
+            <article id="monthlyVolumeCard" class="stat-card stat-card--volume stat-card--interactive" role="button" tabindex="0" aria-label="表示中の月の総ボリューム推移を見る">
+              <div class="stat-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v5c0 1.7 3.1 3 7 3s7-1.3 7-3V5"/><path d="M5 10v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/><path d="M5 15v3c0 1.7 3.1 3 7 3s7-1.3 7-3v-3"/></svg>
+              </div>
+              <div class="stat-content"><p id="monthlyVolumeLabel" class="volume-title">今月のボリューム</p><span class="stat-value"><strong id="monthlyTotalVolume" class="summary-metric-value">0</strong><small class="summary-metric-unit">kg</small></span></div>
+            </article>
+          </div>
         </section>
 
         <section class="calendar-card" aria-labelledby="calendarHeading">
           <div class="calendar-head">
             <div>
-              <p class="section-kicker">WORKOUT CALENDAR</p>
               <h2 id="calendarHeading"><span id="calendarYear"></span>年 <span id="calendarMonth"></span>月</h2>
             </div>
             <div class="calendar-nav">
@@ -93,20 +85,11 @@
           <div class="legend"><span><i class="legend-dot legend-dot--gym"></i>ジム</span><span><i class="legend-dot legend-dot--home"></i>自宅</span><span><i class="today-ring"></i>今日</span></div>
         </section>
 
-        <nav class="home-shortcuts" aria-label="主要メニュー">
-          <button id="homeRoutineMenuButton" class="progress-action" type="button">
-            <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4h8m-7 0a2 2 0 0 0-2 2v1h10V6a2 2 0 0 0-2-2"/><path d="M6 7h12v13H6z"/><path d="m9 12 1.5 1.5L14 10"/><path d="M9 17h6"/></svg></span><strong>ルーティーン</strong>
-          </button>
-          <button id="homeRecordMenuButton" class="progress-action progress-action--record" type="button">
-            <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.4 2.6a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg></span><strong>記録</strong>
-          </button>
-          <button id="openProgressButton" class="progress-action" type="button">
-            <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span><strong>成長を見る</strong>
-          </button>
-          <button id="homeSettingsButton" class="progress-action" type="button">
-            <span class="progress-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.3 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 3.1h5l.3-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1Z"/></svg></span><strong>設定</strong>
-          </button>
-        </nav>
+        <button id="homeRoutineMenuButton" class="home-routine-card" type="button">
+          <span class="home-routine-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4h8m-7 0a2 2 0 0 0-2 2v1h10V6a2 2 0 0 0-2-2"/><path d="M6 7h12v13H6z"/><path d="m9 12 1.5 1.5L14 10"/><path d="M9 17h6"/></svg></span>
+          <span class="home-routine-text"><strong>ルーティーン</strong><small>登録メニューから記録・編集</small></span>
+          <span class="home-routine-chevron" aria-hidden="true">›</span>
+        </button>
       </section>
 
       <section id="progressScreen" class="screen" aria-labelledby="progressTitle">
@@ -169,7 +152,7 @@
 
           <section id="savedSetsSection" class="flow-card draft-menu-card">
             <div class="section-title-row draft-menu-title-row">
-              <div><p class="section-kicker">TODAY'S MENU</p><h2>今日のメニュー</h2><small class="draft-menu-hint">セットを追加・編集 <b id="setCountBadge">0件</b></small></div>
+              <div><h2>今日のメニュー</h2><small class="draft-menu-hint">セットを追加・編集 <b id="setCountBadge">0件</b></small></div>
               <div class="draft-menu-top-actions"><button id="startDraftSortButton" type="button">並べ替え</button></div>
             </div>
             <div id="draftSortActionBar" class="draft-sort-action-bar hidden"><button id="saveDraftSortButton" type="button">この順番で保存</button><button id="cancelDraftSortButton" type="button">キャンセル</button></div>
@@ -228,7 +211,6 @@
                 <div class="reps-counter-value"><input id="repsInput" type="number" min="1" max="999" inputmode="numeric" value="10"><span>回</span></div>
                 <button id="repsPlus" type="button" aria-label="回数を増やす">＋</button>
               </div>
-              <div class="large-step-row"><button id="repsMinusLarge" type="button">−10回</button><button id="repsPlusLarge" type="button">＋10回</button></div>
               <div id="repsQuick" class="choice-grid choice-grid--five">
                 <button type="button" data-reps="6">6</button><button type="button" data-reps="8">8</button><button type="button" data-reps="10">10</button><button type="button" data-reps="12">12</button><button type="button" data-reps="15">15</button>
               </div>
@@ -289,7 +271,7 @@
         <div class="guide-body">
           <section class="guide-progress-card">
             <div>
-              <p class="section-kicker">GUIDED WORKOUT</p>
+              
               <h2 id="guideCurrentTitle">次のセット</h2>
               <small id="guideProgressText">0 / 0種目</small>
             </div>
@@ -432,7 +414,123 @@
           </section>
         </div>
       </section>
+
+      <section id="settingsScreen" class="screen" aria-labelledby="settingsTitle">
+        <header class="sub-header">
+          <button id="backFromSettingsButton" class="icon-button icon-button--back" type="button" aria-label="ホームへ戻る">‹</button>
+          <div class="sub-header-title"><span class="location-badge">設定</span><h1 id="settingsTitle">設定</h1></div>
+          <span class="header-spacer" aria-hidden="true"></span>
+        </header>
+        <div class="settings-body">
+          <section class="settings-group" aria-label="プロフィール">
+            <h2 class="settings-group-title">プロフィール</h2>
+            <button id="settingsProfileCard" class="settings-profile-card" type="button">
+              <span class="settings-profile-info"><strong>プロフィール</strong><small id="settingsProfileSummary">体重 -- ・身長 -- ・年齢 --</small></span>
+              <span class="settings-profile-chevron" aria-hidden="true">›</span>
+            </button>
+          </section>
+
+          <section class="settings-group" aria-label="トレーニング">
+            <h2 class="settings-group-title">トレーニング</h2>
+            <fieldset class="appearance-section">
+              <legend>休憩タイマー</legend>
+              <div class="timer-option-list">
+                <label><input id="restTimerEnabled" type="checkbox" data-timer-setting="restTimerEnabled">休憩タイマーを使用する</label>
+                <div id="restTimerSubSettings" class="timer-option-subsettings">
+                  <label><input id="autoStartRestTimer" type="checkbox" data-timer-setting="autoStartRestTimer">休憩タイマーを自動開始</label>
+                  <label><input id="restTimerSound" type="checkbox" data-timer-setting="restTimerSound">終了時に音を鳴らす</label>
+                  <small class="timer-setting-help">iPhoneでは最初にトレーニング開始ボタンを押した後から音が有効になります</small>
+                  <label><input id="restTimerVibration" type="checkbox" data-timer-setting="restTimerVibration">終了時に振動する</label>
+                  <small class="timer-setting-help">振動は対応している端末のみ利用できます</small>
+                </div>
+              </div>
+            </fieldset>
+            <fieldset class="appearance-section">
+              <legend>ガイドモード</legend>
+              <div class="timer-option-list">
+                <label><input id="guideModeEnabled" type="checkbox" data-timer-setting="guideModeEnabled">ガイドモードを使用する</label>
+                <small class="timer-setting-help">ルーティーンやコピーしたメニューだけに表示します。手動入力だけの時は表示されません。</small>
+              </div>
+            </fieldset>
+            <fieldset class="appearance-section">
+              <legend>画面スリープ</legend>
+              <div class="timer-option-list">
+                <label><input id="keepScreenAwake" type="checkbox" data-timer-setting="keepScreenAwake">記録中は画面をスリープさせない</label>
+                <small class="timer-setting-help">対応しているブラウザでのみ動作します</small>
+              </div>
+            </fieldset>
+            <fieldset class="appearance-section">
+              <legend>今月の目標</legend>
+              <label class="settings-select-field"><span>月の目標運動日数</span>
+                <select id="monthlyGoalDays">
+                  <option value="4">4日</option>
+                  <option value="6">6日</option>
+                  <option value="8">8日</option>
+                  <option value="10">10日</option>
+                  <option value="12">12日</option>
+                  <option value="15">15日</option>
+                  <option value="18">18日</option>
+                  <option value="20">20日</option>
+                  <option value="25">25日</option>
+                  <option value="30">30日</option>
+                </select>
+              </label>
+              <small class="timer-setting-help">ホームの運動リングの目標に使います</small>
+            </fieldset>
+            <div class="settings-menu-list">
+              <button id="settingsOpenRoutineButton" type="button"><strong>ルーティーン管理</strong><small>登録済みルーティーンを編集・削除</small></button>
+            </div>
+          </section>
+
+          <section class="settings-group" aria-label="外観">
+            <h2 class="settings-group-title">外観</h2>
+            <fieldset class="appearance-section">
+              <legend>表示モード</legend>
+              <div class="appearance-segmented-control">
+                <button type="button" data-appearance-option="system"><span class="choice-check" aria-hidden="true">✓</span><strong>端末に合わせる</strong><small>iPhoneやPCの設定を使用</small></button>
+                <button type="button" data-appearance-option="light"><span class="choice-check" aria-hidden="true">✓</span><strong>ライト</strong><small>明るい背景で表示</small></button>
+                <button type="button" data-appearance-option="dark"><span class="choice-check" aria-hidden="true">✓</span><strong>ダーク</strong><small>暗い背景で表示</small></button>
+              </div>
+            </fieldset>
+            <fieldset class="appearance-section">
+              <legend>カラーテーマ</legend>
+              <div class="theme-option-list">
+                <button type="button" data-color-theme-option="urban-blue"><span class="theme-swatches" aria-hidden="true"><i style="--swatch:#2563EB"></i><i style="--swatch:#0D1B2A"></i><i style="--swatch:#A3E635"></i></span><span><strong>Urban Blue</strong><small>明るく現代的な標準テーマ</small></span><span class="choice-check" aria-hidden="true">✓</span></button>
+                <button type="button" data-color-theme-option="midnight"><span class="theme-swatches" aria-hidden="true"><i style="--swatch:#1E40AF"></i><i style="--swatch:#111827"></i><i style="--swatch:#22D3EE"></i></span><span><strong>Midnight</strong><small>落ち着いた深い青のテーマ</small></span><span class="choice-check" aria-hidden="true">✓</span></button>
+                <button type="button" data-color-theme-option="graphite-lime"><span class="theme-swatches" aria-hidden="true"><i style="--swatch:#27272A"></i><i style="--swatch:#A3E635"></i><i style="--swatch:#3B82F6"></i></span><span><strong>Graphite Lime</strong><small>筋トレ感を強めたテーマ</small></span><span class="choice-check" aria-hidden="true">✓</span></button>
+              </div>
+            </fieldset>
+          </section>
+
+          <section class="settings-group" aria-label="データ">
+            <h2 class="settings-group-title">データ</h2>
+            <div class="settings-menu-list">
+              <button id="backupDataButton" type="button"><strong>データをバックアップ</strong><small>すべての記録をJSONファイルに保存</small></button>
+              <button id="restoreDataButton" type="button"><strong>バックアップから復元</strong><small>保存したJSONファイルを読み込む</small></button>
+              <button id="aiExportButton" type="button"><strong>AI分析用にテキスト出力</strong><small>期間を選んで、記録をコピーできます</small></button>
+              <button id="restoreSnapshotButton" type="button"><strong>直前の復元前データに戻す</strong><small>復元直前に自動保存したデータを使用</small></button>
+              <input id="restoreDataInput" class="hidden" type="file" accept="application/json,.json">
+            </div>
+            <button id="resetDataButton" class="settings-danger-button" type="button">すべての記録を削除</button>
+          </section>
+        </div>
+      </section>
     </main>
+
+    <nav class="tabbar" aria-label="メインナビゲーション">
+      <button id="homeTabButton" class="tabbar-item is-active" data-tab="home" type="button">
+        <span class="tabbar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9h12v-9"/></svg></span><small>ホーム</small>
+      </button>
+      <button id="homeRecordMenuButton" class="tabbar-item tabbar-item--record" data-tab="record" type="button">
+        <span class="tabbar-fab" aria-hidden="true">＋</span><small>記録</small>
+      </button>
+      <button id="openProgressButton" class="tabbar-item" data-tab="progress" type="button">
+        <span class="tabbar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span><small>成長</small>
+      </button>
+      <button id="homeSettingsButton" class="tabbar-item" data-tab="settings" type="button">
+        <span class="tabbar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.3 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 3.1h5l.3-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1Z"/></svg></span><small>設定</small>
+      </button>
+    </nav>
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -447,7 +545,7 @@
     <section class="modal-sheet modal-sheet--center" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
       <div class="modal-handle"></div>
       <button class="modal-close" type="button" data-close-modal="profileModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">PROFILE</p><h2 id="profileTitle">プロフィール設定</h2>
+      <h2 id="profileTitle">プロフィール設定</h2>
       <p class="modal-lead">概算消費カロリーの計算に使います。毎日の入力は必要ありません。</p>
       <form id="profileForm" class="profile-form">
         <div class="two-column-inputs">
@@ -460,7 +558,6 @@
         </div>
         <button class="finish-button" type="submit">プロフィールを保存</button>
       </form>
-      <div class="data-actions"><button id="resetDataButton" type="button">すべての記録を削除</button></div>
     </section>
   </div>
 
@@ -481,7 +578,7 @@
     <div class="modal-backdrop" data-close-modal="addExerciseModal"></div>
     <section class="modal-sheet modal-sheet--center" role="dialog" aria-modal="true" aria-labelledby="addExerciseTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="addExerciseModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">NEW EXERCISE</p><h2 id="addExerciseTitle">種目を追加</h2>
+      <h2 id="addExerciseTitle">種目を追加</h2>
       <form id="addExerciseForm" class="profile-form">
         <label><span>種目名</span><input id="newExerciseName" type="text" maxlength="40" required placeholder="例：ヒップスラスト"></label>
         <label><span>部位</span><select id="newExerciseBodyPart"><option value="chest">胸</option><option value="shoulder">肩</option><option value="arm">腕</option><option value="back">背中</option><option value="legs">脚</option><option value="abs">腹</option><option value="other">その他</option></select></label>
@@ -496,7 +593,7 @@
     <div class="modal-backdrop" data-close-modal="dayModal"></div>
     <section class="modal-sheet modal-sheet--tall" role="dialog" aria-modal="true" aria-labelledby="dayModalTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="dayModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">DAILY SUMMARY</p><h2 id="dayModalTitle">日別記録</h2>
+      <h2 id="dayModalTitle">日別記録</h2>
       <div id="daySummaryContent"></div>
       <div id="daySummaryActions" class="modal-actions"></div>
     </section>
@@ -506,7 +603,7 @@
     <div class="modal-backdrop" data-close-modal="copyDestinationModal"></div>
     <section class="modal-sheet modal-sheet--confirm copy-destination-sheet" role="dialog" aria-modal="true" aria-labelledby="copyDestinationTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="copyDestinationModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">COPY WORKOUT</p><h2 id="copyDestinationTitle">コピー先を選ぶ</h2>
+      <h2 id="copyDestinationTitle">コピー先を選ぶ</h2>
       <p id="copySourceLabel" class="copy-source-label"></p>
       <button id="copyToTodayButton" class="copy-today-button" type="button"><strong>今日にコピー</strong><small id="copyTodayLabel"></small></button>
       <div class="copy-date-choice">
@@ -522,7 +619,7 @@
     <div class="modal-backdrop" data-close-modal="routineSaveModal"></div>
     <section class="modal-sheet modal-sheet--tall" role="dialog" aria-modal="true" aria-labelledby="routineSaveTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="routineSaveModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">ROUTINE</p><h2 id="routineSaveTitle">ルーティーンとして保存</h2>
+      <h2 id="routineSaveTitle">ルーティーンとして保存</h2>
       <label class="routine-name-field"><span>ルーティーン名</span><input id="routineNameInput" type="text" maxlength="40" placeholder="例：上半身A"></label>
       <label class="routine-name-field"><span>場所</span><select id="routineLocationType"><option value="gym">ジム</option><option value="home">自宅</option></select></label>
       <div class="routine-editor-head"><strong>追加済み種目</strong><button id="routineAddExerciseButton" type="button">種目を追加</button></div>
@@ -535,7 +632,7 @@
     <div class="modal-backdrop" data-close-modal="recordMenuModal"></div>
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="recordMenuTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="recordMenuModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">WORKOUT</p><h2 id="recordMenuTitle">トレーニングを記録</h2>
+      <h2 id="recordMenuTitle">トレーニングを記録</h2>
       <p class="modal-lead">記録する場所を選んでください。</p>
       <div class="record-menu-list">
         <button id="homeGymStartButton" class="record-menu-button record-menu-button--gym" type="button"><strong>ジムトレーニングを記録</strong><small>ジムで行ったトレーニングを入力</small></button>
@@ -549,83 +646,13 @@
     <div class="modal-backdrop" data-close-modal="routineMenuModal"></div>
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="routineMenuTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="routineMenuModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">ROUTINE</p><h2 id="routineMenuTitle">ルーティーン</h2>
+      <h2 id="routineMenuTitle">ルーティーン</h2>
       <p class="modal-lead">行う操作を選んでください。</p>
       <div class="routine-menu-list">
         <button id="homeRoutineCreateButton" class="routine-menu-button" type="button"><strong>ルーティーンを登録</strong><small>新しいトレーニングメニューを作成</small></button>
         <button id="settingsRoutineButton" class="routine-menu-button" type="button"><strong>ルーティーンを管理</strong><small>登録済みルーティーンを編集・削除</small></button>
       </div>
       <button class="outline-button" type="button" data-close-modal="routineMenuModal">キャンセル</button>
-    </section>
-  </div>
-
-  <div id="settingsMenuModal" class="modal" aria-hidden="true">
-    <div class="modal-backdrop" data-close-modal="settingsMenuModal"></div>
-    <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="settingsMenuTitle">
-      <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="settingsMenuModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">SETTINGS</p><h2 id="settingsMenuTitle">設定</h2>
-      <div class="settings-menu-list">
-        <button id="settingsProfileButton" type="button"><strong>プロフィール更新</strong><small>体重・身長・年齢などを変更</small></button>
-        <button id="settingsAppearanceButton" type="button"><strong>外観</strong><small id="settingsAppearanceSummary">端末に合わせる・Urban Blue</small></button>
-        <button id="backupDataButton" type="button"><strong>データをバックアップ</strong><small>すべての記録をJSONファイルに保存</small></button>
-        <button id="restoreDataButton" type="button"><strong>バックアップから復元</strong><small>保存したJSONファイルを読み込む</small></button>
-        <button id="aiExportButton" type="button"><strong>AI分析用にテキスト出力</strong><small>期間を選んで、記録をコピーできます</small></button>
-        <button id="restoreSnapshotButton" type="button"><strong>直前の復元前データに戻す</strong><small>復元直前に自動保存したデータを使用</small></button>
-        <input id="restoreDataInput" class="hidden" type="file" accept="application/json,.json">
-      </div>
-      <button class="outline-button" type="button" data-close-modal="settingsMenuModal">キャンセル</button>
-    </section>
-  </div>
-
-  <div id="appearanceSettingsModal" class="modal" aria-hidden="true">
-    <div class="modal-backdrop" data-close-modal="appearanceSettingsModal"></div>
-    <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="appearanceSettingsTitle">
-      <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="appearanceSettingsModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">APPEARANCE</p><h2 id="appearanceSettingsTitle">外観</h2>
-      <fieldset class="appearance-section">
-        <legend>表示モード</legend>
-        <div class="appearance-segmented-control">
-          <button type="button" data-appearance-option="system"><span class="choice-check" aria-hidden="true">✓</span><strong>端末に合わせる</strong><small>iPhoneやPCの設定を使用</small></button>
-          <button type="button" data-appearance-option="light"><span class="choice-check" aria-hidden="true">✓</span><strong>ライト</strong><small>明るい背景で表示</small></button>
-          <button type="button" data-appearance-option="dark"><span class="choice-check" aria-hidden="true">✓</span><strong>ダーク</strong><small>暗い背景で表示</small></button>
-        </div>
-      </fieldset>
-      <fieldset class="appearance-section">
-        <legend>カラーテーマ</legend>
-        <div class="theme-option-list">
-          <button type="button" data-color-theme-option="urban-blue"><span class="theme-swatches" aria-hidden="true"><i style="--swatch:#2563EB"></i><i style="--swatch:#0D1B2A"></i><i style="--swatch:#A3E635"></i></span><span><strong>Urban Blue</strong><small>明るく現代的な標準テーマ</small></span><span class="choice-check" aria-hidden="true">✓</span></button>
-          <button type="button" data-color-theme-option="midnight"><span class="theme-swatches" aria-hidden="true"><i style="--swatch:#1E40AF"></i><i style="--swatch:#111827"></i><i style="--swatch:#22D3EE"></i></span><span><strong>Midnight</strong><small>落ち着いた深い青のテーマ</small></span><span class="choice-check" aria-hidden="true">✓</span></button>
-          <button type="button" data-color-theme-option="graphite-lime"><span class="theme-swatches" aria-hidden="true"><i style="--swatch:#27272A"></i><i style="--swatch:#A3E635"></i><i style="--swatch:#3B82F6"></i></span><span><strong>Graphite Lime</strong><small>筋トレ感を強めたテーマ</small></span><span class="choice-check" aria-hidden="true">✓</span></button>
-        </div>
-      </fieldset>
-      <fieldset class="appearance-section">
-        <legend>休憩タイマー</legend>
-        <div class="timer-option-list">
-          <label><input id="restTimerEnabled" type="checkbox" data-timer-setting="restTimerEnabled">休憩タイマーを使用する</label>
-          <div id="restTimerSubSettings" class="timer-option-subsettings">
-            <label><input id="autoStartRestTimer" type="checkbox" data-timer-setting="autoStartRestTimer">休憩タイマーを自動開始</label>
-            <label><input id="restTimerSound" type="checkbox" data-timer-setting="restTimerSound">終了時に音を鳴らす</label>
-            <small class="timer-setting-help">iPhoneでは最初にトレーニング開始ボタンを押した後から音が有効になります</small>
-            <label><input id="restTimerVibration" type="checkbox" data-timer-setting="restTimerVibration">終了時に振動する</label>
-            <small class="timer-setting-help">振動は対応している端末のみ利用できます</small>
-          </div>
-        </div>
-      </fieldset>
-      <fieldset class="appearance-section">
-        <legend>画面スリープ</legend>
-        <div class="timer-option-list">
-          <label><input id="keepScreenAwake" type="checkbox" data-timer-setting="keepScreenAwake">記録中は画面をスリープさせない</label>
-          <small class="timer-setting-help">対応しているブラウザでのみ動作します</small>
-        </div>
-      </fieldset>
-      <fieldset class="appearance-section">
-        <legend>ガイドモード</legend>
-        <div class="timer-option-list">
-          <label><input id="guideModeEnabled" type="checkbox" data-timer-setting="guideModeEnabled">ガイドモードを使用する</label>
-          <small class="timer-setting-help">ルーティーンやコピーしたメニューだけに表示します。手動入力だけの時は表示されません。</small>
-        </div>
-      </fieldset>
-      <button class="finish-button" type="button" data-close-modal="appearanceSettingsModal">完了</button>
     </section>
   </div>
 
@@ -643,7 +670,7 @@
     <div class="modal-backdrop" data-close-modal="aiExportModal"></div>
     <section class="modal-sheet modal-sheet--tall ai-export-sheet" role="dialog" aria-modal="true" aria-labelledby="aiExportTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="aiExportModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">EXPORT TEXT</p><h2 id="aiExportTitle">AI分析用にテキスト出力</h2>
+      <h2 id="aiExportTitle">AI分析用にテキスト出力</h2>
       <p class="modal-lead">コピー後、ChatGPTなどに貼り付けて分析できます。</p>
       <div class="ai-export-form">
         <label><span>期間</span><select id="aiExportRange"><option value="today">今日</option><option value="last7">直近7日</option><option value="last30">直近30日</option><option value="thisMonth">今月</option><option value="lastMonth">先月</option><option value="custom">任意期間</option></select></label>
@@ -683,7 +710,7 @@
     <div class="modal-backdrop" data-close-modal="guideModeHelpModal"></div>
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="guideModeHelpTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideModeHelpModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">GUIDE MODE</p><h2 id="guideModeHelpTitle">ガイドモードとは？</h2>
+      <h2 id="guideModeHelpTitle">ガイドモードとは？</h2>
       <p class="modal-lead">セットしたメニューを順番に進めながら、重量・回数の記録と休憩時間の管理ができます。完了したセットだけが正式な記録になります。</p>
       <ul class="guide-help-list">
         <li>次に行うセットを自動で表示</li>
@@ -699,7 +726,7 @@
     <div class="modal-backdrop" data-close-modal="guideStartModal"></div>
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="guideStartTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideStartModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">START GUIDE</p><h2 id="guideStartTitle">どの種目から始めますか？</h2>
+      <h2 id="guideStartTitle">どの種目から始めますか？</h2>
       <p class="modal-lead">種目をタップするとすぐ始まります。</p>
       <div id="guideStartSummary" class="guide-start-summary"></div>
       <fieldset class="guide-start-options hidden">
@@ -716,7 +743,7 @@
     <div class="modal-backdrop" data-close-modal="guideMenuModal"></div>
     <section class="modal-sheet modal-sheet--tall" role="dialog" aria-modal="true" aria-labelledby="guideMenuTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideMenuModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">GUIDE MENU</p><h2 id="guideMenuTitle">メニュー一覧</h2>
+      <h2 id="guideMenuTitle">メニュー一覧</h2>
       <button id="guideMenuUndoLastActionButton" class="guide-undo-button hidden" type="button">戻る</button>
       <div id="guideMenuList" class="guide-menu-list"></div>
       <button id="guideMenuAddExercise" class="outline-button outline-button--blue" type="button">メニュー外の種目を行う</button>
@@ -727,7 +754,7 @@
     <div class="modal-backdrop" data-close-modal="guideExitModal"></div>
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="guideExitTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideExitModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">FINISH GUIDE</p><h2 id="guideExitTitle">今日のメニューを保存しますか？</h2>
+      <h2 id="guideExitTitle">今日のメニューを保存しますか？</h2>
       <p class="modal-lead">ここまで入力したセットは保存途中として残ります。</p>
       <div id="guideExitSummary" class="guide-exit-summary"></div>
       <div class="modal-actions"><button id="saveGuideProgress" class="finish-button" type="button">保存して終了</button><button id="continueGuideButton" class="outline-button" type="button">今日のメニューに戻る</button><button id="cancelGuideExit" class="outline-button" type="button">キャンセル</button></div>
@@ -759,7 +786,7 @@
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="workoutSummaryTitle">
       <div class="modal-handle"></div>
       <div id="workoutSummaryPr" class="workout-summary-pr hidden"></div>
-      <p class="section-kicker">WORKOUT COMPLETE</p>
+      
       <h2 id="workoutSummaryTitle">おつかれさまでした！</h2>
       <p id="workoutSummaryLead" class="modal-lead">今日のトレーニングを保存しました。</p>
       <div id="workoutSummaryStats" class="workout-summary-stats"></div>
@@ -786,7 +813,7 @@
     <div class="modal-backdrop" data-close-modal="routineListModal"></div>
     <section class="modal-sheet modal-sheet--tall" role="dialog" aria-modal="true" aria-labelledby="routineListTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="routineListModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">ROUTINES</p><h2 id="routineListTitle">ルーティーンから追加</h2>
+      <h2 id="routineListTitle">ルーティーンから追加</h2>
       <p class="modal-lead">今日の記録を始めるか、日付を選んで予定に追加できます。</p>
       <div id="routineList" class="routine-list"></div>
     </section>

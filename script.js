@@ -8,7 +8,9 @@
   var DRAFT_STORAGE_KEY = "gymlog-draft-v1";
   var PRE_RESTORE_STORAGE_KEY = "gymlog-pre-restore-v1";
   var UI_SETTINGS_KEY = "gymlog-ui-settings-v1";
-  var DEFAULT_UI_SETTINGS = { appearance: "system", colorTheme: "urban-blue", restTimerEnabled: true, autoStartRestTimer: true, restTimerSound: false, restTimerVibration: true, guideModeEnabled: true, guideHelpSeen: false, keepScreenAwake: true };
+  var DEFAULT_UI_SETTINGS = { appearance: "system", colorTheme: "urban-blue", restTimerEnabled: true, autoStartRestTimer: true, restTimerSound: false, restTimerVibration: true, guideModeEnabled: true, guideHelpSeen: false, keepScreenAwake: true, monthlyGoalDays: 12 };
+  var MONTHLY_GOAL_MIN = 1;
+  var MONTHLY_GOAL_MAX = 31;
   var APPEARANCE_OPTIONS = ["system", "light", "dark"];
   var COLOR_THEME_OPTIONS = ["urban-blue", "midnight", "graphite-lime"];
   var APPEARANCE_LABELS = { system: "端末に合わせる", light: "ライト", dark: "ダーク" };
@@ -115,8 +117,14 @@
       restTimerVibration: Object.prototype.hasOwnProperty.call(settings, "restTimerVibration") ? !!settings.restTimerVibration : DEFAULT_UI_SETTINGS.restTimerVibration,
       guideModeEnabled: Object.prototype.hasOwnProperty.call(settings, "guideModeEnabled") ? !!settings.guideModeEnabled : DEFAULT_UI_SETTINGS.guideModeEnabled,
       guideHelpSeen: Object.prototype.hasOwnProperty.call(settings, "guideHelpSeen") ? !!settings.guideHelpSeen : DEFAULT_UI_SETTINGS.guideHelpSeen,
-      keepScreenAwake: Object.prototype.hasOwnProperty.call(settings, "keepScreenAwake") ? !!settings.keepScreenAwake : DEFAULT_UI_SETTINGS.keepScreenAwake
+      keepScreenAwake: Object.prototype.hasOwnProperty.call(settings, "keepScreenAwake") ? !!settings.keepScreenAwake : DEFAULT_UI_SETTINGS.keepScreenAwake,
+      monthlyGoalDays: normalizeMonthlyGoalDays(settings.monthlyGoalDays)
     };
+  }
+  function normalizeMonthlyGoalDays(value) {
+    var num = Math.round(Number(value));
+    if (!Number.isFinite(num)) return DEFAULT_UI_SETTINGS.monthlyGoalDays;
+    return Math.max(MONTHLY_GOAL_MIN, Math.min(MONTHLY_GOAL_MAX, num));
   }
   function loadUiSettings() {
     try {
@@ -220,6 +228,8 @@
     if (guideEnabled) guideEnabled.checked = isGuideModeEnabled();
     var keepAwake = $("#keepScreenAwake");
     if (keepAwake) keepAwake.checked = isKeepScreenAwakeEnabled();
+    var goalSelect = $("#monthlyGoalDays");
+    if (goalSelect) goalSelect.value = String(uiSettings.monthlyGoalDays);
   }
   function applyUiSettings(settings) {
     uiSettings = normalizeUiSettings(settings);
@@ -260,6 +270,11 @@
   function applyGuideModeEnabled(enabled) {
     applyUiSettings(Object.assign({}, uiSettings, { guideModeEnabled: !!enabled }));
     if (saveUiSettings(uiSettings)) showToast("ガイドモード設定を保存しました");
+  }
+  function setMonthlyGoalDays(value) {
+    applyUiSettings(Object.assign({}, uiSettings, { monthlyGoalDays: normalizeMonthlyGoalDays(value) }));
+    if (saveUiSettings(uiSettings)) showToast("目標運動日数を保存しました");
+    renderHome();
   }
   function handleSystemAppearanceChange() {
     if (uiSettings.appearance === "system") applyUiSettings(uiSettings);
@@ -1470,21 +1485,34 @@
     var formatVolume = function (value) {
       return Number(value || 0).toLocaleString("ja-JP", { maximumFractionDigits: 1 });
     };
-    $("#monthlyVisits").textContent = summary.workoutDays;
-    $("#monthlyGymVisits").textContent = summary.gymVisits;
-    $("#monthlyHomeVisits").textContent = summary.homeVisits;
-    $("#monthlyCalories").textContent = Math.round(summary.totalCalories).toLocaleString("ja-JP");
-    $("#monthlyStrengthCalories").textContent = Math.round(summary.strengthCalories).toLocaleString("ja-JP");
-    $("#monthlyCardioCalories").textContent = Math.round(summary.cardioCalories).toLocaleString("ja-JP");
-    $("#monthlyTotalVolume").textContent = formatVolume(summary.totalStrengthVolumeKg);
-    $("#monthlyUpperVolume").textContent = formatVolume(summary.upperBodyVolumeKg);
-    $("#monthlyLowerVolume").textContent = formatVolume(summary.lowerBodyVolumeKg);
-    $("#monthlyCardioDistance").textContent = summary.cardioDistanceKm.toFixed(1);
+    var setText = function (id, value) { var el = document.getElementById(id); if (el) el.textContent = value; };
+    setText("monthlyVisits", summary.workoutDays);
+    setText("monthlyGymVisits", summary.gymVisits);
+    setText("monthlyHomeVisits", summary.homeVisits);
+    setText("monthlyCalories", Math.round(summary.totalCalories).toLocaleString("ja-JP"));
+    setText("monthlyStrengthCalories", Math.round(summary.strengthCalories).toLocaleString("ja-JP"));
+    setText("monthlyCardioCalories", Math.round(summary.cardioCalories).toLocaleString("ja-JP"));
+    setText("monthlyTotalVolume", formatVolume(summary.totalStrengthVolumeKg));
+    setText("monthlyUpperVolume", formatVolume(summary.upperBodyVolumeKg));
+    setText("monthlyLowerVolume", formatVolume(summary.lowerBodyVolumeKg));
+    setText("monthlyCardioDistance", summary.cardioDistanceKm.toFixed(1));
+    // 目標運動日数リング(conic-gradient)の進捗を更新
+    var goalDays = uiSettings.monthlyGoalDays || DEFAULT_UI_SETTINGS.monthlyGoalDays;
+    setText("monthlyGoalLabel", goalDays);
+    var ring = $("#monthlyGoalRing");
+    if (ring) {
+      var pct = Math.max(0, Math.min(100, Math.round((summary.workoutDays / goalDays) * 100)));
+      ring.style.setProperty("--ring-progress", pct + "%");
+      ring.classList.toggle("is-complete", summary.workoutDays >= goalDays);
+      ring.setAttribute("aria-label", "今月の運動 " + summary.workoutDays + "日、目標 " + goalDays + "日");
+    }
     var summaryMonth = $("#monthlySummaryMonth");
     if (summaryMonth) summaryMonth.textContent = year + "年" + monthLabel;
-    $("#monthlySummaryLabel").textContent = "運動";
-    $("#monthlyCaloriesLabel").textContent = "概算消費カロリー";
-    $("#monthlyVolumeLabel").textContent = "ボリューム";
+    var headerMonth = $("#homeHeaderMonth");
+    if (headerMonth) headerMonth.textContent = year + "年" + monthLabel;
+    setText("monthlySummaryLabel", "今月の運動");
+    setText("monthlyCaloriesLabel", "概算消費カロリー");
+    setText("monthlyVolumeLabel", "今月のボリューム");
     var scheduleFit = window.requestAnimationFrame || function (callback) { setTimeout(callback, 0); };
     scheduleFit(fitMonthlySummaryMetrics);
   }
@@ -2150,10 +2178,21 @@
     $("#calendarGrid").innerHTML = html;
   }
 
+  function updateTabBar(name) {
+    var tabbar = $(".tabbar");
+    if (!tabbar) return;
+    // 記録中(通常/ガイド)はタブバーを非表示にし、誤タップを防ぐ
+    tabbar.classList.toggle("hidden", name === "workout" || name === "guideWorkout");
+    $$(".tabbar-item").forEach(function (item) {
+      item.classList.toggle("is-active", item.dataset.tab === name);
+    });
+  }
+
   function showScreen(name) {
     $$(".screen").forEach(function (screen) { screen.classList.remove("screen--active"); });
     $("#" + name + "Screen").classList.add("screen--active");
     window.scrollTo(0, 0);
+    updateTabBar(name);
     syncScreenWakeLock();
   }
 
@@ -6077,20 +6116,40 @@
   }
 
   function bindHomeMenuEvents() {
-    on("#homeSettingsButton", "click", function () { openModal("settingsMenuModal"); });
+    on("#homeSettingsButton", "click", openSettingsScreen);
+    on("#homeTabButton", "click", function () { renderHome(); showScreen("home"); });
     on("#homeRoutineMenuButton", "click", function () { openModal("routineMenuModal"); });
     on("#homeRecordMenuButton", "click", function () { openModal("recordMenuModal"); });
     on("#homeRoutineCreateButton", "click", function () { closeModal("routineMenuModal"); openRoutineCreator(false); });
     on("#homeGymStartButton", "click", function () { closeModal("recordMenuModal"); startTodayLocation("gym"); });
     on("#homeHomeStartButton", "click", function () { closeModal("recordMenuModal"); startTodayLocation("home"); });
-    on("#settingsProfileButton", "click", function () { closeModal("settingsMenuModal"); openProfile(); });
-    on("#settingsAppearanceButton", "click", function () { closeModal("settingsMenuModal"); renderAppearanceSettings(); openModal("appearanceSettingsModal"); });
+    on("#backFromSettingsButton", "click", function () { showScreen("home"); });
+    on("#settingsProfileCard", "click", openProfile);
+    on("#settingsOpenRoutineButton", "click", function () { openRoutineList(todayString(), "manage"); });
     bindKeyboardActivation($("#monthlyCaloriesCard"), openDisplayedMonthCaloriesProgress);
     bindKeyboardActivation($("#monthlyVolumeCard"), openDisplayedMonthVolumeProgress);
   }
 
+  function renderSettingsProfileSummary() {
+    var summaryEl = $("#settingsProfileSummary");
+    if (!summaryEl) return;
+    var profile = data.profile || {};
+    var parts = [
+      "体重 " + (profile.weightKg ? profile.weightKg + "kg" : "--"),
+      "身長 " + (profile.heightCm ? profile.heightCm + "cm" : "--"),
+      "年齢 " + (profile.age ? profile.age + "歳" : "--")
+    ];
+    summaryEl.textContent = parts.join("・");
+  }
+
+  function openSettingsScreen() {
+    renderSettingsProfileSummary();
+    renderAppearanceSettings();
+    showScreen("settings");
+  }
+
   function bindAppearanceEvents() {
-    on("#appearanceSettingsModal", "click", function (event) {
+    on("#settingsScreen", "click", function (event) {
       var appearanceButton = event.target.closest("[data-appearance-option]");
       if (appearanceButton) {
         setAppearanceSetting(appearanceButton.dataset.appearanceOption);
@@ -6104,6 +6163,7 @@
       var timerInput = event.target.closest("[data-timer-setting]");
       if (timerInput) setTimerSetting(timerInput.dataset.timerSetting, timerInput.checked);
     });
+    on("#monthlyGoalDays", "change", function () { setMonthlyGoalDays(this.value); });
   }
 
   function bindSettingsDataEvents() {
@@ -6225,13 +6285,13 @@
       var old = data.profile || {};
       var nextProfile = { id: old.id || makeId("profile"), weightKg: numberValue("#profileWeight"), heightCm: numberValue("#profileHeight"), age: Math.round(numberValue("#profileAge")), gender: $("#profileGender").value, createdAt: old.createdAt || stamp, updatedAt: stamp };
       if (!runDataTransaction(function () { data.profile = nextProfile; })) { if (submitButton) submitButton.disabled = false; return; }
-      closeModal("profileModal"); renderHome(); if (draft) updateDraftCalories(); showToast("プロフィールを保存しました");
+      closeModal("profileModal"); renderHome(); renderSettingsProfileSummary(); if (draft) updateDraftCalories(); showToast("プロフィールを保存しました");
       if (submitButton) submitButton.disabled = false;
     });
     on("#resetDataButton", "click", function () {
       askConfirm("プロフィールとすべてのトレーニング記録を削除します。この操作は元に戻せません。", "すべて削除", function () {
         if (!runDataTransaction(function () { data = blankData(); })) return;
-        clearSavedDraft(); closeModal("profileModal"); renderHome(); showToast("すべてのデータを削除しました");
+        clearSavedDraft(); closeModal("profileModal"); renderHome(); renderSettingsProfileSummary(); showScreen("home"); showToast("すべてのデータを削除しました");
       });
     });
 
@@ -6402,8 +6462,6 @@
     bindHoldRepeat("#weightPlusSmall", function () { changeWeightByStep(1, 0.5); });
     bindHoldRepeat("#repsMinus", function () { changeReps(-1); });
     bindHoldRepeat("#repsPlus", function () { changeReps(1); });
-    bindHoldRepeat("#repsMinusLarge", function () { changeRepsLarge(-1); });
-    bindHoldRepeat("#repsPlusLarge", function () { changeRepsLarge(1); });
     on("#weightInput", "focus", function () {
       if (getNumericInputValue(this) === 0) this.value = "";
     });
@@ -6880,14 +6938,6 @@
     scheduleDraftSave();
   }
 
-  function changeRepsLarge(direction) {
-    var input = $("#repsInput");
-    var current = Math.round(getNumericInputValue(input));
-    if (current < 1) current = 10;
-    input.value = Math.max(1, current + direction * 10);
-    renderSetChoices();
-    scheduleDraftSave();
-  }
 
   function formatWeightInput() {
     var input = $("#weightInput");
