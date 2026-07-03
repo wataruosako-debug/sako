@@ -8,7 +8,9 @@
   var DRAFT_STORAGE_KEY = "gymlog-draft-v1";
   var PRE_RESTORE_STORAGE_KEY = "gymlog-pre-restore-v1";
   var UI_SETTINGS_KEY = "gymlog-ui-settings-v1";
-  var DEFAULT_UI_SETTINGS = { appearance: "system", colorTheme: "urban-blue", restTimerEnabled: true, autoStartRestTimer: true, restTimerSound: false, restTimerVibration: true, guideModeEnabled: true, guideHelpSeen: false, keepScreenAwake: true };
+  var DEFAULT_UI_SETTINGS = { appearance: "system", colorTheme: "urban-blue", restTimerEnabled: true, autoStartRestTimer: true, restTimerSound: false, restTimerVibration: true, guideModeEnabled: true, guideHelpSeen: false, keepScreenAwake: true, monthlyGoalDays: 12 };
+  var MONTHLY_GOAL_MIN = 1;
+  var MONTHLY_GOAL_MAX = 31;
   var APPEARANCE_OPTIONS = ["system", "light", "dark"];
   var COLOR_THEME_OPTIONS = ["urban-blue", "midnight", "graphite-lime"];
   var APPEARANCE_LABELS = { system: "端末に合わせる", light: "ライト", dark: "ダーク" };
@@ -115,8 +117,14 @@
       restTimerVibration: Object.prototype.hasOwnProperty.call(settings, "restTimerVibration") ? !!settings.restTimerVibration : DEFAULT_UI_SETTINGS.restTimerVibration,
       guideModeEnabled: Object.prototype.hasOwnProperty.call(settings, "guideModeEnabled") ? !!settings.guideModeEnabled : DEFAULT_UI_SETTINGS.guideModeEnabled,
       guideHelpSeen: Object.prototype.hasOwnProperty.call(settings, "guideHelpSeen") ? !!settings.guideHelpSeen : DEFAULT_UI_SETTINGS.guideHelpSeen,
-      keepScreenAwake: Object.prototype.hasOwnProperty.call(settings, "keepScreenAwake") ? !!settings.keepScreenAwake : DEFAULT_UI_SETTINGS.keepScreenAwake
+      keepScreenAwake: Object.prototype.hasOwnProperty.call(settings, "keepScreenAwake") ? !!settings.keepScreenAwake : DEFAULT_UI_SETTINGS.keepScreenAwake,
+      monthlyGoalDays: normalizeMonthlyGoalDays(settings.monthlyGoalDays)
     };
+  }
+  function normalizeMonthlyGoalDays(value) {
+    var num = Math.round(Number(value));
+    if (!Number.isFinite(num)) return DEFAULT_UI_SETTINGS.monthlyGoalDays;
+    return Math.max(MONTHLY_GOAL_MIN, Math.min(MONTHLY_GOAL_MAX, num));
   }
   function loadUiSettings() {
     try {
@@ -220,6 +228,8 @@
     if (guideEnabled) guideEnabled.checked = isGuideModeEnabled();
     var keepAwake = $("#keepScreenAwake");
     if (keepAwake) keepAwake.checked = isKeepScreenAwakeEnabled();
+    var goalSelect = $("#monthlyGoalDays");
+    if (goalSelect) goalSelect.value = String(uiSettings.monthlyGoalDays);
   }
   function applyUiSettings(settings) {
     uiSettings = normalizeUiSettings(settings);
@@ -260,6 +270,11 @@
   function applyGuideModeEnabled(enabled) {
     applyUiSettings(Object.assign({}, uiSettings, { guideModeEnabled: !!enabled }));
     if (saveUiSettings(uiSettings)) showToast("ガイドモード設定を保存しました");
+  }
+  function setMonthlyGoalDays(value) {
+    applyUiSettings(Object.assign({}, uiSettings, { monthlyGoalDays: normalizeMonthlyGoalDays(value) }));
+    if (saveUiSettings(uiSettings)) showToast("目標運動日数を保存しました");
+    renderHome();
   }
   function handleSystemAppearanceChange() {
     if (uiSettings.appearance === "system") applyUiSettings(uiSettings);
@@ -1470,21 +1485,34 @@
     var formatVolume = function (value) {
       return Number(value || 0).toLocaleString("ja-JP", { maximumFractionDigits: 1 });
     };
-    $("#monthlyVisits").textContent = summary.workoutDays;
-    $("#monthlyGymVisits").textContent = summary.gymVisits;
-    $("#monthlyHomeVisits").textContent = summary.homeVisits;
-    $("#monthlyCalories").textContent = Math.round(summary.totalCalories).toLocaleString("ja-JP");
-    $("#monthlyStrengthCalories").textContent = Math.round(summary.strengthCalories).toLocaleString("ja-JP");
-    $("#monthlyCardioCalories").textContent = Math.round(summary.cardioCalories).toLocaleString("ja-JP");
-    $("#monthlyTotalVolume").textContent = formatVolume(summary.totalStrengthVolumeKg);
-    $("#monthlyUpperVolume").textContent = formatVolume(summary.upperBodyVolumeKg);
-    $("#monthlyLowerVolume").textContent = formatVolume(summary.lowerBodyVolumeKg);
-    $("#monthlyCardioDistance").textContent = summary.cardioDistanceKm.toFixed(1);
+    var setText = function (id, value) { var el = document.getElementById(id); if (el) el.textContent = value; };
+    setText("monthlyVisits", summary.workoutDays);
+    setText("monthlyGymVisits", summary.gymVisits);
+    setText("monthlyHomeVisits", summary.homeVisits);
+    setText("monthlyCalories", Math.round(summary.totalCalories).toLocaleString("ja-JP"));
+    setText("monthlyStrengthCalories", Math.round(summary.strengthCalories).toLocaleString("ja-JP"));
+    setText("monthlyCardioCalories", Math.round(summary.cardioCalories).toLocaleString("ja-JP"));
+    setText("monthlyTotalVolume", formatVolume(summary.totalStrengthVolumeKg));
+    setText("monthlyUpperVolume", formatVolume(summary.upperBodyVolumeKg));
+    setText("monthlyLowerVolume", formatVolume(summary.lowerBodyVolumeKg));
+    setText("monthlyCardioDistance", summary.cardioDistanceKm.toFixed(1));
+    // 目標運動日数リング(conic-gradient)の進捗を更新
+    var goalDays = uiSettings.monthlyGoalDays || DEFAULT_UI_SETTINGS.monthlyGoalDays;
+    setText("monthlyGoalLabel", goalDays);
+    var ring = $("#monthlyGoalRing");
+    if (ring) {
+      var pct = Math.max(0, Math.min(100, Math.round((summary.workoutDays / goalDays) * 100)));
+      ring.style.setProperty("--ring-progress", pct + "%");
+      ring.classList.toggle("is-complete", summary.workoutDays >= goalDays);
+      ring.setAttribute("aria-label", "今月の運動 " + summary.workoutDays + "日、目標 " + goalDays + "日");
+    }
     var summaryMonth = $("#monthlySummaryMonth");
     if (summaryMonth) summaryMonth.textContent = year + "年" + monthLabel;
-    $("#monthlySummaryLabel").textContent = "運動";
-    $("#monthlyCaloriesLabel").textContent = "概算消費カロリー";
-    $("#monthlyVolumeLabel").textContent = "ボリューム";
+    var headerMonth = $("#homeHeaderMonth");
+    if (headerMonth) headerMonth.textContent = year + "年" + monthLabel;
+    setText("monthlySummaryLabel", "今月の運動");
+    setText("monthlyCaloriesLabel", "概算消費カロリー");
+    setText("monthlyVolumeLabel", "今月のボリューム");
     var scheduleFit = window.requestAnimationFrame || function (callback) { setTimeout(callback, 0); };
     scheduleFit(fitMonthlySummaryMetrics);
   }
@@ -6135,6 +6163,7 @@
       var timerInput = event.target.closest("[data-timer-setting]");
       if (timerInput) setTimerSetting(timerInput.dataset.timerSetting, timerInput.checked);
     });
+    on("#monthlyGoalDays", "change", function () { setMonthlyGoalDays(this.value); });
   }
 
   function bindSettingsDataEvents() {

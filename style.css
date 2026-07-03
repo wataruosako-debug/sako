@@ -259,10 +259,17 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .topbar h1 {
   margin: 0;
   color: var(--text-primary);
-  font-size: clamp(30px, 7.6vw, 38px);
-  font-weight: 800;
+  font-size: var(--fs-hero);
+  font-weight: 900;
   line-height: 1.1;
-  letter-spacing: -.055em;
+  letter-spacing: -.03em;
+}
+.topbar-month {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  font-family: "Inter Tight", sans-serif;
+  font-size: var(--fs-caption);
+  font-weight: 700;
 }
 
 .monthly-summary-head {
@@ -293,6 +300,80 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   gap: 9px;
   margin-bottom: 13px;
 }
+
+/* Clean Tab §3: ヒーローカード（運動日数リング）＋サブカード2枚 */
+.home-summary { margin-bottom: 12px; }
+.hero-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.hero-ring {
+  position: relative;
+  flex-shrink: 0;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: conic-gradient(var(--brand-primary) var(--ring-progress, 0%), var(--surface-subtle) 0);
+}
+.hero-ring.is-complete { background: conic-gradient(var(--home-color) var(--ring-progress, 0%), var(--surface-subtle) 0); }
+.hero-ring::after {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+.hero-ring-center {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+}
+.hero-ring-center strong {
+  font-family: "Inter Tight", sans-serif;
+  font-size: var(--fs-display);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.hero-ring-center small { color: var(--text-muted); font-size: var(--fs-caption); font-weight: 700; }
+.hero-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.hero-label { margin: 0; color: var(--text-primary); font-size: var(--fs-body); font-weight: 800; }
+.hero-goal { margin: 0; color: var(--text-muted); font-size: var(--fs-caption); font-weight: 700; }
+.hero-goal b { color: var(--text-secondary); font-family: "Inter Tight", sans-serif; }
+.hero-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.hero-chip {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: var(--fs-micro);
+  font-weight: 700;
+}
+.hero-chip b { font-family: "Inter Tight", sans-serif; }
+.hero-chip--gym { color: var(--brand-primary); background: var(--brand-primary-soft); }
+.hero-chip--home { color: var(--home-color-dark); background: var(--home-color-soft); }
+.home-subcards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-top: 9px;
+}
+.home-subcards .stat-card { min-height: 0; padding: 10px 10px 9px; text-align: center; }
+.home-subcards .stat-content { align-items: center; }
+.home-subcards .stat-icon { width: 30px; height: 30px; margin-bottom: 5px; }
+.home-subcards .stat-icon svg { width: 17px; height: 17px; }
+.home-subcards .stat-content p { margin: 0 0 3px; font-size: var(--fs-micro); font-weight: 700; }
+.stat-card-hint { margin-top: 4px; color: var(--text-muted); font-size: var(--fs-micro); font-weight: 600; }
+.hero-ring { width: 80px; height: 80px; }
+.hero-ring::after { inset: 8px; }
 .stat-card {
   display: flex;
   flex-direction: column;
@@ -500,39 +581,21 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 }
 .calendar-day:disabled { cursor: default; }
 .calendar-day--outside { color: var(--text-disabled); font-weight: 500; }
-.calendar-day--gym, .calendar-day--home, .calendar-day--both { color: var(--text-primary); background: transparent; }
-.calendar-day--gym::before, .calendar-day--home::before {
-  position: absolute;
-  bottom: 3px;
-  left: 50%;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  content: "";
-  transform: translateX(-50%);
-}
-.calendar-day--gym::before { background: var(--gym-calendar-color); }
-.calendar-day--home::before { background: var(--home-color); }
-.calendar-day--both::before, .calendar-day--both::after {
-  position: absolute;
-  bottom: 3px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  content: "";
-}
-.calendar-day--both::before { left: calc(50% - 7px); background: var(--gym-calendar-color); }
-.calendar-day--both::after { left: calc(50% + 2px); background: var(--home-color); }
-.calendar-day--planned { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--planned) 55%, transparent); }
-.calendar-day--today {
+/* Clean Tab §3: 記録日はドットではなく日付セル全体を塗る（ジム=青/自宅=ティール） */
+.calendar-day--has-record { color: #FFFFFF; font-weight: 700; }
+.calendar-day--gym { background: var(--gym-calendar-color); }
+.calendar-day--home { background: var(--home-color); }
+.calendar-day--both { background: linear-gradient(108deg, var(--gym-calendar-color) 0 50%, var(--home-color) 50% 100%); }
+.calendar-day--planned:not(.calendar-day--has-record) { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--planned) 55%, transparent); }
+/* 今日：記録があればリングで、なければ塗りで示す */
+.calendar-day--today:not(.calendar-day--has-record) {
   color: var(--primary-button-text);
   background: var(--brand-primary);
   box-shadow: 0 10px 20px color-mix(in srgb, var(--brand-primary) 24%, transparent);
 }
-.calendar-day--today.calendar-day--gym::before,
-.calendar-day--today.calendar-day--home::before,
-.calendar-day--today.calendar-day--both::before { background: #FFFFFF; }
-.calendar-day--today.calendar-day--both::after { background: var(--brand-accent); }
+.calendar-day--today.calendar-day--has-record {
+  box-shadow: inset 0 0 0 2.5px #FFFFFF, 0 0 0 2px var(--brand-primary);
+}
 .legend {
   display: flex;
   align-items: center;
@@ -1747,6 +1810,8 @@ body.is-keyboard-focus .workout-body {
   border: 1px solid color-mix(in srgb, var(--danger) 24%, var(--border)); border-radius: var(--radius-button);
   color: var(--danger); background: var(--danger-soft); font-size: var(--fs-caption); font-weight: 800;
 }
+.settings-select-field { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-primary); font-size: var(--fs-caption); font-weight: 700; }
+.settings-select-field select { min-height: var(--btn-md); padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-input); background: var(--surface-subtle); color: var(--text-primary); font-weight: 700; }
 .ai-export-sheet {
   display: flex;
   flex-direction: column;
@@ -2960,21 +3025,22 @@ button, input, select, textarea, .stat-card, .flow-card, .modal-sheet, .calendar
    セル以外の余白・アイコンサイズで圧縮する */
 @media (max-height: 700px) {
   #homeScreen { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
-  #homeScreen .topbar { min-height: 40px; margin-bottom: 5px; }
+  #homeScreen .topbar { min-height: 36px; margin-bottom: 4px; }
   #homeScreen .topbar h1 { font-size: 22px; }
-  .monthly-summary-head { margin-bottom: 5px; }
-  .stats-grid { gap: 6px; margin-bottom: 6px; }
-  .stat-card { min-height: 96px; padding: 8px 7px 6px; }
-  .stat-icon { width: 26px; height: 26px; margin-bottom: 4px; }
-  .stat-icon svg { width: 17px; height: 17px; }
+  .home-summary { margin-bottom: 8px; }
+  .hero-card { padding: 10px 12px; gap: 12px; }
+  .hero-ring { width: 66px; height: 66px; }
+  .hero-ring::after { inset: 7px; }
+  .hero-chips { margin-top: 0; }
+  .home-subcards { gap: 6px; margin-top: 6px; }
+  .home-subcards .stat-card { padding: 8px 7px 6px; }
+  .home-subcards .stat-icon { width: 24px; height: 24px; margin-bottom: 3px; }
+  .home-subcards .stat-icon svg { width: 15px; height: 15px; }
   .calendar-card { padding: 8px 12px 6px; }
   .calendar-head { margin-bottom: 4px; }
   .weekdays { margin-bottom: 3px; }
   .legend { margin-top: 4px; }
-  .home-shortcuts { margin-top: 6px; padding: 3px; }
-  .progress-action { min-height: 48px; gap: 2px; padding: 4px 2px 3px; }
-  .progress-action-icon { width: 24px; height: 24px; }
-  .visit-breakdown, .calorie-breakdown, .monthly-volume-breakdown { gap: 2px; padding-top: 5px; }
+  .home-routine-card { margin-top: 6px; padding: 8px 14px; }
 }
 
 @media (max-width: 400px) {
