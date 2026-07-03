@@ -1183,11 +1183,40 @@
   }
 
   function showToast(message) {
+    // 別トーストの表示でUndoスナックバーは置き換え、復元データを破棄する
+    hideUndoSnackbar();
     var toast = $("#toast");
     toast.textContent = message;
     toast.classList.add("is-visible");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { toast.classList.remove("is-visible"); }, 2400);
+  }
+
+  var undoSnackbarState = null;
+  var undoSnackbarTimer = null;
+
+  function hideUndoSnackbar() {
+    var snackbar = $("#undoSnackbar");
+    if (snackbar) snackbar.classList.add("hidden");
+    if (undoSnackbarTimer) { clearTimeout(undoSnackbarTimer); undoSnackbarTimer = null; }
+    undoSnackbarState = null;
+  }
+
+  function showUndoSnackbar(message, restoreCallback) {
+    var snackbar = $("#undoSnackbar");
+    if (!snackbar) return;
+    // Undoスタックは1件のみ: 新しい削除で前の復元データを破棄する
+    if (undoSnackbarTimer) { clearTimeout(undoSnackbarTimer); undoSnackbarTimer = null; }
+    undoSnackbarState = { restore: restoreCallback };
+    $("#undoSnackbarText").textContent = message;
+    snackbar.classList.remove("hidden");
+    undoSnackbarTimer = setTimeout(hideUndoSnackbar, 5000);
+  }
+
+  function undoSnackbarRestore() {
+    var state = undoSnackbarState;
+    hideUndoSnackbar();
+    if (state && typeof state.restore === "function") state.restore();
   }
 
   function openModal(id) {
@@ -5193,23 +5222,45 @@
     updateTodayMenuSummary();
   }
 
+  function refreshDraftAfterUndoRestore() {
+    renderSelectedExercise();
+    renderSavedSets();
+    renderSavedCardios();
+    updateDraftCalories();
+    saveDraftNow();
+  }
+
   function deleteDraftRecord(exerciseId) {
     if (!draft || !exerciseId) return;
     if (selectedExerciseId === exerciseId) {
       resetWorkoutEditorState();
     }
+    var removedIndex = draft.records.findIndex(function (record) { return record.exerciseId === exerciseId; });
+    var removedRecord = removedIndex >= 0 ? draft.records[removedIndex] : null;
     draft.records = draft.records.filter(function (record) { return record.exerciseId !== exerciseId; });
     renderSelectedExercise();
     renderSavedSets();
     updateDraftCalories();
     saveDraftNow();
+    if (!removedRecord) return;
+    var exercise = getExercise(exerciseId);
+    showUndoSnackbar((exercise ? exercise.name : "種目") + "を削除しました", function () {
+      if (!draft) return;
+      if (!draft.records.some(function (record) { return record.exerciseId === exerciseId; })) {
+        draft.records.splice(Math.min(removedIndex, draft.records.length), 0, removedRecord);
+      }
+      refreshDraftAfterUndoRestore();
+    });
   }
 
   function deleteDraftSet(tempId) {
     if (editingSetTempId === tempId) {
       resetWorkoutEditorState();
     }
-    draft.records.forEach(function (record) {
+    var removed = null;
+    draft.records.forEach(function (record, recordIndex) {
+      var setIndex = record.sets.findIndex(function (set) { return set.tempId === tempId; });
+      if (setIndex >= 0) removed = { record: record, recordIndex: recordIndex, set: record.sets[setIndex], setIndex: setIndex, exerciseId: record.exerciseId };
       record.sets = record.sets.filter(function (set) { return set.tempId !== tempId; });
       record.sets.forEach(function (set, index) { set.setNumber = index + 1; });
     });
@@ -5218,6 +5269,21 @@
     renderSavedSets();
     updateDraftCalories();
     saveDraftNow();
+    if (!removed) return;
+    var exercise = getExercise(removed.exerciseId);
+    showUndoSnackbar((exercise ? exercise.name : "種目") + "のセット" + removed.set.setNumber + "を削除しました", function () {
+      if (!draft) return;
+      var record = draft.records.find(function (entry) { return entry.exerciseId === removed.exerciseId; });
+      if (!record) {
+        record = removed.record;
+        draft.records.splice(Math.min(removed.recordIndex, draft.records.length), 0, record);
+      }
+      if (!record.sets.some(function (set) { return set.tempId === removed.set.tempId; })) {
+        record.sets.splice(Math.min(removed.setIndex, record.sets.length), 0, removed.set);
+      }
+      record.sets.forEach(function (set, index) { set.setNumber = index + 1; });
+      refreshDraftAfterUndoRestore();
+    });
   }
 
   function cardioFormValue() {
@@ -5353,6 +5419,8 @@
   }
 
   function deleteDraftCardio(tempId) {
+    var removedIndex = draft.cardios.findIndex(function (cardio) { return cardio.tempId === tempId; });
+    var removedCardio = removedIndex >= 0 ? draft.cardios[removedIndex] : null;
     draft.cardios = draft.cardios.filter(function (cardio) { return cardio.tempId !== tempId; });
     if (editingCardioTempId === tempId) {
       editingCardioTempId = null;
@@ -5367,11 +5435,21 @@
     renderSavedCardios();
     updateDraftCalories();
     saveDraftNow();
+    if (!removedCardio) return;
+    showUndoSnackbar(removedCardio.type + "を削除しました", function () {
+      if (!draft) return;
+      if (!draft.cardios.some(function (cardio) { return cardio.tempId === removedCardio.tempId; })) {
+        draft.cardios.splice(Math.min(removedIndex, draft.cardios.length), 0, removedCardio);
+      }
+      refreshDraftAfterUndoRestore();
+    });
   }
 
   function deletePendingCardioType(type) {
     if (!draft || !type) return;
-    draft.pendingCardioTypes = (draft.pendingCardioTypes || []).filter(function (item) { return item !== type; });
+    var pendingTypes = draft.pendingCardioTypes || [];
+    var removedIndex = pendingTypes.indexOf(type);
+    draft.pendingCardioTypes = pendingTypes.filter(function (item) { return item !== type; });
     var exercise = getExercise(selectedExerciseId);
     if (exercise && exercise.category === "CARDIO" && exercise.name === type && !editingCardioTempId) {
       resetWorkoutEditorState();
@@ -5381,6 +5459,13 @@
     renderSavedCardios();
     updateDraftCalories();
     saveDraftNow();
+    if (removedIndex < 0) return;
+    showUndoSnackbar(type + "を削除しました", function () {
+      if (!draft) return;
+      var pending = draft.pendingCardioTypes = draft.pendingCardioTypes || [];
+      if (pending.indexOf(type) < 0) pending.splice(Math.min(removedIndex, pending.length), 0, type);
+      refreshDraftAfterUndoRestore();
+    });
   }
 
   function updateDraftCalories() {
@@ -6263,14 +6348,14 @@
       if (deletePendingButton) {
         event.stopPropagation();
         var pendingType = deletePendingButton.dataset.deletePendingCardio;
-        askConfirm(pendingType + "を今日のメニューから外しますか？", "削除する", function () { deletePendingCardioType(pendingType); });
+        deletePendingCardioType(pendingType);
         return;
       }
       var deleteButton = event.target.closest("[data-delete-cardio]");
       if (deleteButton) {
         event.stopPropagation();
         var cardioTempId = deleteButton.dataset.deleteCardio;
-        askConfirm("この有酸素記録を削除しますか？", "削除する", function () { deleteDraftCardio(cardioTempId); });
+        deleteDraftCardio(cardioTempId);
         return;
       }
       var editButton = event.target.closest("[data-edit-cardio]");
@@ -6445,15 +6530,13 @@
     if (deleteSetButton) {
       event.stopPropagation();
       var setTempId = deleteSetButton.dataset.deleteSet;
-      askConfirm("このセットを削除しますか？", "削除する", function () { deleteDraftSet(setTempId); });
+      deleteDraftSet(setTempId);
       return true;
     }
     var deleteRecordButton = event.target.closest("[data-delete-record]");
     if (deleteRecordButton) {
       event.stopPropagation();
-      var exerciseIdToDelete = deleteRecordButton.dataset.deleteRecord;
-      var exerciseToDelete = getExercise(exerciseIdToDelete);
-      askConfirm((exerciseToDelete ? exerciseToDelete.name : "この種目") + "を今日のメニューから外しますか？", "削除する", function () { deleteDraftRecord(exerciseIdToDelete); });
+      deleteDraftRecord(deleteRecordButton.dataset.deleteRecord);
       return true;
     }
     var addSetButton = event.target.closest("[data-add-set-exercise]");
@@ -6663,6 +6746,7 @@
     bindGuideModeEvents();
     bindGlobalClickEvents();
     bindConfirmAndKeyboardEvents();
+    on("#undoSnackbarButton", "click", undoSnackbarRestore);
   }
 
   function changeWeightByStep(direction, step) {

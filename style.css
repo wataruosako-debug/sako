@@ -1959,6 +1959,41 @@ body.is-keyboard-focus .workout-body {
   transition: .2s ease;
 }
 .toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+/* draft内削除のUndoスナックバー。rest-timer-panel(bottom 12px+高さ約52px)と重ならない位置に置く */
+.undo-snackbar {
+  position: fixed;
+  z-index: 210;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 36px);
+  padding: 10px 12px 10px 16px;
+  border-radius: var(--radius-input);
+  color: #FFFFFF;
+  background: #1E293B;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, .25);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  transform: translateX(-50%);
+}
+.undo-snackbar span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.undo-snackbar button {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-input);
+  color: #7DD3FC;
+  background: transparent;
+  font-size: var(--fs-caption);
+  font-weight: 800;
+}
 body.modal-open { overflow: hidden; }
 
 .appearance-section { margin: 14px 0 0; padding: 0; border: 0; }
