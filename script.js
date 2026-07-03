@@ -6101,7 +6101,13 @@
     });
     $("#daySummaryContent").innerHTML = html;
     if (sessions.length) {
-      $("#daySummaryActions").innerHTML = '<button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
+      // 記録済みの日でも、まだ記録していない場所（ジム/自宅）を同じ日に追加できるようにする
+      var hasGym = sessions.some(function (session) { return session.locationType === "gym"; });
+      var hasHome = sessions.some(function (session) { return session.locationType === "home"; });
+      var addButtons = "";
+      if (!hasGym) addButtons += '<button class="outline-button" type="button" data-day-start="gym" data-day-date="' + dateValue + '">ジムトレーニングを追加</button>';
+      if (!hasHome) addButtons += '<button class="outline-button" type="button" data-day-start="home" data-day-date="' + dateValue + '">自宅トレーニングを追加</button>';
+      $("#daySummaryActions").innerHTML = addButtons + '<button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
     } else {
       $("#daySummaryActions").innerHTML = '<button class="finish-button" type="button" data-day-start="gym" data-day-date="' + dateValue + '">ジムトレーニングを記録</button><button class="outline-button" type="button" data-day-start="home" data-day-date="' + dateValue + '">自宅トレーニングを記録</button><button class="outline-button outline-button--blue" type="button" data-day-routine-date="' + dateValue + '">ルーティーンから登録</button><button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
     }
