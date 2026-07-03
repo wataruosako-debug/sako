@@ -552,7 +552,7 @@
       delete routine.records;
       delete routine.cardios;
       routine.locationType = routine.locationType === "home" ? "home" : "gym";
-      routine.name = routine.name || "ルーティーン";
+      routine.name = routine.name || "ルーティン";
       return routine;
     });
     var routineIds = {};
@@ -1889,10 +1889,10 @@
 
   function renderRoutineEditor() {
     if (!routineEditorState) return;
-    $("#routineSaveTitle").textContent = routineEditingId ? "ルーティーンを編集" : "ルーティーン登録";
+    $("#routineSaveTitle").textContent = routineEditingId ? "ルーティンを編集" : "ルーティン登録";
     $("#routineNameInput").value = routineEditorState.name || "";
     $("#routineLocationType").value = routineEditorState.locationType === "home" ? "home" : "gym";
-    $("#confirmRoutineSave").textContent = routineEditingId ? "変更を保存" : "このルーティーンを保存";
+    $("#confirmRoutineSave").textContent = routineEditingId ? "変更を保存" : "このルーティンを保存";
     var ids = routineEditorState.exerciseIds || [];
     $("#routineEditorExerciseList").innerHTML = ids.length ? ids.map(function (exerciseId, index) {
       var exercise = getExercise(exerciseId);
@@ -1954,7 +1954,7 @@
     routinePendingExerciseIds = routineEditorState.exerciseIds.slice();
     pendingExerciseId = null;
     activeExerciseBodyPart = "chest";
-    $("#exerciseModalTitle").textContent = "ルーティーンに種目を追加";
+    $("#exerciseModalTitle").textContent = "ルーティンに種目を追加";
     $("#confirmExerciseSelection").textContent = "完了";
     $("#confirmExerciseSelection").classList.remove("hidden");
     $("#confirmExerciseSelection").disabled = false;
@@ -1968,7 +1968,7 @@
     if (!routineEditorState) return;
     routineEditorState.name = $("#routineNameInput").value.trim();
     routineEditorState.locationType = $("#routineLocationType").value === "home" ? "home" : "gym";
-    if (!routineEditorState.name) { showToast("ルーティーン名を入力してください"); $("#routineNameInput").focus(); return; }
+    if (!routineEditorState.name) { showToast("ルーティン名を入力してください"); $("#routineNameInput").focus(); return; }
     if (!routineEditorState.exerciseIds.length) { showToast("種目を1つ以上追加してください"); return; }
     var existingIndex = data.routines.findIndex(function (routine) { return routine.id === routineEditingId; });
     var existing = existingIndex >= 0 ? data.routines[existingIndex] : null;
@@ -1991,16 +1991,16 @@
     routineEditorState = null;
     closeModal("routineSaveModal");
     renderRoutineList();
-    showToast(wasEditing ? "ルーティーンを更新しました" : "ルーティーンを保存しました");
+    showToast(wasEditing ? "ルーティンを更新しました" : "ルーティンを保存しました");
   }
 
   function renderRoutineList() {
-    $("#routineListTitle").textContent = routineListMode === "manage" ? "ルーティーン管理" : "ルーティーンを選ぶ";
+    $("#routineListTitle").textContent = routineListMode === "manage" ? "ルーティン管理" : "ルーティンを選ぶ";
     var lead = $("#routineListModal .modal-lead");
     if (lead) lead.textContent = routineListMode === "manage" ? "登録済みの内容を編集・削除できます。" : formatDateJa(routineTargetDate || todayString()) + "の記録に追加します。";
     routineDetailId = null;
     if (!data.routines.length) {
-      $("#routineList").innerHTML = '<div class="empty-state">ルーティーンはまだありません。</div><button class="outline-button outline-button--blue" type="button" data-create-routine>ルーティーンを登録</button>';
+      $("#routineList").innerHTML = '<div class="empty-state">ルーティンはまだありません。</div><button class="outline-button outline-button--blue" type="button" data-create-routine>ルーティンを登録</button>';
       return;
     }
     $("#routineList").innerHTML = data.routines.slice().sort(function (a, b) { return String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")); }).map(function (routine) {
@@ -2011,13 +2011,13 @@
       var manage = '<div class="routine-card-actions"><button class="routine-edit-button" type="button" data-edit-routine="' + routine.id + '">編集</button><button class="routine-delete-button" type="button" data-delete-routine="' + routine.id + '">削除</button></div>';
       var meta = routineListMode === "manage" ? '<p class="routine-card-meta">更新 ' + updated + '</p>' : "";
       return '<article class="routine-card routine-card--compact">' + head + meta + (routineListMode === "manage" ? manage : "") + '</article>';
-    }).join("") + '<button class="outline-button outline-button--blue" type="button" data-create-routine>新しいルーティーンを登録</button>';
+    }).join("") + '<button class="outline-button outline-button--blue" type="button" data-create-routine>新しいルーティンを登録</button>';
   }
 
   function renderRoutineDetail(routineId) {
     var routine = getRoutine(routineId);
     if (!routine) {
-      showToast("ルーティーンが見つかりません");
+      showToast("ルーティンが見つかりません");
       renderRoutineList();
       return;
     }
@@ -2032,7 +2032,7 @@
     var listHtml = entries.length
       ? '<ol class="routine-detail-exercises">' + entries.map(function (name) { return '<li>' + escapeHtml(name) + '</li>'; }).join("") + '</ol>'
       : '<div class="empty-state">種目はまだありません。</div>';
-    $("#routineList").innerHTML = '<div class="routine-detail"><p class="routine-detail-label">このルーティーンに含まれる種目</p>' + listHtml + '<p class="routine-detail-question">このルーティーンを今日のメニューに追加しますか？</p><div class="routine-detail-actions"><button class="finish-button" type="button" data-use-routine="' + routine.id + '">はい</button><button class="outline-button" type="button" data-routine-detail-back>いいえ</button></div></div>';
+    $("#routineList").innerHTML = '<div class="routine-detail"><p class="routine-detail-label">このルーティンに含まれる種目</p>' + listHtml + '<p class="routine-detail-question">このルーティンを今日のメニューに追加しますか？</p><div class="routine-detail-actions"><button class="finish-button" type="button" data-use-routine="' + routine.id + '">はい</button><button class="outline-button" type="button" data-routine-detail-back>いいえ</button></div></div>';
   }
 
   function openRoutineList(dateValue, mode) {
@@ -2085,7 +2085,7 @@
     if (!routine) return;
     routineEditingId = null;
     draftFromRoutine(routine, routineTargetDate || todayString(), null);
-    showToast("ルーティーンを追加しました。保存するまで記録には反映されません");
+    showToast("ルーティンを追加しました。保存するまで記録には反映されません");
   }
 
   function editRoutine(routineId) {
@@ -2102,7 +2102,7 @@
     }
     renderCalendar();
     renderRoutineList();
-    showToast("ルーティーンを予定に追加しました。実施して保存するまで記録には反映されません");
+    showToast("ルーティンを予定に追加しました。実施して保存するまで記録には反映されません");
   }
 
   function startScheduledRoutine(scheduleId) {
@@ -2128,7 +2128,7 @@
     })) return;
     renderRoutineList();
     renderHome();
-    showToast("ルーティーンを削除しました");
+    showToast("ルーティンを削除しました");
   }
 
   /* Home calendar and monthly summaries */
@@ -2796,7 +2796,8 @@
 
   function finishCopiedDraft() {
     if (!draft) return;
-    expandedDraftExerciseId = null;
+    // コピーしたセットが入っていることが一目で分かるよう、先頭の種目を開いた状態にする
+    expandedDraftExerciseId = draft.records.length ? draft.records[0].exerciseId : null;
     expandedDraftCardioKey = null;
     resetWorkoutEditorState();
     resetCardioForm();
@@ -4530,7 +4531,7 @@
     $("#sessionDate").value = draft.date;
     $("#sessionMemo").value = draft.memo || "";
     $("#finishWorkoutButton").textContent = draft.id ? "変更を保存" : "トレーニングを保存";
-    $("#saveRoutineButton").textContent = routineEditingId ? "ルーティーンを更新" : "ルーティーンとして保存";
+    $("#saveRoutineButton").textContent = routineEditingId ? "ルーティンを更新" : "ルーティンとして保存";
     renderSelectedExercise();
     renderSavedSets();
     renderSavedCardios();
@@ -5243,8 +5244,9 @@
       if (completedCount > 0) return "完了：" + completedCount + "セット";
       return plannedCount ? "予定：" + plannedCount + "セット" : "";
     }
-    if (isGuideEligibleDraft(draft)) return setCount ? "予定：" + setCount + "セット" : "";
-    return setCount ? "完了：" + setCount + "セット" : "";
+    // ガイドモードを開始していない間は、コピー/ルーティン由来でも通常フローと同じ
+    // 「記録済みセット」として表示する(ガイド開始後はguideItem側の予定/完了表示に切替)
+    return setCount ? setCount + "セット入力済み" : "";
   }
 
   function updateTodayMenuSummary() {
@@ -6068,7 +6070,7 @@
     $("#dayModalTitle").textContent = formatDateJa(dateValue);
     if (!sessions.length && !schedules.length) {
       $("#daySummaryContent").innerHTML = '<div class="empty-state">この日の記録はまだありません</div>';
-      $("#daySummaryActions").innerHTML = '<button class="finish-button" type="button" data-day-start="gym" data-day-date="' + dateValue + '">ジムトレーニングを記録</button><button class="outline-button" type="button" data-day-start="home" data-day-date="' + dateValue + '">自宅トレーニングを記録</button><button class="outline-button outline-button--blue" type="button" data-day-routine-date="' + dateValue + '">ルーティーンから登録</button><button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
+      $("#daySummaryActions").innerHTML = '<button class="finish-button" type="button" data-day-start="gym" data-day-date="' + dateValue + '">ジムトレーニングを記録</button><button class="outline-button" type="button" data-day-start="home" data-day-date="' + dateValue + '">自宅トレーニングを記録</button><button class="outline-button outline-button--blue" type="button" data-day-routine-date="' + dateValue + '">ルーティンから登録</button><button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
       openModal("dayModal");
       return;
     }
@@ -6109,7 +6111,7 @@
       if (!hasHome) addButtons += '<button class="outline-button" type="button" data-day-start="home" data-day-date="' + dateValue + '">自宅トレーニングを追加</button>';
       $("#daySummaryActions").innerHTML = addButtons + '<button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
     } else {
-      $("#daySummaryActions").innerHTML = '<button class="finish-button" type="button" data-day-start="gym" data-day-date="' + dateValue + '">ジムトレーニングを記録</button><button class="outline-button" type="button" data-day-start="home" data-day-date="' + dateValue + '">自宅トレーニングを記録</button><button class="outline-button outline-button--blue" type="button" data-day-routine-date="' + dateValue + '">ルーティーンから登録</button><button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
+      $("#daySummaryActions").innerHTML = '<button class="finish-button" type="button" data-day-start="gym" data-day-date="' + dateValue + '">ジムトレーニングを記録</button><button class="outline-button" type="button" data-day-start="home" data-day-date="' + dateValue + '">自宅トレーニングを記録</button><button class="outline-button outline-button--blue" type="button" data-day-routine-date="' + dateValue + '">ルーティンから登録</button><button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
     }
     openModal("dayModal");
   }
@@ -6783,7 +6785,7 @@
     var deleteRoutineButton = event.target.closest("[data-delete-routine]");
     if (deleteRoutineButton) {
       var routineId = deleteRoutineButton.dataset.deleteRoutine;
-      askConfirm("このルーティーンを削除しますか？ 過去のトレーニング記録は削除されません。", "削除する", function () { deleteRoutine(routineId); });
+      askConfirm("このルーティンを削除しますか？ 過去のトレーニング記録は削除されません。", "削除する", function () { deleteRoutine(routineId); });
       return true;
     }
     var startScheduleButton = event.target.closest("[data-start-schedule]");

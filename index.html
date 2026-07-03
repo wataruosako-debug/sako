@@ -28,7 +28,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260703-fixes">
+  <link rel="stylesheet" href="style.css?v=20260703-fb2">
 </head>
 <body>
   <div class="app-shell">
@@ -85,11 +85,6 @@
           <div class="legend"><span><i class="legend-dot legend-dot--gym"></i>ジム</span><span><i class="legend-dot legend-dot--home"></i>自宅</span><span><i class="today-ring"></i>今日</span></div>
         </section>
 
-        <button id="homeRoutineMenuButton" class="home-routine-card" type="button">
-          <span class="home-routine-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4h8m-7 0a2 2 0 0 0-2 2v1h10V6a2 2 0 0 0-2-2"/><path d="M6 7h12v13H6z"/><path d="m9 12 1.5 1.5L14 10"/><path d="M9 17h6"/></svg></span>
-          <span class="home-routine-text"><strong>ルーティーン</strong><small>登録メニューから記録・編集</small></span>
-          <span class="home-routine-chevron" aria-hidden="true">›</span>
-        </button>
       </section>
 
       <section id="progressScreen" class="screen" aria-labelledby="progressTitle">
@@ -174,8 +169,8 @@
               <p>メニュー編集</p>
               <div class="draft-menu-edit-actions">
                 <button id="chooseAnotherExercise" class="draft-menu-add-button draft-menu-add-button--bottom hidden" type="button">種目を追加</button>
-                <button id="openRoutineListButton" type="button">ルーティーンから追加</button>
-                <button id="saveRoutineButton" type="button">ルーティーンとして保存</button>
+                <button id="openRoutineListButton" type="button">ルーティンから追加</button>
+                <button id="saveRoutineButton" type="button">ルーティンとして保存</button>
               </div>
             </div>
             <button id="guideModeHelpButton" class="guide-help-button guide-help-button--link" type="button">ガイドモードとは？</button>
@@ -449,7 +444,7 @@
               <legend>ガイドモード</legend>
               <div class="timer-option-list">
                 <label><input id="guideModeEnabled" type="checkbox" data-timer-setting="guideModeEnabled">ガイドモードを使用する</label>
-                <small class="timer-setting-help">ルーティーンやコピーしたメニューだけに表示します。手動入力だけの時は表示されません。</small>
+                <small class="timer-setting-help">ルーティンやコピーしたメニューだけに表示します。手動入力だけの時は表示されません。</small>
               </div>
             </fieldset>
             <fieldset class="appearance-section">
@@ -463,22 +458,13 @@
               <legend>今月の目標</legend>
               <label class="settings-select-field"><span>月の目標運動日数</span>
                 <select id="monthlyGoalDays">
-                  <option value="4">4日</option>
-                  <option value="6">6日</option>
-                  <option value="8">8日</option>
-                  <option value="10">10日</option>
-                  <option value="12">12日</option>
-                  <option value="15">15日</option>
-                  <option value="18">18日</option>
-                  <option value="20">20日</option>
-                  <option value="25">25日</option>
-                  <option value="30">30日</option>
+                  <option value="1">1日</option><option value="2">2日</option><option value="3">3日</option><option value="4">4日</option><option value="5">5日</option><option value="6">6日</option><option value="7">7日</option><option value="8">8日</option><option value="9">9日</option><option value="10">10日</option><option value="11">11日</option><option value="12">12日</option><option value="13">13日</option><option value="14">14日</option><option value="15">15日</option><option value="16">16日</option><option value="17">17日</option><option value="18">18日</option><option value="19">19日</option><option value="20">20日</option><option value="21">21日</option><option value="22">22日</option><option value="23">23日</option><option value="24">24日</option><option value="25">25日</option><option value="26">26日</option><option value="27">27日</option><option value="28">28日</option><option value="29">29日</option><option value="30">30日</option><option value="31">31日</option>
                 </select>
               </label>
               <small class="timer-setting-help">ホームの運動リングの目標に使います</small>
             </fieldset>
             <div class="settings-menu-list">
-              <button id="settingsOpenRoutineButton" type="button"><strong>ルーティーン管理</strong><small>登録済みルーティーンを編集・削除</small></button>
+              <button id="settingsOpenRoutineButton" type="button"><strong>ルーティン管理</strong><small>登録済みルーティンを編集・削除</small></button>
             </div>
           </section>
 
@@ -521,11 +507,14 @@
       <button id="homeTabButton" class="tabbar-item is-active" data-tab="home" type="button">
         <span class="tabbar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9h12v-9"/></svg></span><small>ホーム</small>
       </button>
+      <button id="openProgressButton" class="tabbar-item" data-tab="progress" type="button">
+        <span class="tabbar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span><small>成長</small>
+      </button>
       <button id="homeRecordMenuButton" class="tabbar-item tabbar-item--record" data-tab="record" type="button">
         <span class="tabbar-fab" aria-hidden="true">＋</span><small>記録</small>
       </button>
-      <button id="openProgressButton" class="tabbar-item" data-tab="progress" type="button">
-        <span class="tabbar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span><small>成長</small>
+      <button id="homeRoutineMenuButton" class="tabbar-item" data-tab="routine" type="button">
+        <span class="tabbar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4h8m-7 0a2 2 0 0 0-2 2v1h10V6a2 2 0 0 0-2-2"/><path d="M6 7h12v13H6z"/><path d="m9 12 1.5 1.5L14 10"/><path d="M9 17h6"/></svg></span><small>ルーティン</small>
       </button>
       <button id="homeSettingsButton" class="tabbar-item" data-tab="settings" type="button">
         <span class="tabbar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.3 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 3.1h5l.3-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1Z"/></svg></span><small>設定</small>
@@ -619,12 +608,12 @@
     <div class="modal-backdrop" data-close-modal="routineSaveModal"></div>
     <section class="modal-sheet modal-sheet--tall" role="dialog" aria-modal="true" aria-labelledby="routineSaveTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="routineSaveModal" aria-label="閉じる">×</button>
-      <h2 id="routineSaveTitle">ルーティーンとして保存</h2>
-      <label class="routine-name-field"><span>ルーティーン名</span><input id="routineNameInput" type="text" maxlength="40" placeholder="例：上半身A"></label>
+      <h2 id="routineSaveTitle">ルーティンとして保存</h2>
+      <label class="routine-name-field"><span>ルーティン名</span><input id="routineNameInput" type="text" maxlength="40" placeholder="例：上半身A"></label>
       <label class="routine-name-field"><span>場所</span><select id="routineLocationType"><option value="gym">ジム</option><option value="home">自宅</option></select></label>
       <div class="routine-editor-head"><strong>追加済み種目</strong><button id="routineAddExerciseButton" type="button">種目を追加</button></div>
       <div id="routineEditorExerciseList" class="routine-editor-exercises"></div>
-      <div class="modal-actions"><button id="confirmRoutineSave" class="finish-button" type="button">このルーティーンを保存</button><button class="outline-button" type="button" data-cancel-routine-editor>キャンセル</button></div>
+      <div class="modal-actions"><button id="confirmRoutineSave" class="finish-button" type="button">このルーティンを保存</button><button class="outline-button" type="button" data-cancel-routine-editor>キャンセル</button></div>
     </section>
   </div>
 
@@ -646,11 +635,11 @@
     <div class="modal-backdrop" data-close-modal="routineMenuModal"></div>
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="routineMenuTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="routineMenuModal" aria-label="閉じる">×</button>
-      <h2 id="routineMenuTitle">ルーティーン</h2>
+      <h2 id="routineMenuTitle">ルーティン</h2>
       <p class="modal-lead">行う操作を選んでください。</p>
       <div class="routine-menu-list">
-        <button id="homeRoutineCreateButton" class="routine-menu-button" type="button"><strong>ルーティーンを登録</strong><small>新しいトレーニングメニューを作成</small></button>
-        <button id="settingsRoutineButton" class="routine-menu-button" type="button"><strong>ルーティーンを管理</strong><small>登録済みルーティーンを編集・削除</small></button>
+        <button id="homeRoutineCreateButton" class="routine-menu-button" type="button"><strong>ルーティンを登録</strong><small>新しいトレーニングメニューを作成</small></button>
+        <button id="settingsRoutineButton" class="routine-menu-button" type="button"><strong>ルーティンを管理</strong><small>登録済みルーティンを編集・削除</small></button>
       </div>
       <button class="outline-button" type="button" data-close-modal="routineMenuModal">キャンセル</button>
     </section>
@@ -813,7 +802,7 @@
     <div class="modal-backdrop" data-close-modal="routineListModal"></div>
     <section class="modal-sheet modal-sheet--tall" role="dialog" aria-modal="true" aria-labelledby="routineListTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="routineListModal" aria-label="閉じる">×</button>
-      <h2 id="routineListTitle">ルーティーンから追加</h2>
+      <h2 id="routineListTitle">ルーティンから追加</h2>
       <p class="modal-lead">今日の記録を始めるか、日付を選んで予定に追加できます。</p>
       <div id="routineList" class="routine-list"></div>
     </section>
@@ -841,6 +830,6 @@
     </section>
   </div>
 
-  <script src="script.js?v=20260703-fixes"></script>
+  <script src="script.js?v=20260703-fb2"></script>
 </body>
 </html>
