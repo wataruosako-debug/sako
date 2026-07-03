@@ -12,8 +12,8 @@
   --home-color-soft: #E7FAF7;
   --gym-calendar-color: var(--brand-primary);
   --primary-button-text: #FFFFFF;
-  --canvas: #F1F3F6;
-  --page-background: #E7EBF2;
+  --canvas: #F5F7FA;
+  --page-background: #F5F7FA;
   --surface: #FFFFFF;
   --surface-subtle: #F7F9FC;
   --surface-raised: #FFFFFF;
@@ -32,9 +32,9 @@
   --planned: #8B5CF6;
   --best-gold: #F59E0B;
   --modal-backdrop: rgba(13, 27, 42, .48);
-  --shadow-card: 0 10px 26px rgba(13, 27, 42, .055);
+  --shadow-card: 0 8px 24px rgba(13, 27, 42, .05);
   --shadow-floating: 0 24px 64px rgba(13, 27, 42, .14);
-  --radius-card: 20px;
+  --radius-card: 22px;
   --radius-panel: 16px;
   --radius-button: 13px;
   --radius-input: 12px;
@@ -65,13 +65,17 @@
   --fs-body: 15px;     /* 本文・ボタンラベルの基準 */
   --fs-subtitle: 17px; /* カード見出し */
   --fs-title: 21px;    /* セクション見出し */
-  --fs-display: 30px;  /* 数値表示（重量など） */
+  --fs-hero: 28px;     /* 画面タイトル（ホーム・成長・設定の見出し） */
+  --fs-display: 48px;  /* 数値表示（重量・タイマーなど、数字主役化） */
 
   /* ===== 余白・間隔（8pxグリッド） ===== */
   --gap-xs: 4px;
   --gap-sm: 8px;       /* タップターゲット間の最小間隔。WCAG準拠 */
   --gap-md: 12px;
   --gap-lg: 16px;
+
+  /* ===== ボトムタブバー（Clean Tab） ===== */
+  --tabbar-height: 84px;
 
   /* ===== 角丸（既存の --radius-* を活用。直値を禁止するための基準） ===== */
   /* --radius-card:20px / --radius-panel:16px / --radius-button:13px */
@@ -126,8 +130,8 @@ body.has-ad-banner {
 
 [data-appearance="light"] {
   color-scheme: light;
-  --canvas: #F1F3F6;
-  --page-background: #E7EBF2;
+  --canvas: #F5F7FA;
+  --page-background: #F5F7FA;
   --surface: #FFFFFF;
   --surface-subtle: #F7F9FC;
   --surface-raised: #FFFFFF;
@@ -138,7 +142,7 @@ body.has-ad-banner {
   --border: #E6EBF2;
   --border-strong: #CBD5E1;
   --modal-backdrop: rgba(13, 27, 42, .48);
-  --shadow-card: 0 10px 26px rgba(13, 27, 42, .055);
+  --shadow-card: 0 8px 24px rgba(13, 27, 42, .05);
   --shadow-floating: 0 24px 64px rgba(13, 27, 42, .14);
 }
 
@@ -210,7 +214,7 @@ body {
   min-height: 100vh;
   color: var(--text-primary);
   background: var(--page-background);
-  font-family: "M PLUS Rounded 1c", -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+  font-family: "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -232,10 +236,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   min-height: 100vh;
   margin: 0 auto;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 16% -8%, color-mix(in srgb, var(--brand-primary) 7%, transparent), transparent 30%),
-    linear-gradient(180deg, var(--canvas) 0%, var(--page-background) 100%);
-  box-shadow: var(--shadow-floating);
+  background: var(--canvas);
 }
 .screen { display: none; min-height: 100vh; padding: 20px 18px calc(22px + env(safe-area-inset-bottom)); }
 .screen--active { display: block; }
