@@ -2853,6 +2853,28 @@ button, input, select, textarea, .stat-card, .flow-card, .modal-sheet, .calendar
   .progress-action { min-height: var(--btn-lg); }
 }
 
+/* タスク8: TOP画面の0スクロール化(努力目標: 375×667)。
+   タップターゲット44px以上(日付セル・ショートカット・カレンダーnav)は維持し、
+   セル以外の余白・アイコンサイズで圧縮する */
+@media (max-height: 700px) {
+  #homeScreen { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+  #homeScreen .topbar { min-height: 40px; margin-bottom: 5px; }
+  #homeScreen .topbar h1 { font-size: 22px; }
+  .monthly-summary-head { margin-bottom: 5px; }
+  .stats-grid { gap: 6px; margin-bottom: 6px; }
+  .stat-card { min-height: 96px; padding: 8px 7px 6px; }
+  .stat-icon { width: 26px; height: 26px; margin-bottom: 4px; }
+  .stat-icon svg { width: 17px; height: 17px; }
+  .calendar-card { padding: 8px 12px 6px; }
+  .calendar-head { margin-bottom: 4px; }
+  .weekdays { margin-bottom: 3px; }
+  .legend { margin-top: 4px; }
+  .home-shortcuts { margin-top: 6px; padding: 3px; }
+  .progress-action { min-height: 48px; gap: 2px; padding: 4px 2px 3px; }
+  .progress-action-icon { width: 24px; height: 24px; }
+  .visit-breakdown, .calorie-breakdown, .monthly-volume-breakdown { gap: 2px; padding-top: 5px; }
+}
+
 @media (max-width: 400px) {
   .stats-grid { gap: 6px; }
   .stat-card { padding-inline: 7px; }
