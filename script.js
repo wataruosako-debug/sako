@@ -13,8 +13,6 @@
   var MONTHLY_GOAL_MAX = 31;
   var APPEARANCE_OPTIONS = ["system", "light", "dark"];
   var COLOR_THEME_OPTIONS = ["urban-blue", "midnight", "graphite-lime"];
-  var APPEARANCE_LABELS = { system: "端末に合わせる", light: "ライト", dark: "ダーク" };
-  var COLOR_THEME_LABELS = { "urban-blue": "Urban Blue", midnight: "Midnight", "graphite-lime": "Graphite Lime" };
   var systemColorSchemeQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
   var systemAppearanceListenerBound = false;
   var CURRENT_DATA_VERSION = 2;
@@ -198,8 +196,6 @@
     meta.setAttribute("content", resolvedAppearance === "dark" ? (darkColors[uiSettings.colorTheme] || "#0B0F14") : (lightColors[uiSettings.colorTheme] || "#F1F3F6"));
   }
   function renderAppearanceSettings() {
-    var summary = $("#settingsAppearanceSummary");
-    if (summary) summary.textContent = APPEARANCE_LABELS[uiSettings.appearance] + "・" + COLOR_THEME_LABELS[uiSettings.colorTheme];
     $$("[data-appearance-option]").forEach(function (button) {
       var isSelected = button.dataset.appearanceOption === uiSettings.appearance;
       button.classList.toggle("is-selected", isSelected);
@@ -955,7 +951,6 @@
     calendarCursor.setDate(1);
     renderHome();
     renderRoutineList();
-    closeModal("settingsMenuModal");
     closeModal("dataRecoveryModal");
     showScreen("home");
     showToast("バックアップから復元しました");
@@ -1490,12 +1485,7 @@
     setText("monthlyGymVisits", summary.gymVisits);
     setText("monthlyHomeVisits", summary.homeVisits);
     setText("monthlyCalories", Math.round(summary.totalCalories).toLocaleString("ja-JP"));
-    setText("monthlyStrengthCalories", Math.round(summary.strengthCalories).toLocaleString("ja-JP"));
-    setText("monthlyCardioCalories", Math.round(summary.cardioCalories).toLocaleString("ja-JP"));
     setText("monthlyTotalVolume", formatVolume(summary.totalStrengthVolumeKg));
-    setText("monthlyUpperVolume", formatVolume(summary.upperBodyVolumeKg));
-    setText("monthlyLowerVolume", formatVolume(summary.lowerBodyVolumeKg));
-    setText("monthlyCardioDistance", summary.cardioDistanceKm.toFixed(1));
     // 目標運動日数リング(conic-gradient)の進捗を更新
     var goalDays = uiSettings.monthlyGoalDays || DEFAULT_UI_SETTINGS.monthlyGoalDays;
     setText("monthlyGoalLabel", goalDays);
@@ -1506,8 +1496,6 @@
       ring.classList.toggle("is-complete", summary.workoutDays >= goalDays);
       ring.setAttribute("aria-label", "今月の運動 " + summary.workoutDays + "日、目標 " + goalDays + "日");
     }
-    var summaryMonth = $("#monthlySummaryMonth");
-    if (summaryMonth) summaryMonth.textContent = year + "年" + monthLabel;
     var headerMonth = $("#homeHeaderMonth");
     if (headerMonth) headerMonth.textContent = year + "年" + monthLabel;
     setText("monthlySummaryLabel", "今月の運動");
@@ -1520,7 +1508,7 @@
   function fitSummaryMetricValue(element) {
     if (!element || !element.style || !element.getBoundingClientRect) return;
     element.style.removeProperty("--metric-scale");
-    var container = element.closest ? element.closest(".stat-value, .monthly-volume-total strong") : null;
+    var container = element.closest ? element.closest(".stat-value") : null;
     if (!container || !container.getBoundingClientRect) return;
     var unit = container.querySelector ? container.querySelector("small") : null;
     var unitWidth = unit && unit.getBoundingClientRect ? unit.getBoundingClientRect().width + 4 : 0;
@@ -1763,7 +1751,6 @@
     $("#aiExportTarget").value = "all";
     $("#aiExportExercise").innerHTML = aiExportExerciseOptionsHtml();
     updateAiExportPreview();
-    closeModal("settingsMenuModal");
     openModal("aiExportModal");
   }
 
@@ -5565,8 +5552,6 @@
   function updateDraftCalories() {
     var calories = Math.round(draftCalories());
     var volumeKg = calculateDraftStrengthVolume(draft ? draft.records : []);
-    var bottomCalories = $("#sessionCalories");
-    if (bottomCalories) bottomCalories.textContent = calories;
     var topCalories = $("#sessionCaloriesTop");
     if (topCalories) topCalories.textContent = calories.toLocaleString("ja-JP");
     var topVolume = $("#sessionVolumeTop");
@@ -6064,13 +6049,17 @@
     });
   }
 
+  function dayStartActionsHtml(dateValue) {
+    return dayStartActionsHtml(dateValue);
+  }
+
   function renderDaySummary(dateValue) {
     var sessions = getSessionsForDate(dateValue);
     var schedules = data.scheduledRoutines.filter(function (schedule) { return schedule.date === dateValue; });
     $("#dayModalTitle").textContent = formatDateJa(dateValue);
     if (!sessions.length && !schedules.length) {
       $("#daySummaryContent").innerHTML = '<div class="empty-state">この日の記録はまだありません</div>';
-      $("#daySummaryActions").innerHTML = '<button class="finish-button" type="button" data-day-start="gym" data-day-date="' + dateValue + '">ジムトレーニングを記録</button><button class="outline-button" type="button" data-day-start="home" data-day-date="' + dateValue + '">自宅トレーニングを記録</button><button class="outline-button outline-button--blue" type="button" data-day-routine-date="' + dateValue + '">ルーティンから登録</button><button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
+      $("#daySummaryActions").innerHTML = dayStartActionsHtml(dateValue);
       openModal("dayModal");
       return;
     }
@@ -6111,7 +6100,7 @@
       if (!hasHome) addButtons += '<button class="outline-button" type="button" data-day-start="home" data-day-date="' + dateValue + '">自宅トレーニングを追加</button>';
       $("#daySummaryActions").innerHTML = addButtons + '<button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
     } else {
-      $("#daySummaryActions").innerHTML = '<button class="finish-button" type="button" data-day-start="gym" data-day-date="' + dateValue + '">ジムトレーニングを記録</button><button class="outline-button" type="button" data-day-start="home" data-day-date="' + dateValue + '">自宅トレーニングを記録</button><button class="outline-button outline-button--blue" type="button" data-day-routine-date="' + dateValue + '">ルーティンから登録</button><button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
+      $("#daySummaryActions").innerHTML = dayStartActionsHtml(dateValue);
     }
     openModal("dayModal");
   }
@@ -6600,7 +6589,6 @@
     });
     on("#confirmGuideStart", "click", startGuideModeFromModal);
     on("#guideStartAddExerciseButton", "click", openGuideStartExercisePicker);
-    on("#editGuideMenuButton", "click", function () { closeModal("guideStartModal"); });
     on("#guideBackHomeButton", "click", openGuideExit);
     on("#guideExitButton", "click", openGuideExit);
     on("#guideMenuListButton", "click", openGuideMenu);

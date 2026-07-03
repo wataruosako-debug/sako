@@ -1,6 +1,4 @@
 :root {
-  --ad-banner-height: 54px;
-  --ad-reserved-height: 18px;
   --brand-primary: #2563EB;
   --brand-primary-hover: #1D4ED8;
   --brand-primary-soft: #EAF2FF;
@@ -83,10 +81,6 @@
 
   /* ===== 片手操作用 ===== */
   --thumb-min: 48px;   /* 親指タップ最小サイズ。これ未満のタップ要素を作らない */
-}
-
-body.has-ad-banner {
-  --ad-reserved-height: var(--ad-banner-height);
 }
 
 [data-color-theme="urban-blue"] {
@@ -254,8 +248,6 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   margin-bottom: 10px;
   padding: 1px 5px;
 }
-.brand-wrap { display: flex; align-items: center; min-width: 0; }
-.brand-mark, .eyebrow { display: none; }
 .topbar h1 {
   margin: 0;
   color: var(--text-primary);
@@ -270,35 +262,6 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   font-family: "Inter Tight", sans-serif;
   font-size: var(--fs-caption);
   font-weight: 700;
-}
-
-.monthly-summary-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0 4px 10px;
-}
-.monthly-summary-head h2 {
-  margin: 0;
-  color: var(--brand-primary);
-  font-size: 15.5px;
-  font-weight: 700;
-  letter-spacing: -.025em;
-}
-.monthly-summary-head span {
-  flex: 0 0 auto;
-  color: var(--text-primary);
-  font-family: "Inter Tight", sans-serif;
-  font-size: 12.5px;
-  font-weight: 700;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 9px;
-  margin-bottom: 13px;
 }
 
 /* Clean Tab §3: ヒーローカード（運動日数リング）＋サブカード2枚 */
@@ -371,7 +334,6 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .home-subcards .stat-icon { width: 30px; height: 30px; margin-bottom: 5px; }
 .home-subcards .stat-icon svg { width: 17px; height: 17px; }
 .home-subcards .stat-content p { margin: 0 0 3px; font-size: var(--fs-micro); font-weight: 700; }
-.stat-card-hint { margin-top: 4px; color: var(--text-muted); font-size: var(--fs-micro); font-weight: 600; }
 .hero-ring { width: 80px; height: 80px; }
 .hero-ring::after { inset: 8px; }
 .stat-card {
@@ -415,7 +377,6 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   box-shadow: 0 9px 18px rgba(13, 27, 42, .10);
 }
 .stat-icon svg { width: 21px; height: 21px; stroke-width: 2; }
-.stat-card--blue .stat-icon,
 .stat-card--volume .stat-icon {
   color: #FFFFFF;
   background: linear-gradient(145deg, #2F72FF 0%, var(--brand-primary) 100%);
@@ -444,7 +405,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   white-space: normal;
   overflow-wrap: anywhere;
 }
-.stat-value, .monthly-volume-total strong {
+.stat-value {
   position: relative;
   display: flex;
   align-items: baseline;
@@ -471,8 +432,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   transform-origin: center;
 }
 .stat-card--orange .summary-metric-value { color: var(--calorie-color); }
-.monthly-volume-total { margin: 0 0 4px; padding: 0; border: 0; }
-.stat-value small, .monthly-volume-total small {
+.stat-value small {
   flex: 0 0 auto;
   margin-left: 0;
   color: var(--text-secondary);
@@ -483,32 +443,6 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   align-self: flex-end;
   margin-bottom: 2px;
 }
-.visit-breakdown, .calorie-breakdown, .monthly-volume-breakdown {
-  display: grid;
-  gap: 3px;
-  margin-top: auto;
-  padding-top: 8px;
-  color: var(--text-muted);
-  font-size: 9.5px;
-  font-style: normal;
-  font-weight: 500;
-  line-height: 1.3;
-}
-.visit-breakdown span, .calorie-breakdown span, .monthly-volume-breakdown span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.visit-breakdown b, .calorie-breakdown b, .monthly-volume-breakdown b {
-  font-family: "Inter Tight", sans-serif;
-  font-weight: 600;
-  letter-spacing: -.01em;
-}
-.visit-breakdown--gym, .calorie-breakdown--strength, .monthly-volume--upper { color: var(--brand-primary); }
-.visit-breakdown--home, .monthly-volume--lower { color: var(--home-color-dark); }
-.calorie-breakdown--cardio { color: var(--calorie-color); }
-.monthly-volume--cardio { color: var(--brand-accent-dark); }
-.monthly-volume-breakdown small { margin-left: 1px; color: inherit; font-size: var(--fs-micro); font-weight: 500; }
 
 .calendar-card, .flow-card, .progress-chart-card, .progress-summary-card, .routine-card, .summary-session, .planned-routine, .copy-date-choice, .saved-group, .record-menu-button, .routine-menu-button {
   border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
@@ -615,82 +549,6 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .legend-dot--home { background: var(--home-color); }
 .today-ring { width: 10px; height: 10px; border: 1.5px solid var(--brand-primary); border-radius: 50%; }
 
-.home-shortcuts {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0;
-  margin-top: 12px;
-  padding: 5px;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
-  border-radius: var(--radius-card);
-  background: color-mix(in srgb, var(--surface) 96%, var(--surface-subtle));
-  box-shadow: 0 11px 26px rgba(13, 27, 42, .06);
-}
-.progress-action {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  width: 100%;
-  min-width: 0;
-  min-height: var(--btn-lg);
-  margin: 0;
-  padding: 7px 2px 6px;
-  border: 0;
-  border-radius: var(--radius-panel);
-  color: var(--text-secondary);
-  background: transparent;
-  box-shadow: none;
-  text-align: center;
-}
-.progress-action + .progress-action::before {
-  position: absolute;
-  top: 13px;
-  bottom: 13px;
-  left: 0;
-  width: 1px;
-  background: color-mix(in srgb, var(--border) 80%, transparent);
-  content: "";
-}
-.progress-action-icon {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  color: var(--text-primary);
-  background: transparent;
-}
-.progress-action-icon svg { width: 21px; height: 21px; stroke-width: 2; }
-.progress-action strong {
-  overflow: hidden;
-  max-width: 100%;
-  color: inherit;
-  font-size: var(--fs-micro);
-  font-weight: 600;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.progress-action--record {
-  color: var(--brand-primary);
-  background: color-mix(in srgb, var(--brand-primary-soft) 82%, var(--surface));
-}
-.progress-action--record::after {
-  position: absolute;
-  top: 0;
-  right: 12px;
-  left: 12px;
-  height: 3px;
-  border-radius: 0 0 4px 4px;
-  background: var(--brand-primary);
-  content: "";
-}
-.progress-action--record .progress-action-icon { color: var(--brand-primary); background: transparent; }
-
 /* ボトムタブバー（Clean Tab §2） */
 .tabbar {
   position: fixed;
@@ -746,16 +604,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   scroll-padding-bottom: calc(118px + env(safe-area-inset-bottom));
 }
 
-#savedSetsSection,
-#setEditorCard,
-#cardioEditorCard,
-#guideRestTimer,
-#guideSetTopAnchor,
-#guideSetCard,
-#guideCardioCard,
-#guideFinishedSetCard,
-#guideSelectNextCard,
-#guideCompletedDetailCard {
+#savedSetsSection, #setEditorCard, #cardioEditorCard, #guideRestTimer, #guideSetTopAnchor, #guideSetCard, #guideCardioCard, #guideFinishedSetCard, #guideSelectNextCard, #guideCompletedDetailCard {
   scroll-margin-top: calc(92px + env(safe-area-inset-top));
   scroll-margin-bottom: calc(132px + env(safe-area-inset-bottom));
 }
@@ -1054,7 +903,7 @@ body.is-keyboard-focus .workout-body {
   font-size: var(--fs-title);
   font-weight: 800;
 }
-.exercise-select-button > span:nth-child(2), .saved-item-text, .routine-editor-name, .routine-card-head > div, .saved-group-title { display: flex; flex-direction: column; min-width: 0; }
+.exercise-select-button > span:nth-child(2), .saved-item-text, .routine-editor-name, .saved-group-title { display: flex; flex-direction: column; min-width: 0; }
 .exercise-select-button strong { font-size: var(--fs-caption); }
 .exercise-select-button small { margin-top: 2px; color: var(--text-muted); font-size: var(--fs-micro); }
 .input-block { min-width: 0; margin: 0; padding: 15px 0; border: 0; border-top: 1px solid var(--border); }
@@ -1078,17 +927,7 @@ body.is-keyboard-focus .workout-body {
   font-weight: 500;
 }
 .counter-control button { font-size: var(--fs-caption); font-weight: 800; }
-.counter-control button,
-.reps-counter-control button,
-.numeric-stepper > button,
-.large-step-row button,
-.choice-grid button,
-.guide-counter-control button,
-.guide-large-step-row button,
-.guide-secondary-actions button,
-.guide-next-actions button,
-.rest-timer-actions button,
-.next-set-actions button {
+.counter-control button, .reps-counter-control button, .numeric-stepper > button, .large-step-row button, .choice-grid button, .guide-counter-control button, .guide-large-step-row button, .guide-secondary-actions button, .guide-next-actions button, .rest-timer-actions button, .next-set-actions button {
   touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
@@ -1096,34 +935,12 @@ body.is-keyboard-focus .workout-body {
   -webkit-tap-highlight-color: transparent;
 }
 /* 押下時の即時フィードバック（片手・非注視でも反応が分かるように） */
-.counter-control button:active,
-.reps-counter-control button:active,
-.numeric-stepper > button:active,
-.large-step-row button:active,
-.choice-grid button:active,
-.stacked-choices button:active,
-.guide-counter-control button:active,
-.guide-large-step-row button:active,
-.guide-rir-compact button:active,
-.finish-button:active,
-.save-set-button:active,
-.outline-button:active {
+.counter-control button:active, .reps-counter-control button:active, .numeric-stepper > button:active, .large-step-row button:active, .choice-grid button:active, .stacked-choices button:active, .guide-counter-control button:active, .guide-large-step-row button:active, .guide-rir-compact button:active, .finish-button:active, .save-set-button:active, .outline-button:active {
   transform: scale(.96);
   transition: transform .05s ease;
 }
 @media (prefers-reduced-motion: reduce) {
-  .counter-control button:active,
-  .reps-counter-control button:active,
-  .numeric-stepper > button:active,
-  .large-step-row button:active,
-  .choice-grid button:active,
-  .stacked-choices button:active,
-  .guide-counter-control button:active,
-  .guide-large-step-row button:active,
-  .guide-rir-compact button:active,
-  .finish-button:active,
-  .save-set-button:active,
-  .outline-button:active {
+  .counter-control button:active, .reps-counter-control button:active, .numeric-stepper > button:active, .large-step-row button:active, .choice-grid button:active, .stacked-choices button:active, .guide-counter-control button:active, .guide-large-step-row button:active, .guide-rir-compact button:active, .finish-button:active, .save-set-button:active, .outline-button:active {
     transform: none;
   }
 }
@@ -1187,10 +1004,7 @@ body.is-keyboard-focus .workout-body {
 .save-set-button { min-height: var(--btn-lg); margin-top: 14px; font-size: var(--fs-caption); }
 .finish-button { min-height: var(--btn-lg); font-size: var(--fs-caption); }
 
-#setEditorCard .save-set-button,
-#cardioEditorCard .save-set-button,
-#guideSetCard .finish-button,
-#guideCardioCard .finish-button {
+#setEditorCard .save-set-button, #cardioEditorCard .save-set-button, #guideSetCard .finish-button, #guideCardioCard .finish-button {
   position: sticky;
   bottom: calc(10px + env(safe-area-inset-bottom));
   z-index: 12;
@@ -1199,13 +1013,11 @@ body.is-keyboard-focus .workout-body {
     0 10px 22px color-mix(in srgb, var(--brand-primary) 22%, transparent);
 }
 
-#setEditorCard .save-set-button,
-#cardioEditorCard .save-set-button {
+#setEditorCard .save-set-button, #cardioEditorCard .save-set-button {
   margin-top: 16px;
 }
 
-#guideSetCard .finish-button,
-#guideCardioCard .finish-button {
+#guideSetCard .finish-button, #guideCardioCard .finish-button {
   margin-top: 14px;
 }
 
@@ -1259,8 +1071,7 @@ body.is-keyboard-focus .workout-body {
   font-weight: 800;
   white-space: nowrap;
 }
-.draft-menu-top-actions button,
-.draft-sort-action-bar button {
+.draft-menu-top-actions button, .draft-sort-action-bar button {
   min-height: var(--btn-md);
   padding: 0 11px;
   border: 1px solid color-mix(in srgb, var(--brand-primary) 28%, var(--border));
@@ -1326,7 +1137,7 @@ body.is-keyboard-focus .workout-body {
 .draft-stat--calories strong { color: var(--calorie-color); }
 .draft-stat--volume { border-color: color-mix(in srgb, var(--brand-primary) 24%, var(--border)); background: var(--brand-primary-soft); }
 .draft-stat--volume strong { color: var(--brand-primary); }
-.draft-menu-add-button, .saved-set-add-button, .empty-draft-actions button, .routine-workout-actions button, .draft-menu-edit-actions button, .planned-routine button, .summary-session-actions button {
+.draft-menu-add-button, .saved-set-add-button, .empty-draft-actions button, .draft-menu-edit-actions button, .planned-routine button, .summary-session-actions button {
   border: 1px solid color-mix(in srgb, var(--brand-primary) 28%, var(--border));
   border-radius: var(--radius-input);
   color: var(--brand-primary);
@@ -1379,8 +1190,7 @@ body.is-keyboard-focus .workout-body {
 .saved-group-head > span { color: var(--text-muted); font-size: var(--fs-micro); }
 .saved-group-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; flex: 1; gap: 8px; min-width: 0; padding: 0; text-align: left; border: 0; color: var(--text-primary); background: transparent; }
 .saved-group-add strong, .routine-editor-name strong, .exercise-choice-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.draft-menu-card .saved-group-add strong,
-.routine-editor-name strong {
+.draft-menu-card .saved-group-add strong, .routine-editor-name strong {
   white-space: normal;
   overflow-wrap: anywhere;
   text-overflow: clip;
@@ -1396,8 +1206,7 @@ body.is-keyboard-focus .workout-body {
   text-overflow: clip;
   line-height: 1.35;
 }
-.draft-menu-card .saved-group-title strong,
-.draft-menu-card .saved-group-add strong {
+.draft-menu-card .saved-group-title strong, .draft-menu-card .saved-group-add strong {
   white-space: normal;
   overflow-wrap: anywhere;
   text-overflow: clip;
@@ -1491,10 +1300,7 @@ body.is-keyboard-focus .workout-body {
 .cardio-section .cardio-form { margin-top: 0; padding-top: 0; border-top: 0; }
 .cardio-section .flow-step-head { margin-bottom: 16px; }
 .saved-cardio-list:not(:empty) { margin-top: 10px; }
-.saved-group--cardio .saved-group-head > span,
-.saved-group--cardio .saved-group-actions > span { color: var(--home-color-dark); background: var(--home-color-soft); }
-.routine-workout-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-sm); margin-top: 10px; }
-.routine-workout-actions button { min-height: var(--btn-md); padding: 0 10px; color: var(--text-secondary); background: var(--surface-subtle); border-color: var(--border); }
+.saved-group--cardio .saved-group-head > span, .saved-group--cardio .saved-group-actions > span { color: var(--home-color-dark); background: var(--home-color-soft); }
 .draft-menu-edit-panel {
   margin-top: 12px;
   padding: 10px;
@@ -1560,8 +1366,7 @@ body.is-keyboard-focus .workout-body {
 .cardio-form .numeric-stepper input { min-width: 0; height: 100%; padding: 8px 23px 8px 4px; border: 0; border-radius: 0; text-align: right; }
 .numeric-stepper .numeric-stepper-value b { right: 4px; }
 #weightInput, .numeric-stepper input { appearance: textfield; -moz-appearance: textfield; }
-#weightInput::-webkit-inner-spin-button, #weightInput::-webkit-outer-spin-button,
-.numeric-stepper input::-webkit-inner-spin-button, .numeric-stepper input::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
+#weightInput::-webkit-inner-spin-button, #weightInput::-webkit-outer-spin-button, .numeric-stepper input::-webkit-inner-spin-button, .numeric-stepper input::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
 .calorie-preview {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
@@ -1580,19 +1385,6 @@ body.is-keyboard-focus .workout-body {
 .calorie-preview strong { color: var(--text-primary); font-size: var(--fs-micro); }
 .session-memo { margin: 18px 2px 12px; }
 .session-memo textarea { resize: vertical; }
-.total-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 12px 0;
-  padding: 15px;
-  border: 1px solid color-mix(in srgb, var(--brand-primary) 24%, var(--border));
-  border-radius: var(--radius-panel);
-  color: var(--text-secondary);
-  background: var(--brand-primary-soft);
-}
-.total-card > span { font-size: var(--fs-micro); font-weight: 700; }
-.total-card strong { color: var(--brand-primary); font-family: "Inter Tight", sans-serif; font-size: var(--fs-subtitle); font-weight: 800; }
 
 .modal { position: fixed; inset: 0; z-index: 100; display: none; align-items: flex-end; justify-content: center; padding: 14px; }
 .modal.is-open { display: flex; }
@@ -1633,7 +1425,7 @@ body.is-keyboard-focus .workout-body {
 .copy-destination-sheet > .outline-button { margin-bottom: 0; }
 .routine-editor-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 18px 0 8px; }
 .routine-editor-head strong { font-size: var(--fs-micro); }
-.routine-editor-head button, .routine-today-button {
+.routine-editor-head button {
   min-height: var(--btn-sm);
   padding: 0 13px;
   border: 0;
@@ -1699,12 +1491,6 @@ body.is-keyboard-focus .workout-body {
   white-space: nowrap;
 }
 .routine-card-meta { margin: -5px 14px 10px; color: var(--text-muted); font-size: var(--fs-micro); }
-.routine-card-head { display: flex; justify-content: space-between; gap: 10px; }
-.routine-card-head strong { font-size: var(--fs-caption); }
-.routine-card-head small { margin-top: 3px; color: var(--text-muted); font-size: var(--fs-micro); }
-.routine-card-head button { border: 0; color: var(--danger); background: transparent; font-size: var(--fs-caption); }
-.routine-card-preview { overflow: hidden; margin: 8px 0 0; color: var(--text-muted); font-size: var(--fs-micro); line-height: 1.6; text-overflow: ellipsis; white-space: nowrap; }
-.routine-today-button { width: 100%; margin-top: 10px; }
 .routine-card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-sm); margin-top: 8px; }
 .routine-card--compact .routine-card-actions { margin: 0; padding: 0 12px 12px; }
 .routine-card-actions .routine-edit-button { margin: 0; }
@@ -1759,8 +1545,6 @@ body.is-keyboard-focus .workout-body {
 .planned-routine button:last-child { border-color: color-mix(in srgb, var(--danger) 24%, var(--border)); color: var(--danger); background: var(--danger-soft); }
 .profile-form { display: grid; gap: 13px; }
 .profile-form .finish-button { margin-top: 4px; }
-.data-actions { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border); text-align: center; }
-.data-actions button { border: 0; color: var(--danger); background: transparent; font-size: var(--fs-caption); }
 
 /* 設定画面（Clean Tab §5: モーダル→画面に統合） */
 .settings-body { padding: 4px 18px calc(var(--tabbar-height) + env(safe-area-inset-bottom)); }
@@ -1809,9 +1593,7 @@ body.is-keyboard-focus .workout-body {
   font-size: var(--fs-caption);
   font-weight: 800;
 }
-.ai-export-form input,
-.ai-export-form select,
-.ai-export-form textarea {
+.ai-export-form input, .ai-export-form select, .ai-export-form textarea {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: var(--radius-input);
@@ -1820,13 +1602,11 @@ body.is-keyboard-focus .workout-body {
   background: var(--surface-subtle);
   font: inherit;
 }
-.ai-export-form input,
-.ai-export-form select {
+.ai-export-form input, .ai-export-form select {
   min-height: 42px;
   padding: 0 12px;
 }
-.ai-export-form textarea,
-.ai-export-preview {
+.ai-export-form textarea, .ai-export-preview {
   min-height: 240px;
   max-height: 420px;
   padding: 12px;
@@ -1850,8 +1630,7 @@ body.is-keyboard-focus .workout-body {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
-.ai-export-custom-dates.hidden,
-.ai-export-form label.hidden { display: none; }
+.ai-export-custom-dates.hidden, .ai-export-form label.hidden { display: none; }
 .ai-export-status {
   min-height: 18px;
   margin: 0;
@@ -1924,28 +1703,6 @@ body.is-keyboard-focus .workout-body {
 .favorite-button { width: var(--btn-sm); height: var(--btn-sm); border: 0; color: var(--text-disabled); background: transparent; font-size: var(--fs-title); }
 .favorite-button.is-favorite { color: var(--best-gold); }
 .exercise-choice-row .favorite-button { width: var(--btn-sm); height: var(--btn-sm); font-size: var(--fs-title); }
-.exercise-step-field {
-  display: grid;
-  gap: 3px;
-  justify-items: end;
-  color: var(--text-muted);
-  font-size: var(--fs-micro);
-  font-weight: 600;
-  line-height: 1.1;
-}
-.exercise-step-select {
-  width: 76px;
-  min-height: 36px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-small);
-  color: var(--text-secondary);
-  background: var(--surface);
-  font-size: var(--fs-micro);
-  font-weight: 700;
-}
-.exercise-step-select:disabled {
-  opacity: .35;
-}
 .exercise-picker-sheet > .outline-button { flex: 0 0 auto; width: auto; margin: 10px 16px 0; }
 .empty-state { padding: 24px 10px; color: var(--text-muted); font-size: var(--fs-caption); text-align: center; }
 .day-total { display: flex; justify-content: space-between; align-items: center; margin: 14px 0; padding: 14px; border-radius: var(--radius-button); color: var(--text-secondary); background: var(--brand-primary-soft); font-size: var(--fs-micro); font-weight: 700; }
@@ -1965,23 +1722,20 @@ body.is-keyboard-focus .workout-body {
 .modal-actions .finish-button, .modal-actions .outline-button { margin: 0; }
 #draftResumeSummary { white-space: pre-line; }
 .secondary-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-sm); }
-.secondary-actions--single { grid-template-columns: 1fr; }
 .danger-text { border-color: color-mix(in srgb, var(--danger) 25%, var(--border)); background: var(--danger-soft); }
 .confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
 .confirm-actions .outline-button { margin: 0; }
 .danger-button { min-height: var(--btn-lg); background: var(--danger); box-shadow: none; font-size: var(--fs-body); }
 .next-set-actions { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 16px; }
 .next-set-actions .finish-button, .next-set-actions .outline-button { min-height: var(--btn-md); margin: 0; }
-.next-set-actions.is-edit-actions .finish-button,
-.next-set-actions.is-edit-actions .outline-button {
+.next-set-actions.is-edit-actions .finish-button, .next-set-actions.is-edit-actions .outline-button {
   border: 1px solid var(--border);
   color: var(--text-primary);
   background: var(--surface-subtle);
   box-shadow: none;
   font-weight: 800;
 }
-.next-set-actions.is-edit-actions .finish-button:hover,
-.next-set-actions.is-edit-actions .outline-button:hover {
+.next-set-actions.is-edit-actions .finish-button:hover, .next-set-actions.is-edit-actions .outline-button:hover {
   border-color: color-mix(in srgb, var(--text-secondary) 24%, var(--border));
   color: var(--text-primary);
   background: var(--surface);
@@ -2036,8 +1790,7 @@ body.is-keyboard-focus .workout-body {
   border-color: color-mix(in srgb, var(--danger) 38%, var(--border));
   background: color-mix(in srgb, var(--danger-soft) 70%, var(--surface-raised));
 }
-.rest-timer-panel.is-overtime span,
-.rest-timer-panel.is-overtime strong {
+.rest-timer-panel.is-overtime span, .rest-timer-panel.is-overtime strong {
   color: var(--danger);
 }
 .rest-timer-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-sm); }
@@ -2760,9 +2513,7 @@ body.is-keyboard-focus .guide-body {
 }
 .guide-rest-timer span { color: var(--text-secondary); font-size: var(--fs-caption); font-weight: 800; }
 .guide-rest-timer.is-finished span { color: var(--brand-primary); }
-.guide-rest-timer.is-overtime span,
-.guide-rest-timer.is-overtime #guideRestTimerTime,
-.guide-rest-timer.is-overtime strong {
+.guide-rest-timer.is-overtime span, .guide-rest-timer.is-overtime #guideRestTimerTime, .guide-rest-timer.is-overtime strong {
   color: var(--danger);
 }
 .guide-rest-timer strong {
@@ -2902,9 +2653,6 @@ body.is-keyboard-focus .guide-body {
   border-color: color-mix(in srgb, var(--brand-primary) 22%, var(--border));
   background: color-mix(in srgb, var(--brand-primary-soft) 28%, var(--surface-subtle));
 }
-.guide-menu-row.is-skipped {
-  opacity: .72;
-}
 .guide-menu-row strong { display: block; overflow-wrap: anywhere; font-size: var(--fs-micro); line-height: 1.35; }
 .guide-menu-row small { display: block; color: var(--text-muted); font-size: var(--fs-micro); line-height: 1.35; }
 .guide-menu-row button {
@@ -2936,8 +2684,7 @@ body.is-keyboard-focus .guide-body {
   line-height: 1;
 }
 .drag-handle:active { cursor: grabbing; }
-.draft-menu-card:not(.is-sorting) .saved-group-head > .drag-handle,
-.draft-menu-card:not(.is-sorting) .saved-group-reorder {
+.draft-menu-card:not(.is-sorting) .saved-group-head > .drag-handle, .draft-menu-card:not(.is-sorting) .saved-group-reorder {
   display: none;
 }
 .draft-menu-card.is-sorting .saved-group-add {
@@ -2959,7 +2706,7 @@ body.is-keyboard-focus .guide-body {
   font-weight: 800;
 }
 
-button, input, select, textarea, .stat-card, .flow-card, .modal-sheet, .calendar-card, .progress-action, .summary-session, .routine-card {
+button, input, select, textarea, .stat-card, .flow-card, .modal-sheet, .calendar-card, .summary-session, .routine-card {
   transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 
@@ -2982,15 +2729,11 @@ button, input, select, textarea, .stat-card, .flow-card, .modal-sheet, .calendar
   #homeScreen { padding-top: max(9px, env(safe-area-inset-top)); }
   .topbar { min-height: var(--btn-md); margin-bottom: 7px; }
   .topbar h1 { font-size: 26px; }
-  .monthly-summary-head { margin-bottom: 7px; }
-  .stats-grid { gap: 6px; margin-bottom: 8px; }
   .stat-card { min-height: 118px; padding: 10px 7px 8px; }
   .stat-icon { width: 34px; height: 34px; margin-bottom: 6px; }
   .calendar-card { padding: 12px 12px 9px; }
   .calendar-head { margin-bottom: 7px; }
   .calendar-day { font-size: var(--fs-micro); }
-  .home-shortcuts { margin-top: 8px; }
-  .progress-action { min-height: var(--btn-lg); }
 }
 
 /* タスク8: TOP画面の0スクロール化(努力目標: 375×667)。
@@ -3016,12 +2759,9 @@ button, input, select, textarea, .stat-card, .flow-card, .modal-sheet, .calendar
 }
 
 @media (max-width: 400px) {
-  .stats-grid { gap: 6px; }
   .stat-card { padding-inline: 7px; }
   .stat-card p, .stat-card .volume-title { font-size: var(--fs-micro); }
-  .visit-breakdown, .calorie-breakdown, .monthly-volume-breakdown { font-size: 8.5px; }
   .legend { gap: 9px; font-size: var(--fs-micro); }
-  .progress-action strong { font-size: var(--fs-micro); }
   .guide-rest-timer {
     grid-template-columns: 1fr;
     gap: 7px;
