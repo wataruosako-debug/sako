@@ -4835,7 +4835,6 @@
     if (!draft || !getExercise(exerciseId)) return;
     resetWorkoutEditorState({ selectedExerciseId: exerciseId, isAddingSet: true });
     renderSelectedExercise();
-    selectedRir = null;
     $("#setMemo").value = "";
     renderSetChoices();
     renderSavedSets();
