@@ -432,6 +432,89 @@
           </section>
         </div>
       </section>
+
+      <section id="settingsScreen" class="screen" aria-labelledby="settingsTitle">
+        <header class="sub-header">
+          <button id="backFromSettingsButton" class="icon-button icon-button--back" type="button" aria-label="ホームへ戻る">‹</button>
+          <div class="sub-header-title"><span class="location-badge">設定</span><h1 id="settingsTitle">設定</h1></div>
+          <span class="header-spacer" aria-hidden="true"></span>
+        </header>
+        <div class="settings-body">
+          <section class="settings-group" aria-label="プロフィール">
+            <h2 class="settings-group-title">プロフィール</h2>
+            <button id="settingsProfileCard" class="settings-profile-card" type="button">
+              <span class="settings-profile-info"><strong>プロフィール</strong><small id="settingsProfileSummary">体重 -- ・身長 -- ・年齢 --</small></span>
+              <span class="settings-profile-chevron" aria-hidden="true">›</span>
+            </button>
+          </section>
+
+          <section class="settings-group" aria-label="トレーニング">
+            <h2 class="settings-group-title">トレーニング</h2>
+            <fieldset class="appearance-section">
+              <legend>休憩タイマー</legend>
+              <div class="timer-option-list">
+                <label><input id="restTimerEnabled" type="checkbox" data-timer-setting="restTimerEnabled">休憩タイマーを使用する</label>
+                <div id="restTimerSubSettings" class="timer-option-subsettings">
+                  <label><input id="autoStartRestTimer" type="checkbox" data-timer-setting="autoStartRestTimer">休憩タイマーを自動開始</label>
+                  <label><input id="restTimerSound" type="checkbox" data-timer-setting="restTimerSound">終了時に音を鳴らす</label>
+                  <small class="timer-setting-help">iPhoneでは最初にトレーニング開始ボタンを押した後から音が有効になります</small>
+                  <label><input id="restTimerVibration" type="checkbox" data-timer-setting="restTimerVibration">終了時に振動する</label>
+                  <small class="timer-setting-help">振動は対応している端末のみ利用できます</small>
+                </div>
+              </div>
+            </fieldset>
+            <fieldset class="appearance-section">
+              <legend>ガイドモード</legend>
+              <div class="timer-option-list">
+                <label><input id="guideModeEnabled" type="checkbox" data-timer-setting="guideModeEnabled">ガイドモードを使用する</label>
+                <small class="timer-setting-help">ルーティーンやコピーしたメニューだけに表示します。手動入力だけの時は表示されません。</small>
+              </div>
+            </fieldset>
+            <fieldset class="appearance-section">
+              <legend>画面スリープ</legend>
+              <div class="timer-option-list">
+                <label><input id="keepScreenAwake" type="checkbox" data-timer-setting="keepScreenAwake">記録中は画面をスリープさせない</label>
+                <small class="timer-setting-help">対応しているブラウザでのみ動作します</small>
+              </div>
+            </fieldset>
+            <div class="settings-menu-list">
+              <button id="settingsOpenRoutineButton" type="button"><strong>ルーティーン管理</strong><small>登録済みルーティーンを編集・削除</small></button>
+            </div>
+          </section>
+
+          <section class="settings-group" aria-label="外観">
+            <h2 class="settings-group-title">外観</h2>
+            <fieldset class="appearance-section">
+              <legend>表示モード</legend>
+              <div class="appearance-segmented-control">
+                <button type="button" data-appearance-option="system"><span class="choice-check" aria-hidden="true">✓</span><strong>端末に合わせる</strong><small>iPhoneやPCの設定を使用</small></button>
+                <button type="button" data-appearance-option="light"><span class="choice-check" aria-hidden="true">✓</span><strong>ライト</strong><small>明るい背景で表示</small></button>
+                <button type="button" data-appearance-option="dark"><span class="choice-check" aria-hidden="true">✓</span><strong>ダーク</strong><small>暗い背景で表示</small></button>
+              </div>
+            </fieldset>
+            <fieldset class="appearance-section">
+              <legend>カラーテーマ</legend>
+              <div class="theme-option-list">
+                <button type="button" data-color-theme-option="urban-blue"><span class="theme-swatches" aria-hidden="true"><i style="--swatch:#2563EB"></i><i style="--swatch:#0D1B2A"></i><i style="--swatch:#A3E635"></i></span><span><strong>Urban Blue</strong><small>明るく現代的な標準テーマ</small></span><span class="choice-check" aria-hidden="true">✓</span></button>
+                <button type="button" data-color-theme-option="midnight"><span class="theme-swatches" aria-hidden="true"><i style="--swatch:#1E40AF"></i><i style="--swatch:#111827"></i><i style="--swatch:#22D3EE"></i></span><span><strong>Midnight</strong><small>落ち着いた深い青のテーマ</small></span><span class="choice-check" aria-hidden="true">✓</span></button>
+                <button type="button" data-color-theme-option="graphite-lime"><span class="theme-swatches" aria-hidden="true"><i style="--swatch:#27272A"></i><i style="--swatch:#A3E635"></i><i style="--swatch:#3B82F6"></i></span><span><strong>Graphite Lime</strong><small>筋トレ感を強めたテーマ</small></span><span class="choice-check" aria-hidden="true">✓</span></button>
+              </div>
+            </fieldset>
+          </section>
+
+          <section class="settings-group" aria-label="データ">
+            <h2 class="settings-group-title">データ</h2>
+            <div class="settings-menu-list">
+              <button id="backupDataButton" type="button"><strong>データをバックアップ</strong><small>すべての記録をJSONファイルに保存</small></button>
+              <button id="restoreDataButton" type="button"><strong>バックアップから復元</strong><small>保存したJSONファイルを読み込む</small></button>
+              <button id="aiExportButton" type="button"><strong>AI分析用にテキスト出力</strong><small>期間を選んで、記録をコピーできます</small></button>
+              <button id="restoreSnapshotButton" type="button"><strong>直前の復元前データに戻す</strong><small>復元直前に自動保存したデータを使用</small></button>
+              <input id="restoreDataInput" class="hidden" type="file" accept="application/json,.json">
+            </div>
+            <button id="resetDataButton" class="settings-danger-button" type="button">すべての記録を削除</button>
+          </section>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -460,7 +543,6 @@
         </div>
         <button class="finish-button" type="submit">プロフィールを保存</button>
       </form>
-      <div class="data-actions"><button id="resetDataButton" type="button">すべての記録を削除</button></div>
     </section>
   </div>
 
@@ -556,76 +638,6 @@
         <button id="settingsRoutineButton" class="routine-menu-button" type="button"><strong>ルーティーンを管理</strong><small>登録済みルーティーンを編集・削除</small></button>
       </div>
       <button class="outline-button" type="button" data-close-modal="routineMenuModal">キャンセル</button>
-    </section>
-  </div>
-
-  <div id="settingsMenuModal" class="modal" aria-hidden="true">
-    <div class="modal-backdrop" data-close-modal="settingsMenuModal"></div>
-    <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="settingsMenuTitle">
-      <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="settingsMenuModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">SETTINGS</p><h2 id="settingsMenuTitle">設定</h2>
-      <div class="settings-menu-list">
-        <button id="settingsProfileButton" type="button"><strong>プロフィール更新</strong><small>体重・身長・年齢などを変更</small></button>
-        <button id="settingsAppearanceButton" type="button"><strong>外観</strong><small id="settingsAppearanceSummary">端末に合わせる・Urban Blue</small></button>
-        <button id="backupDataButton" type="button"><strong>データをバックアップ</strong><small>すべての記録をJSONファイルに保存</small></button>
-        <button id="restoreDataButton" type="button"><strong>バックアップから復元</strong><small>保存したJSONファイルを読み込む</small></button>
-        <button id="aiExportButton" type="button"><strong>AI分析用にテキスト出力</strong><small>期間を選んで、記録をコピーできます</small></button>
-        <button id="restoreSnapshotButton" type="button"><strong>直前の復元前データに戻す</strong><small>復元直前に自動保存したデータを使用</small></button>
-        <input id="restoreDataInput" class="hidden" type="file" accept="application/json,.json">
-      </div>
-      <button class="outline-button" type="button" data-close-modal="settingsMenuModal">キャンセル</button>
-    </section>
-  </div>
-
-  <div id="appearanceSettingsModal" class="modal" aria-hidden="true">
-    <div class="modal-backdrop" data-close-modal="appearanceSettingsModal"></div>
-    <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="appearanceSettingsTitle">
-      <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="appearanceSettingsModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">APPEARANCE</p><h2 id="appearanceSettingsTitle">外観</h2>
-      <fieldset class="appearance-section">
-        <legend>表示モード</legend>
-        <div class="appearance-segmented-control">
-          <button type="button" data-appearance-option="system"><span class="choice-check" aria-hidden="true">✓</span><strong>端末に合わせる</strong><small>iPhoneやPCの設定を使用</small></button>
-          <button type="button" data-appearance-option="light"><span class="choice-check" aria-hidden="true">✓</span><strong>ライト</strong><small>明るい背景で表示</small></button>
-          <button type="button" data-appearance-option="dark"><span class="choice-check" aria-hidden="true">✓</span><strong>ダーク</strong><small>暗い背景で表示</small></button>
-        </div>
-      </fieldset>
-      <fieldset class="appearance-section">
-        <legend>カラーテーマ</legend>
-        <div class="theme-option-list">
-          <button type="button" data-color-theme-option="urban-blue"><span class="theme-swatches" aria-hidden="true"><i style="--swatch:#2563EB"></i><i style="--swatch:#0D1B2A"></i><i style="--swatch:#A3E635"></i></span><span><strong>Urban Blue</strong><small>明るく現代的な標準テーマ</small></span><span class="choice-check" aria-hidden="true">✓</span></button>
-          <button type="button" data-color-theme-option="midnight"><span class="theme-swatches" aria-hidden="true"><i style="--swatch:#1E40AF"></i><i style="--swatch:#111827"></i><i style="--swatch:#22D3EE"></i></span><span><strong>Midnight</strong><small>落ち着いた深い青のテーマ</small></span><span class="choice-check" aria-hidden="true">✓</span></button>
-          <button type="button" data-color-theme-option="graphite-lime"><span class="theme-swatches" aria-hidden="true"><i style="--swatch:#27272A"></i><i style="--swatch:#A3E635"></i><i style="--swatch:#3B82F6"></i></span><span><strong>Graphite Lime</strong><small>筋トレ感を強めたテーマ</small></span><span class="choice-check" aria-hidden="true">✓</span></button>
-        </div>
-      </fieldset>
-      <fieldset class="appearance-section">
-        <legend>休憩タイマー</legend>
-        <div class="timer-option-list">
-          <label><input id="restTimerEnabled" type="checkbox" data-timer-setting="restTimerEnabled">休憩タイマーを使用する</label>
-          <div id="restTimerSubSettings" class="timer-option-subsettings">
-            <label><input id="autoStartRestTimer" type="checkbox" data-timer-setting="autoStartRestTimer">休憩タイマーを自動開始</label>
-            <label><input id="restTimerSound" type="checkbox" data-timer-setting="restTimerSound">終了時に音を鳴らす</label>
-            <small class="timer-setting-help">iPhoneでは最初にトレーニング開始ボタンを押した後から音が有効になります</small>
-            <label><input id="restTimerVibration" type="checkbox" data-timer-setting="restTimerVibration">終了時に振動する</label>
-            <small class="timer-setting-help">振動は対応している端末のみ利用できます</small>
-          </div>
-        </div>
-      </fieldset>
-      <fieldset class="appearance-section">
-        <legend>画面スリープ</legend>
-        <div class="timer-option-list">
-          <label><input id="keepScreenAwake" type="checkbox" data-timer-setting="keepScreenAwake">記録中は画面をスリープさせない</label>
-          <small class="timer-setting-help">対応しているブラウザでのみ動作します</small>
-        </div>
-      </fieldset>
-      <fieldset class="appearance-section">
-        <legend>ガイドモード</legend>
-        <div class="timer-option-list">
-          <label><input id="guideModeEnabled" type="checkbox" data-timer-setting="guideModeEnabled">ガイドモードを使用する</label>
-          <small class="timer-setting-help">ルーティーンやコピーしたメニューだけに表示します。手動入力だけの時は表示されません。</small>
-        </div>
-      </fieldset>
-      <button class="finish-button" type="button" data-close-modal="appearanceSettingsModal">完了</button>
     </section>
   </div>
 

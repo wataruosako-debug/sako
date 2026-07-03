@@ -6077,20 +6077,39 @@
   }
 
   function bindHomeMenuEvents() {
-    on("#homeSettingsButton", "click", function () { openModal("settingsMenuModal"); });
+    on("#homeSettingsButton", "click", openSettingsScreen);
     on("#homeRoutineMenuButton", "click", function () { openModal("routineMenuModal"); });
     on("#homeRecordMenuButton", "click", function () { openModal("recordMenuModal"); });
     on("#homeRoutineCreateButton", "click", function () { closeModal("routineMenuModal"); openRoutineCreator(false); });
     on("#homeGymStartButton", "click", function () { closeModal("recordMenuModal"); startTodayLocation("gym"); });
     on("#homeHomeStartButton", "click", function () { closeModal("recordMenuModal"); startTodayLocation("home"); });
-    on("#settingsProfileButton", "click", function () { closeModal("settingsMenuModal"); openProfile(); });
-    on("#settingsAppearanceButton", "click", function () { closeModal("settingsMenuModal"); renderAppearanceSettings(); openModal("appearanceSettingsModal"); });
+    on("#backFromSettingsButton", "click", function () { showScreen("home"); });
+    on("#settingsProfileCard", "click", openProfile);
+    on("#settingsOpenRoutineButton", "click", function () { openRoutineList(todayString(), "manage"); });
     bindKeyboardActivation($("#monthlyCaloriesCard"), openDisplayedMonthCaloriesProgress);
     bindKeyboardActivation($("#monthlyVolumeCard"), openDisplayedMonthVolumeProgress);
   }
 
+  function renderSettingsProfileSummary() {
+    var summaryEl = $("#settingsProfileSummary");
+    if (!summaryEl) return;
+    var profile = data.profile || {};
+    var parts = [
+      "体重 " + (profile.weightKg ? profile.weightKg + "kg" : "--"),
+      "身長 " + (profile.heightCm ? profile.heightCm + "cm" : "--"),
+      "年齢 " + (profile.age ? profile.age + "歳" : "--")
+    ];
+    summaryEl.textContent = parts.join("・");
+  }
+
+  function openSettingsScreen() {
+    renderSettingsProfileSummary();
+    renderAppearanceSettings();
+    showScreen("settings");
+  }
+
   function bindAppearanceEvents() {
-    on("#appearanceSettingsModal", "click", function (event) {
+    on("#settingsScreen", "click", function (event) {
       var appearanceButton = event.target.closest("[data-appearance-option]");
       if (appearanceButton) {
         setAppearanceSetting(appearanceButton.dataset.appearanceOption);
@@ -6225,13 +6244,13 @@
       var old = data.profile || {};
       var nextProfile = { id: old.id || makeId("profile"), weightKg: numberValue("#profileWeight"), heightCm: numberValue("#profileHeight"), age: Math.round(numberValue("#profileAge")), gender: $("#profileGender").value, createdAt: old.createdAt || stamp, updatedAt: stamp };
       if (!runDataTransaction(function () { data.profile = nextProfile; })) { if (submitButton) submitButton.disabled = false; return; }
-      closeModal("profileModal"); renderHome(); if (draft) updateDraftCalories(); showToast("プロフィールを保存しました");
+      closeModal("profileModal"); renderHome(); renderSettingsProfileSummary(); if (draft) updateDraftCalories(); showToast("プロフィールを保存しました");
       if (submitButton) submitButton.disabled = false;
     });
     on("#resetDataButton", "click", function () {
       askConfirm("プロフィールとすべてのトレーニング記録を削除します。この操作は元に戻せません。", "すべて削除", function () {
         if (!runDataTransaction(function () { data = blankData(); })) return;
-        clearSavedDraft(); closeModal("profileModal"); renderHome(); showToast("すべてのデータを削除しました");
+        clearSavedDraft(); closeModal("profileModal"); renderHome(); renderSettingsProfileSummary(); showScreen("home"); showToast("すべてのデータを削除しました");
       });
     });
 

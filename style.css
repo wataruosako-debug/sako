@@ -1646,6 +1646,28 @@ body.is-keyboard-focus .workout-body {
 .profile-form .finish-button { margin-top: 4px; }
 .data-actions { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border); text-align: center; }
 .data-actions button { border: 0; color: var(--danger); background: transparent; font-size: var(--fs-caption); }
+
+/* 設定画面（Clean Tab §5: モーダル→画面に統合） */
+.settings-body { padding: 4px 18px calc(var(--tabbar-height) + env(safe-area-inset-bottom)); }
+.settings-group { margin-top: 18px; }
+.settings-group:first-child { margin-top: 8px; }
+.settings-group-title { margin: 0 0 10px; color: var(--text-secondary); font-size: var(--fs-caption); font-weight: 800; }
+.settings-group .appearance-section { margin-top: 10px; }
+.settings-group .appearance-section:first-of-type { margin-top: 0; }
+.settings-profile-card {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 15px 16px; border: 1px solid var(--border); border-radius: var(--radius-panel);
+  background: var(--surface); box-shadow: var(--shadow-card); text-align: left;
+}
+.settings-profile-info { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.settings-profile-info strong { color: var(--text-primary); font-size: var(--fs-body); font-weight: 800; }
+.settings-profile-info small { color: var(--text-muted); font-size: var(--fs-caption); font-weight: 600; }
+.settings-profile-chevron { color: var(--text-muted); font-size: var(--fs-title); }
+.settings-danger-button {
+  width: 100%; margin-top: 14px; min-height: var(--btn-md);
+  border: 1px solid color-mix(in srgb, var(--danger) 24%, var(--border)); border-radius: var(--radius-button);
+  color: var(--danger); background: var(--danger-soft); font-size: var(--fs-caption); font-weight: 800;
+}
 .ai-export-sheet {
   display: flex;
   flex-direction: column;
