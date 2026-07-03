@@ -152,7 +152,7 @@
 
           <section id="savedSetsSection" class="flow-card draft-menu-card">
             <div class="section-title-row draft-menu-title-row">
-              <div><p class="section-kicker">TODAY'S MENU</p><h2>今日のメニュー</h2><small class="draft-menu-hint">セットを追加・編集 <b id="setCountBadge">0件</b></small></div>
+              <div><h2>今日のメニュー</h2><small class="draft-menu-hint">セットを追加・編集 <b id="setCountBadge">0件</b></small></div>
               <div class="draft-menu-top-actions"><button id="startDraftSortButton" type="button">並べ替え</button></div>
             </div>
             <div id="draftSortActionBar" class="draft-sort-action-bar hidden"><button id="saveDraftSortButton" type="button">この順番で保存</button><button id="cancelDraftSortButton" type="button">キャンセル</button></div>
@@ -271,7 +271,7 @@
         <div class="guide-body">
           <section class="guide-progress-card">
             <div>
-              <p class="section-kicker">GUIDED WORKOUT</p>
+              
               <h2 id="guideCurrentTitle">次のセット</h2>
               <small id="guideProgressText">0 / 0種目</small>
             </div>
@@ -545,7 +545,7 @@
     <section class="modal-sheet modal-sheet--center" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
       <div class="modal-handle"></div>
       <button class="modal-close" type="button" data-close-modal="profileModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">PROFILE</p><h2 id="profileTitle">プロフィール設定</h2>
+      <h2 id="profileTitle">プロフィール設定</h2>
       <p class="modal-lead">概算消費カロリーの計算に使います。毎日の入力は必要ありません。</p>
       <form id="profileForm" class="profile-form">
         <div class="two-column-inputs">
@@ -578,7 +578,7 @@
     <div class="modal-backdrop" data-close-modal="addExerciseModal"></div>
     <section class="modal-sheet modal-sheet--center" role="dialog" aria-modal="true" aria-labelledby="addExerciseTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="addExerciseModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">NEW EXERCISE</p><h2 id="addExerciseTitle">種目を追加</h2>
+      <h2 id="addExerciseTitle">種目を追加</h2>
       <form id="addExerciseForm" class="profile-form">
         <label><span>種目名</span><input id="newExerciseName" type="text" maxlength="40" required placeholder="例：ヒップスラスト"></label>
         <label><span>部位</span><select id="newExerciseBodyPart"><option value="chest">胸</option><option value="shoulder">肩</option><option value="arm">腕</option><option value="back">背中</option><option value="legs">脚</option><option value="abs">腹</option><option value="other">その他</option></select></label>
@@ -593,7 +593,7 @@
     <div class="modal-backdrop" data-close-modal="dayModal"></div>
     <section class="modal-sheet modal-sheet--tall" role="dialog" aria-modal="true" aria-labelledby="dayModalTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="dayModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">DAILY SUMMARY</p><h2 id="dayModalTitle">日別記録</h2>
+      <h2 id="dayModalTitle">日別記録</h2>
       <div id="daySummaryContent"></div>
       <div id="daySummaryActions" class="modal-actions"></div>
     </section>
@@ -603,7 +603,7 @@
     <div class="modal-backdrop" data-close-modal="copyDestinationModal"></div>
     <section class="modal-sheet modal-sheet--confirm copy-destination-sheet" role="dialog" aria-modal="true" aria-labelledby="copyDestinationTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="copyDestinationModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">COPY WORKOUT</p><h2 id="copyDestinationTitle">コピー先を選ぶ</h2>
+      <h2 id="copyDestinationTitle">コピー先を選ぶ</h2>
       <p id="copySourceLabel" class="copy-source-label"></p>
       <button id="copyToTodayButton" class="copy-today-button" type="button"><strong>今日にコピー</strong><small id="copyTodayLabel"></small></button>
       <div class="copy-date-choice">
@@ -619,7 +619,7 @@
     <div class="modal-backdrop" data-close-modal="routineSaveModal"></div>
     <section class="modal-sheet modal-sheet--tall" role="dialog" aria-modal="true" aria-labelledby="routineSaveTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="routineSaveModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">ROUTINE</p><h2 id="routineSaveTitle">ルーティーンとして保存</h2>
+      <h2 id="routineSaveTitle">ルーティーンとして保存</h2>
       <label class="routine-name-field"><span>ルーティーン名</span><input id="routineNameInput" type="text" maxlength="40" placeholder="例：上半身A"></label>
       <label class="routine-name-field"><span>場所</span><select id="routineLocationType"><option value="gym">ジム</option><option value="home">自宅</option></select></label>
       <div class="routine-editor-head"><strong>追加済み種目</strong><button id="routineAddExerciseButton" type="button">種目を追加</button></div>
@@ -632,7 +632,7 @@
     <div class="modal-backdrop" data-close-modal="recordMenuModal"></div>
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="recordMenuTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="recordMenuModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">WORKOUT</p><h2 id="recordMenuTitle">トレーニングを記録</h2>
+      <h2 id="recordMenuTitle">トレーニングを記録</h2>
       <p class="modal-lead">記録する場所を選んでください。</p>
       <div class="record-menu-list">
         <button id="homeGymStartButton" class="record-menu-button record-menu-button--gym" type="button"><strong>ジムトレーニングを記録</strong><small>ジムで行ったトレーニングを入力</small></button>
@@ -646,7 +646,7 @@
     <div class="modal-backdrop" data-close-modal="routineMenuModal"></div>
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="routineMenuTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="routineMenuModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">ROUTINE</p><h2 id="routineMenuTitle">ルーティーン</h2>
+      <h2 id="routineMenuTitle">ルーティーン</h2>
       <p class="modal-lead">行う操作を選んでください。</p>
       <div class="routine-menu-list">
         <button id="homeRoutineCreateButton" class="routine-menu-button" type="button"><strong>ルーティーンを登録</strong><small>新しいトレーニングメニューを作成</small></button>
@@ -670,7 +670,7 @@
     <div class="modal-backdrop" data-close-modal="aiExportModal"></div>
     <section class="modal-sheet modal-sheet--tall ai-export-sheet" role="dialog" aria-modal="true" aria-labelledby="aiExportTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="aiExportModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">EXPORT TEXT</p><h2 id="aiExportTitle">AI分析用にテキスト出力</h2>
+      <h2 id="aiExportTitle">AI分析用にテキスト出力</h2>
       <p class="modal-lead">コピー後、ChatGPTなどに貼り付けて分析できます。</p>
       <div class="ai-export-form">
         <label><span>期間</span><select id="aiExportRange"><option value="today">今日</option><option value="last7">直近7日</option><option value="last30">直近30日</option><option value="thisMonth">今月</option><option value="lastMonth">先月</option><option value="custom">任意期間</option></select></label>
@@ -710,7 +710,7 @@
     <div class="modal-backdrop" data-close-modal="guideModeHelpModal"></div>
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="guideModeHelpTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideModeHelpModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">GUIDE MODE</p><h2 id="guideModeHelpTitle">ガイドモードとは？</h2>
+      <h2 id="guideModeHelpTitle">ガイドモードとは？</h2>
       <p class="modal-lead">セットしたメニューを順番に進めながら、重量・回数の記録と休憩時間の管理ができます。完了したセットだけが正式な記録になります。</p>
       <ul class="guide-help-list">
         <li>次に行うセットを自動で表示</li>
@@ -726,7 +726,7 @@
     <div class="modal-backdrop" data-close-modal="guideStartModal"></div>
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="guideStartTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideStartModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">START GUIDE</p><h2 id="guideStartTitle">どの種目から始めますか？</h2>
+      <h2 id="guideStartTitle">どの種目から始めますか？</h2>
       <p class="modal-lead">種目をタップするとすぐ始まります。</p>
       <div id="guideStartSummary" class="guide-start-summary"></div>
       <fieldset class="guide-start-options hidden">
@@ -743,7 +743,7 @@
     <div class="modal-backdrop" data-close-modal="guideMenuModal"></div>
     <section class="modal-sheet modal-sheet--tall" role="dialog" aria-modal="true" aria-labelledby="guideMenuTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideMenuModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">GUIDE MENU</p><h2 id="guideMenuTitle">メニュー一覧</h2>
+      <h2 id="guideMenuTitle">メニュー一覧</h2>
       <button id="guideMenuUndoLastActionButton" class="guide-undo-button hidden" type="button">戻る</button>
       <div id="guideMenuList" class="guide-menu-list"></div>
       <button id="guideMenuAddExercise" class="outline-button outline-button--blue" type="button">メニュー外の種目を行う</button>
@@ -754,7 +754,7 @@
     <div class="modal-backdrop" data-close-modal="guideExitModal"></div>
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="guideExitTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideExitModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">FINISH GUIDE</p><h2 id="guideExitTitle">今日のメニューを保存しますか？</h2>
+      <h2 id="guideExitTitle">今日のメニューを保存しますか？</h2>
       <p class="modal-lead">ここまで入力したセットは保存途中として残ります。</p>
       <div id="guideExitSummary" class="guide-exit-summary"></div>
       <div class="modal-actions"><button id="saveGuideProgress" class="finish-button" type="button">保存して終了</button><button id="continueGuideButton" class="outline-button" type="button">今日のメニューに戻る</button><button id="cancelGuideExit" class="outline-button" type="button">キャンセル</button></div>
@@ -786,7 +786,7 @@
     <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="workoutSummaryTitle">
       <div class="modal-handle"></div>
       <div id="workoutSummaryPr" class="workout-summary-pr hidden"></div>
-      <p class="section-kicker">WORKOUT COMPLETE</p>
+      
       <h2 id="workoutSummaryTitle">おつかれさまでした！</h2>
       <p id="workoutSummaryLead" class="modal-lead">今日のトレーニングを保存しました。</p>
       <div id="workoutSummaryStats" class="workout-summary-stats"></div>
@@ -813,7 +813,7 @@
     <div class="modal-backdrop" data-close-modal="routineListModal"></div>
     <section class="modal-sheet modal-sheet--tall" role="dialog" aria-modal="true" aria-labelledby="routineListTitle">
       <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="routineListModal" aria-label="閉じる">×</button>
-      <p class="section-kicker">ROUTINES</p><h2 id="routineListTitle">ルーティーンから追加</h2>
+      <h2 id="routineListTitle">ルーティーンから追加</h2>
       <p class="modal-lead">今日の記録を始めるか、日付を選んで予定に追加できます。</p>
       <div id="routineList" class="routine-list"></div>
     </section>
