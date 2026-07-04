@@ -1967,9 +1967,6 @@
     pendingExerciseId = null;
     activeExerciseBodyPart = "chest";
     $("#exerciseModalTitle").textContent = "ルーティンに種目を追加";
-    $("#confirmExerciseSelection").textContent = "完了";
-    $("#confirmExerciseSelection").classList.remove("hidden");
-    $("#confirmExerciseSelection").disabled = false;
     $("#exerciseSearch").value = "";
     renderExerciseBodyPartTabs();
     renderExerciseList();
@@ -3820,9 +3817,6 @@
     pendingExerciseId = null;
     activeExerciseBodyPart = "chest";
     $("#exerciseModalTitle").textContent = "別の種目を追加";
-    $("#confirmExerciseSelection").textContent = "完了";
-    $("#confirmExerciseSelection").classList.add("hidden");
-    $("#confirmExerciseSelection").disabled = true;
     $("#exerciseSearch").value = "";
     renderExerciseBodyPartTabs();
     renderExerciseList();
@@ -4596,9 +4590,6 @@
     pendingExerciseId = null;
     activeExerciseBodyPart = "chest";
     $("#exerciseModalTitle").textContent = mode === "guideAdd" ? "メニュー外の種目を行う" : "別の種目に変更";
-    $("#confirmExerciseSelection").textContent = "完了";
-    $("#confirmExerciseSelection").classList.toggle("hidden", mode === "guideAdd");
-    $("#confirmExerciseSelection").disabled = true;
     $("#exerciseSearch").value = "";
     renderExerciseBodyPartTabs();
     renderExerciseList();
@@ -5019,25 +5010,21 @@
     updateExercisePickerBottomConfirm();
   }
 
-  // 右上の確定ボタンは親指が届きにくいため、選択できる状態になったら画面下にも同じ確定ボタンを出す
+  // 確定ボタンは画面下の1つだけ(右上は廃止)。モードと選択状態から文言を決める。
+  // guideAdd/guideStartAddは種目タップで即実行なので確定ボタン自体を出さない
   function updateExercisePickerBottomConfirm() {
     var bottom = $("#confirmExerciseSelectionBottom");
     if (!bottom) return;
-    var top = $("#confirmExerciseSelection");
-    var actionable = top && !top.classList.contains("hidden") && !top.disabled;
-    if (!actionable) {
-      bottom.classList.add("hidden");
-      return;
-    }
     var selected = pendingExerciseId ? getExercise(pendingExerciseId) : null;
-    if (exercisePickerMode === "routine" && !routinePendingExerciseIds.length) {
+    var text = null;
+    if (exercisePickerMode === "routine") text = "選んだ種目で決定（" + routinePendingExerciseIds.length + "件）";
+    else if (exercisePickerMode === "workoutAdd" && selected) text = "「" + selected.name + "」を今日のメニューに追加";
+    else if (exercisePickerMode === "workout" && selected) text = "「" + selected.name + "」に決定";
+    if (!text) {
       bottom.classList.add("hidden");
       return;
     }
-    if (exercisePickerMode === "workoutAdd" && selected) bottom.textContent = "「" + selected.name + "」を今日のメニューに追加";
-    else if (exercisePickerMode === "routine") bottom.textContent = "選んだ種目で決定（" + routinePendingExerciseIds.length + "件）";
-    else if (selected) bottom.textContent = "「" + selected.name + "」に決定";
-    else bottom.textContent = top.textContent;
+    bottom.textContent = text;
     bottom.classList.remove("hidden");
   }
 
@@ -5047,9 +5034,6 @@
     pendingExerciseId = selectedExerciseId;
     activeExerciseBodyPart = selected && selected.bodyPart ? selected.bodyPart : "chest";
     $("#exerciseModalTitle").textContent = "種目を選択";
-    $("#confirmExerciseSelection").textContent = "完了";
-    $("#confirmExerciseSelection").classList.remove("hidden");
-    $("#confirmExerciseSelection").disabled = !pendingExerciseId;
     $("#exerciseSearch").value = "";
     renderExerciseBodyPartTabs();
     renderExerciseList();
@@ -5061,9 +5045,6 @@
     pendingExerciseId = null;
     activeExerciseBodyPart = "chest";
     $("#exerciseModalTitle").textContent = "種目を追加";
-    $("#confirmExerciseSelection").textContent = "今日のメニューに追加";
-    $("#confirmExerciseSelection").classList.remove("hidden");
-    $("#confirmExerciseSelection").disabled = true;
     $("#exerciseSearch").value = "";
     renderExerciseBodyPartTabs();
     renderExerciseList();
@@ -6601,7 +6582,6 @@
     on("#exercisePickerButton", "click", openExercisePicker);
     on("#chooseAnotherExercise", "click", openExercisePickerForMenuAdd);
     on("#cancelExerciseSelection", "click", cancelExerciseSelection);
-    on("#confirmExerciseSelection", "click", confirmExerciseSelection);
     on("#confirmExerciseSelectionBottom", "click", confirmExerciseSelection);
   }
 
@@ -6653,7 +6633,6 @@
           return;
         }
         pendingExerciseId = option.dataset.exerciseId;
-        $("#confirmExerciseSelection").disabled = false;
         renderExerciseList();
       }
     });
