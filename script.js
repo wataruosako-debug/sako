@@ -9,7 +9,8 @@
   var PRE_RESTORE_STORAGE_KEY = "gymlog-pre-restore-v1";
   var UI_SETTINGS_KEY = "gymlog-ui-settings-v1";
   var DEFAULT_UI_SETTINGS = { appearance: "system", colorTheme: "urban-blue", restTimerEnabled: true, autoStartRestTimer: true, restTimerSound: false, restTimerVibration: true, guideModeEnabled: true, guideHelpSeen: false, keepScreenAwake: true, monthlyGoalDays: 12, weightSuggestionEnabled: true, promotionReps: 10 };
-  var PROMOTION_REPS_OPTIONS = [8, 10, 12, 15];
+  var PROMOTION_REPS_MIN = 1;
+  var PROMOTION_REPS_MAX = 20;
   var MONTHLY_GOAL_MIN = 1;
   var MONTHLY_GOAL_MAX = 31;
   var APPEARANCE_OPTIONS = ["system", "light", "dark"];
@@ -119,8 +120,13 @@
       keepScreenAwake: Object.prototype.hasOwnProperty.call(settings, "keepScreenAwake") ? !!settings.keepScreenAwake : DEFAULT_UI_SETTINGS.keepScreenAwake,
       monthlyGoalDays: normalizeMonthlyGoalDays(settings.monthlyGoalDays),
       weightSuggestionEnabled: Object.prototype.hasOwnProperty.call(settings, "weightSuggestionEnabled") ? !!settings.weightSuggestionEnabled : DEFAULT_UI_SETTINGS.weightSuggestionEnabled,
-      promotionReps: PROMOTION_REPS_OPTIONS.indexOf(Math.round(Number(settings.promotionReps))) >= 0 ? Math.round(Number(settings.promotionReps)) : DEFAULT_UI_SETTINGS.promotionReps
+      promotionReps: normalizePromotionReps(settings.promotionReps)
     };
+  }
+  function normalizePromotionReps(value) {
+    var num = Math.round(Number(value));
+    if (!Number.isFinite(num)) return DEFAULT_UI_SETTINGS.promotionReps;
+    return Math.max(PROMOTION_REPS_MIN, Math.min(PROMOTION_REPS_MAX, num));
   }
   function normalizeMonthlyGoalDays(value) {
     var num = Math.round(Number(value));
@@ -500,7 +506,7 @@
 
   function normalizeVersion2Data(source) {
     var normalized = cloneData(source || {});
-    var arrays = ["exercises", "sessions", "records", "sets", "cardios", "recentExerciseIds", "routines", "scheduledRoutines"];
+    var arrays = ["exercises", "sessions", "records", "sets", "cardios", "recentExerciseIds", "routines", "scheduledRoutines", "pendingSuggestions"];
     arrays.forEach(function (key) { if (!Array.isArray(normalized[key])) normalized[key] = []; });
     normalized.profile = normalized.profile && typeof normalized.profile === "object" && !Array.isArray(normalized.profile) ? normalized.profile : null;
     normalized.exercises = normalized.exercises.filter(function (exercise) { return exercise && exercise.id && exercise.name && exercise.category; }).map(function (exercise) {
@@ -511,6 +517,10 @@
     });
     var exerciseIds = {};
     normalized.exercises.forEach(function (exercise) { exerciseIds[exercise.id] = true; });
+    // v4: 「次回に反映」承認済みの増量提案。対象種目が消えた提案や壊れた項目は捨てる
+    normalized.pendingSuggestions = normalized.pendingSuggestions.filter(function (entry) {
+      return entry && exerciseIds[entry.exerciseId] && Number.isFinite(Number(entry.fromWeight)) && Number.isFinite(Number(entry.toWeight)) && Number(entry.toWeight) > 0;
+    });
     normalized.sessions = normalized.sessions.filter(function (session) { return session && session.id && /^\d{4}-\d{2}-\d{2}$/.test(session.date || "") && (session.locationType === "gym" || session.locationType === "home"); });
     var sessionIds = {};
     normalized.sessions.forEach(function (session) { sessionIds[session.id] = true; });
@@ -673,7 +683,7 @@
 
   function blankData() {
     var exercises = seedExercises();
-    return { version: CURRENT_DATA_VERSION, profile: null, exercises: exercises, sessions: [], records: [], sets: [], cardios: [], recentExerciseIds: [], routines: presetRoutines(exercises), scheduledRoutines: [] };
+    return { version: CURRENT_DATA_VERSION, profile: null, exercises: exercises, sessions: [], records: [], sets: [], cardios: [], recentExerciseIds: [], routines: presetRoutines(exercises), scheduledRoutines: [], pendingSuggestions: [] };
   }
 
   function loadData() {
@@ -3072,9 +3082,10 @@
     return guideItems(state).find(function (item) { return item.id === state.currentItemId; }) || null;
   }
 
+  // v4: 「次回に反映」で承認済みの提案のみ反映される(getPrefillSetsForExercise経由)。
+  // 未承認の提案が自動でガイドの重量を書き換えることはない
   function guideDefaultSetForExercise(exerciseId, index) {
-    var historical = getLastHistoricalRecord(exerciseId);
-    var historicalSets = historical ? getRecordSets(historical.id) : [];
+    var historicalSets = getPrefillSetsForExercise(exerciseId);
     var source = historicalSets[index] || historicalSets[historicalSets.length - 1] || null;
     var result = {
       id: makeId("guideset"),
@@ -3085,18 +3096,8 @@
       restSeconds: source ? Number(source.restSeconds || 90) : 90,
       memo: source ? (source.memo || "") : ""
     };
-    applyWeightSuggestionToPlannedSet(result, exerciseId, index, historicalSets.length);
+    if (source && source.suggestedReason) result.suggestedReason = source.suggestedReason;
     return result;
-  }
-
-  // 増量提案をガイドの予定セットに適用する(トグルOFF・提案なし・増量なしのセットは変更しない)
-  function applyWeightSuggestionToPlannedSet(plannedSet, exerciseId, index, sourceCount) {
-    var suggestion = calculateWeightSuggestion(exerciseId);
-    if (!suggestion || !suggestion.promoted) return;
-    var suggested = index < suggestion.perSetWeights.length ? suggestion.perSetWeights[index] : (sourceCount && index >= sourceCount ? suggestion.suggestedWeight : null);
-    if (suggested == null || suggested === plannedSet.weight) return;
-    plannedSet.weight = suggested;
-    plannedSet.suggestedReason = suggestion.reason;
   }
 
   function guideDefaultCardioForType(type, sourceCardio) {
@@ -3196,17 +3197,16 @@
 
   function buildGuidePlannedSets(record) {
     var sourceSets = Array.isArray(record.sets) ? record.sets : [];
-    // コピー/下書き由来のセットがある場合はその値を尊重し、提案は適用しない(v3指示書)
+    // コピー/下書き由来のセットがある場合はその値を尊重し、承認済み提案も適用しない(v3指示書)
     var fromHistory = false;
     if (!sourceSets.length) {
-      var historical = getLastHistoricalRecord(record.exerciseId);
-      sourceSets = historical ? getRecordSets(historical.id) : [];
+      sourceSets = getPrefillSetsForExercise(record.exerciseId);
       fromHistory = true;
     }
     if (!sourceSets.length) {
       return [0, 1, 2].map(function (index) { return guideDefaultSetForExercise(record.exerciseId, index); });
     }
-    return sourceSets.map(function (set, index) {
+    return sourceSets.map(function (set) {
       var planned = {
         id: makeId("guideset"),
         status: "planned",
@@ -3216,7 +3216,7 @@
         restSeconds: Number(set.restSeconds || 90),
         memo: set.memo || ""
       };
-      if (fromHistory) applyWeightSuggestionToPlannedSet(planned, record.exerciseId, index, sourceSets.length);
+      if (fromHistory && set.suggestedReason) planned.suggestedReason = set.suggestedReason;
       return planned;
     });
   }
@@ -3290,15 +3290,11 @@
     var planned = guideItemPlannedSets(item);
     var index = Number(state && Number.isFinite(state.currentSetIndex) ? state.currentSetIndex : completedCount);
     if (index < completedCount) index = completedCount;
-    if (completedCount > 0 && index >= completedCount) {
-      var previousCompleted = completedSets[completedCount - 1];
-      return Object.assign({}, previousCompleted, { id: makeId("guideset"), status: "planned", memo: "" });
-    }
-    if (index >= planned.length) {
-      var lastCompleted = completedSets[completedCount - 1];
-      return lastCompleted ? Object.assign({}, lastCompleted, { id: makeId("guideset"), status: "planned", memo: "" }) : guideDefaultSetForExercise(item.exerciseId, index);
-    }
-    return planned[index];
+    // v4: 予定内のセットはセットごとの予定値(前回の同じセット+承認済み提案)をプリフィルする。
+    // 予定を超えた追加セットは直前の完了セットを引き継ぐ
+    if (index < planned.length) return planned[index];
+    var lastCompleted = completedSets[completedCount - 1];
+    return lastCompleted ? Object.assign({}, lastCompleted, { id: makeId("guideset"), status: "planned", memo: "" }) : guideDefaultSetForExercise(item.exerciseId, index);
   }
 
   function guideWeightStep(exercise) {
@@ -3403,7 +3399,13 @@
     var item = guideCurrentItem();
     var input = state && state.currentInput;
     if (input && item && input.itemId === item.id && Number(input.setIndex || 0) === Number(state.currentSetIndex || 0)) {
-      populateGuideSetInputs(input);
+      // 復元時も、重量が提案値のままなら根拠バッジを維持する(手入力で変えたら消えたまま)
+      var planned = currentGuidePlannedSet(item);
+      if (planned && planned.suggestedReason && planned.status === "planned" && Number(input.weight || 0) === Number(planned.weight || 0)) {
+        populateGuideSetInputs(Object.assign({}, input, { status: "planned", suggestedReason: planned.suggestedReason }));
+      } else {
+        populateGuideSetInputs(input);
+      }
     } else {
       populateGuideSetInputs(currentGuidePlannedSet(item));
     }
@@ -4585,13 +4587,6 @@
     return records.find(function (record) { return getRecordSets(record.id).length > 0; }) || null;
   }
 
-  function getLastHistoricalSet(exerciseId) {
-    var record = getLastHistoricalRecord(exerciseId);
-    if (!record) return null;
-    var sets = getRecordSets(record.id);
-    return sets.length ? sets[sets.length - 1] : null;
-  }
-
   /* 重量自動提案(プログレッシブオーバーロード)。v3指示書。
      提案値は保存せず、呼び出し時に履歴+設定から毎回計算する(永続化するのは設定値のみ)。
      ルールは1本: セット単位で前回セッションの重量を継承し、昇格条件を満たした
@@ -4638,6 +4633,36 @@
       perSetWeights: perSetWeights,
       reason: reason
     };
+  }
+
+  /* v4: 提案は「次回に反映」ボタンで承認されるまで入力値へ反映しない。
+     承認内容はdata.pendingSuggestionsに保存し、その種目を次に保存した時点で消費する。 */
+  function getPendingSuggestion(exerciseId) {
+    if (!Array.isArray(data.pendingSuggestions)) return null;
+    return data.pendingSuggestions.find(function (entry) { return entry && entry.exerciseId === exerciseId; }) || null;
+  }
+
+  function storePendingSuggestion(exerciseId) {
+    var suggestion = calculateWeightSuggestion(exerciseId);
+    if (!suggestion || !suggestion.promoted) return false;
+    return runDataTransaction(function () {
+      if (!Array.isArray(data.pendingSuggestions)) data.pendingSuggestions = [];
+      data.pendingSuggestions = data.pendingSuggestions.filter(function (entry) { return entry && entry.exerciseId !== exerciseId; });
+      data.pendingSuggestions.push({ exerciseId: exerciseId, fromWeight: suggestion.baseWeight, toWeight: suggestion.suggestedWeight, reason: suggestion.reason, createdAt: nowIso() });
+    });
+  }
+
+  // 前回セット群のうち承認済み提案の対象(fromWeightと同じ重量=前回のメインセット)だけ
+  // 重量を差し替えた複製を返す。元の重量はprefillOriginalWeightに残す(表示用)
+  function getPrefillSetsForExercise(exerciseId) {
+    var record = getLastHistoricalRecord(exerciseId);
+    var sets = record ? getRecordSets(record.id) : [];
+    var pending = getPendingSuggestion(exerciseId);
+    if (!pending || uiSettings.weightSuggestionEnabled === false) return sets;
+    return sets.map(function (set) {
+      if (Number(set.weight || 0) !== Number(pending.fromWeight) || Number(pending.toWeight) === Number(set.weight || 0)) return set;
+      return Object.assign({}, set, { weight: Number(pending.toWeight), prefillOriginalWeight: Number(set.weight || 0), suggestedReason: pending.reason });
+    });
   }
 
   function historicalExerciseSummary(exercise) {
@@ -4713,13 +4738,19 @@
       editingSetTempId = null;
       editingRef = null;
     }
-    var lastSet = record.sets.length ? record.sets[record.sets.length - 1] : getLastHistoricalSet(exercise.id);
+    // v4: Nセット目の入力には前回セッションのNセット目をプリフィルする。
+    // 前回のセット数を超えたら今日の最後のセット、履歴がなければ既定値
+    var historicalSets = getPrefillSetsForExercise(exercise.id);
+    var historicalSet = historicalSets[record.sets.length] || null;
+    var lastSet = historicalSet || (record.sets.length ? record.sets[record.sets.length - 1] : (historicalSets.length ? historicalSets[historicalSets.length - 1] : null));
     var inputSet = editingRef ? editingRef.set : lastSet;
     var nextNumber = record.sets.length + 1;
-    var previousWeight = exercise.category === "BODYWEIGHT" ? "自重" : (inputSet ? (Number(inputSet.weight || 0) / 1000).toFixed(1) + "kg" : "--");
+    var labelWeightGrams = inputSet ? (inputSet.prefillOriginalWeight != null ? inputSet.prefillOriginalWeight : inputSet.weight) : 0;
+    var previousWeight = exercise.category === "BODYWEIGHT" ? "自重" : (inputSet ? (Number(labelWeightGrams || 0) / 1000).toFixed(1) + "kg" : "--");
+    var suggestionNote = !editingRef && inputSet && inputSet.prefillOriginalWeight != null ? "（提案を反映 → " + formatSuggestionKg(inputSet.weight) + "）" : "";
     $("#currentSetLabel").textContent = exercise.name + " セット" + (editingRef ? editingRef.set.setNumber : nextNumber);
     $("#setEditorSuffix").textContent = editingRef ? "を編集中" : "を入力";
-    $("#previousSetSummary").textContent = inputSet ? "前回の記録：" + previousWeight + " × " + Number(inputSet.reps || 0) + "回" : "前回の記録はありません";
+    $("#previousSetSummary").textContent = inputSet ? "前回の記録：" + previousWeight + " × " + Number(inputSet.reps || 0) + "回" + suggestionNote : "前回の記録はありません";
     $("#setEditorCard").classList.toggle("is-editing", !!editingRef);
     $("#saveSetButton").textContent = editingRef ? "変更を保存" : nextNumber + "セット目を保存";
     $("#cancelSetEditButton").classList.toggle("hidden", !editingRef);
@@ -6048,12 +6079,13 @@
       statsHtml += '<div><span>有酸素運動</span><strong>' + cardios.length + '<small>件</small>' + (totalDistanceKm > 0 ? '・' + (Math.round(totalDistanceKm * 10) / 10).toLocaleString("ja-JP", { maximumFractionDigits: 1 }) + '<small>km</small>' : '') + '</strong></div>';
     }
     $("#workoutSummaryStats").innerHTML = statsHtml;
-    // 次回への提案(v3): 保存コミット後のデータで計算するため、今保存したセッションが
-    // 「前回」になった状態の提案が出る。増量提案がある種目のみ列挙し、なければ非表示
+    // 次回への提案(v3/v4): 保存コミット後のデータで計算するため、今保存したセッションが
+    // 「前回」になった状態の提案が出る。増量提案がある種目をセット単位で列挙し、
+    // 「次回に反映」を押した種目だけpendingSuggestionsに保存する(押さなければ何も変わらない)
     var suggestionsBox = $("#workoutSummarySuggestions");
     if (suggestionsBox) {
       var seenExerciseIds = {};
-      var suggestionRows = (summary.records || []).filter(function (record) {
+      var suggestionBlocks = (summary.records || []).filter(function (record) {
         if (seenExerciseIds[record.exerciseId]) return false;
         seenExerciseIds[record.exerciseId] = true;
         return true;
@@ -6061,10 +6093,24 @@
         var suggestion = calculateWeightSuggestion(record.exerciseId);
         if (!suggestion || !suggestion.promoted) return "";
         var exercise = getExercise(record.exerciseId);
-        return '<p><span>' + escapeHtml(exercise ? exercise.name : "種目") + '</span><b>→ ' + formatSuggestionKg(suggestion.suggestedWeight) + '</b></p>';
+        var lastRecord = getLastHistoricalRecord(record.exerciseId);
+        var lastSets = lastRecord ? getRecordSets(lastRecord.id) : [];
+        var setRows = lastSets.map(function (set, index) {
+          var fromGrams = Number(set.weight || 0);
+          var toGrams = index < suggestion.perSetWeights.length ? Number(suggestion.perSetWeights[index]) : fromGrams;
+          if (toGrams !== fromGrams) {
+            return '<p class="suggestion-set-row is-up"><span>' + (index + 1) + 'セット目</span><b>' + formatSuggestionKg(fromGrams) + ' → ' + formatSuggestionKg(toGrams) + '</b></p>';
+          }
+          return '<p class="suggestion-set-row"><span>' + (index + 1) + 'セット目</span><small>' + formatSuggestionKg(fromGrams) + ' そのまま</small></p>';
+        }).join("");
+        var alreadyPending = !!getPendingSuggestion(record.exerciseId);
+        var buttonHtml = alreadyPending
+          ? '<button class="outline-button suggestion-apply-button is-applied" type="button" data-apply-suggestion="' + record.exerciseId + '" disabled>反映済み ✓</button>'
+          : '<button class="outline-button suggestion-apply-button" type="button" data-apply-suggestion="' + record.exerciseId + '">次回に反映</button>';
+        return '<div class="suggestion-exercise"><h4>' + escapeHtml(exercise ? exercise.name : "種目") + '</h4>' + setRows + buttonHtml + '</div>';
       }).filter(Boolean);
-      if (suggestionRows.length) {
-        suggestionsBox.innerHTML = '<h3>次回への提案</h3>' + suggestionRows.join("");
+      if (suggestionBlocks.length) {
+        suggestionsBox.innerHTML = '<h3>次回への提案</h3><p class="suggestion-hint">「次回に反映」を押した種目だけ、次回の入力に増やした重量が入ります</p>' + suggestionBlocks.join("");
         suggestionsBox.classList.remove("hidden");
       } else {
         suggestionsBox.innerHTML = "";
@@ -6105,6 +6151,10 @@
       data.sessions.push({ id: sessionId, date: draft.date, locationType: draft.locationType, totalCalories: totalCalories, memo: draft.memo, createdAt: oldSession ? oldSession.createdAt : stamp, updatedAt: stamp });
       if (draft.sourceScheduleId) data.scheduledRoutines = data.scheduledRoutines.filter(function (schedule) { return schedule.id !== draft.sourceScheduleId; });
       data.recentExerciseIds = usedExerciseIds.concat(data.recentExerciseIds.filter(function (id) { return usedExerciseIds.indexOf(id) < 0; })).slice(0, 12);
+      // v4: 記録した種目の承認済み提案は消費する(次の保存後に新しい提案が出る)
+      if (Array.isArray(data.pendingSuggestions)) {
+        data.pendingSuggestions = data.pendingSuggestions.filter(function (entry) { return entry && usedExerciseIds.indexOf(entry.exerciseId) < 0; });
+      }
     });
     if (!saved) return;
     stopRestTimer();
@@ -6994,6 +7044,14 @@
     bindConfirmAndKeyboardEvents();
     on("#undoSnackbarButton", "click", undoSnackbarRestore);
     on("#closeWorkoutSummaryButton", "click", function () { closeModal("workoutSummaryModal"); });
+    on("#workoutSummarySuggestions", "click", function (event) {
+      var button = event.target.closest("[data-apply-suggestion]");
+      if (!button || button.disabled) return;
+      if (!storePendingSuggestion(button.getAttribute("data-apply-suggestion"))) return;
+      button.textContent = "反映済み ✓";
+      button.disabled = true;
+      button.classList.add("is-applied");
+    });
     // バックグラウンド→フォアグラウンド復帰でWake Lockが自動解放されるため再取得する
     document.addEventListener("visibilitychange", syncScreenWakeLock);
   }
@@ -7112,6 +7170,10 @@
       draftFromRoutine: draftFromRoutine,
       chooseExercise: chooseExercise,
       calculateWeightSuggestion: calculateWeightSuggestion,
+      getPendingSuggestion: getPendingSuggestion,
+      storePendingSuggestion: storePendingSuggestion,
+      getPrefillSetsForExercise: getPrefillSetsForExercise,
+      normalizePromotionReps: normalizePromotionReps,
       deleteDraftRecord: deleteDraftRecord,
       deletePendingCardioType: deletePendingCardioType,
       rebuildDataIndexes: rebuildDataIndexes,
