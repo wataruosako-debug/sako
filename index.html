@@ -29,29 +29,55 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
   <script>
-  /* デバッグ用オーバーレイ: URLに ?debug=1 を付けた時だけ、JSエラーを画面上部に赤帯で表示する。
-     実機(iPhone Safari等)でコンソールを開けない環境の障害調査用。通常利用時は何もしない */
+  /* デバッグ用オーバーレイ: URLに ?debug=1 を付けた時だけ有効。通常利用時は何もしない。
+     - JSエラー/Promise失敗を赤帯に表示(script.jsのパースエラーも捕捉)
+     - タップ受信ログ(最後の6件)とJS生存カウンタを表示 → 「固まった」時に
+       カウンタが止まる=メインスレッド停止 / カウンタは動くがタップログが増えない=イベント不達 を切り分け
+     - メインスレッドが1秒以上詰まったら STALL として記録 */
   (function () {
     if (window.location.search.indexOf("debug=1") < 0) return;
-    function show(message) {
-      var box = document.getElementById("__debugErrorBox");
-      if (!box) {
-        box = document.createElement("div");
-        box.id = "__debugErrorBox";
-        box.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#B91C1C;color:#fff;font-size:12px;line-height:1.5;padding:10px;white-space:pre-wrap;word-break:break-all;max-height:45vh;overflow:auto;font-family:monospace;";
-        (document.body || document.documentElement).appendChild(box);
-      }
-      box.textContent += message + "\n";
+    var taps = [];
+    var box = null;
+    var alive = 0;
+    var lastBeat = Date.now();
+    function ensureBox() {
+      if (box) return box;
+      box = document.createElement("div");
+      box.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(185,28,28,.95);color:#fff;font-size:11px;line-height:1.45;padding:8px;white-space:pre-wrap;word-break:break-all;max-height:40vh;overflow:auto;font-family:monospace;pointer-events:none;";
+      (document.body || document.documentElement).appendChild(box);
+      return box;
+    }
+    var errorLog = "";
+    function render() {
+      ensureBox().textContent = "alive:" + alive + " | GymLog:" + (window.GymLog ? "OK" : "未起動") +
+        "\nタップ: " + (taps.length ? taps.join(" → ") : "(まだなし)") +
+        (errorLog ? "\n" + errorLog : "");
+    }
+    function describe(el) {
+      if (!el || !el.tagName) return "?";
+      return el.id ? "#" + el.id : (el.className && typeof el.className === "string" ? el.tagName + "." + el.className.split(" ")[0] : el.tagName);
     }
     window.addEventListener("error", function (event) {
-      show("ERROR: " + (event.message || "unknown") + " @ " + (event.filename || "").split("/").pop() + ":" + (event.lineno || "?"));
+      errorLog += "ERROR: " + (event.message || "unknown") + " @" + (event.filename || "").split("/").pop() + ":" + (event.lineno || "?") + "\n";
+      render();
     }, true);
     window.addEventListener("unhandledrejection", function (event) {
-      show("PROMISE: " + (event.reason && event.reason.message ? event.reason.message : event.reason));
+      errorLog += "PROMISE: " + (event.reason && event.reason.message ? event.reason.message : event.reason) + "\n";
+      render();
     });
+    document.addEventListener("pointerdown", function (event) {
+      var target = event.target && event.target.closest ? (event.target.closest("button, a, [data-calendar-date]") || event.target) : event.target;
+      taps.push(describe(target));
+      if (taps.length > 6) taps.shift();
+      render();
+    }, true);
     window.addEventListener("DOMContentLoaded", function () {
-      setTimeout(function () {
-        show("debug: 起動チェック → GymLog " + (window.GymLog ? "OK(JS正常起動)" : "NG(JSが起動していない)") + " / UA: " + navigator.userAgent.slice(0, 80));
+      setInterval(function () {
+        var now = Date.now();
+        if (now - lastBeat > 1500) errorLog += "STALL: メインスレッドが" + Math.round((now - lastBeat) / 100) / 10 + "秒停止(直前のタップ: " + (taps[taps.length - 1] || "なし") + ")\n";
+        lastBeat = now;
+        alive += 1;
+        render();
       }, 500);
     });
   })();
