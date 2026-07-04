@@ -4095,7 +4095,7 @@
     state.lastAction = null;
     state.updatedAt = nowIso();
     closeModal("guideMenuModal");
-    if (exercisePickerMode === "guideAdd" || exercisePickerMode === "guideReplace") {
+    if (exercisePickerMode === "guideAdd") {
       exercisePickerMode = "workout";
       pendingExerciseId = null;
       closeModal("exerciseModal");
@@ -4518,34 +4518,6 @@
     }
   }
 
-  function replaceGuideExercise(exerciseId) {
-    var state = guideState();
-    var current = guideCurrentItem();
-    if (!state || !current) return;
-    var completed = guideItemCompletedSets(current);
-    if (completed.length) {
-      markGuideItemCompleted(current, state);
-      addExerciseToGuide(exerciseId, true);
-      return;
-    }
-    var replacement = createGuideItemFromExercise(exerciseId);
-    if (!replacement) return;
-    current.type = replacement.type;
-    current.exerciseId = replacement.exerciseId;
-    current.name = replacement.name;
-    current.category = replacement.category;
-    current.cardioType = replacement.cardioType || null;
-    current.status = "active";
-    current.currentSetIndex = 0;
-    current.plannedSets = replacement.plannedSets;
-    current.plannedCardio = replacement.plannedCardio || null;
-    current.completedCardio = null;
-    current.completedSets = [];
-    state.currentInput = null;
-    state.status = current.type === "cardio" ? "cardio" : "set";
-    renderGuideWorkout();
-    saveDraftNow();
-  }
 
   function renderWorkout() {
     if (!draft) return;
@@ -4912,7 +4884,7 @@
   function cancelExerciseSelection() {
     pendingExerciseId = null;
     routinePendingExerciseIds = [];
-    if (exercisePickerMode === "guideAdd" || exercisePickerMode === "guideReplace" || exercisePickerMode === "guideStartAdd") {
+    if (exercisePickerMode === "guideAdd" || exercisePickerMode === "guideStartAdd") {
       exercisePickerMode = "workout";
       closeModal("exerciseModal");
       return;
@@ -4945,7 +4917,7 @@
       addExerciseToMenuAndReturn(pendingExerciseId);
       return;
     }
-    if (exercisePickerMode === "guideAdd" || exercisePickerMode === "guideReplace") {
+    if (exercisePickerMode === "guideAdd") {
       if (!pendingExerciseId) return;
       var guideExerciseId = pendingExerciseId;
       var guideMode = exercisePickerMode;
@@ -4953,7 +4925,6 @@
       exercisePickerMode = "workout";
       closeModal("exerciseModal");
       if (guideMode === "guideAdd") addExerciseToGuide(guideExerciseId, true);
-      else replaceGuideExercise(guideExerciseId);
       return;
     }
     if (!pendingExerciseId) return;
@@ -6521,9 +6492,8 @@
           showToast("種目を選択しました");
           return;
         }
-        if (exercisePickerMode === "guideAdd" || exercisePickerMode === "guideReplace") {
-          if (exercisePickerMode === "guideAdd") addExerciseToGuide(existingExercise.id, true);
-          else replaceGuideExercise(existingExercise.id);
+        if (exercisePickerMode === "guideAdd") {
+          addExerciseToGuide(existingExercise.id, true);
           exercisePickerMode = "workout";
           closeModal("exerciseModal");
           return;
@@ -6548,9 +6518,8 @@
       if (exercisePickerMode === "routine") {
         routinePendingExerciseIds.push(exercise.id);
         renderExerciseList();
-      } else if (exercisePickerMode === "guideAdd" || exercisePickerMode === "guideReplace") {
-        if (exercisePickerMode === "guideAdd") addExerciseToGuide(exercise.id, true);
-        else replaceGuideExercise(exercise.id);
+      } else if (exercisePickerMode === "guideAdd") {
+        addExerciseToGuide(exercise.id, true);
         exercisePickerMode = "workout";
         closeModal("exerciseModal");
       } else if (exercisePickerMode === "guideStartAdd") {
@@ -6733,12 +6702,12 @@
     on("#guideDetailBackButton", "click", returnGuideToNextChoice);
     on("#guideAddExerciseButton", "click", function () { openGuideExercisePicker("guideAdd"); });
     on("#guideMenuAddExercise", "click", function () { openGuideExercisePicker("guideAdd"); });
-    on("#replaceGuideItemButton", "click", function () { openGuideExercisePicker("guideReplace"); });
+    // 「別の種目を行う」: 現在の種目を後回しにしてメニュー内の選択画面へ(旧: この種目を後回し と統合)
+    on("#replaceGuideItemButton", "click", deferCurrentGuideItem);
     on("#completeGuideSetButton", "click", completeGuideSet);
     on("#completeGuideCardioButton", "click", completeGuideCardio);
-    on("#deferGuideItemButton", "click", deferCurrentGuideItem);
     on("#skipGuideItemButton", "click", skipCurrentGuideItem);
-    on("#replaceGuideCardioButton", "click", function () { openGuideExercisePicker("guideReplace"); });
+    on("#replaceGuideCardioButton", "click", deferCurrentGuideItem);
     on("#skipGuideCardioButton", "click", skipCurrentGuideItem);
     on("#continueGuideButton", "click", returnGuideToWorkoutMenu);
     on("#cancelGuideExit", "click", cancelGuideExitDialog);
@@ -6915,7 +6884,7 @@
   function handleModalCloseDelegatedClick(event) {
     var close = event.target.closest("[data-close-modal]");
     if (close) {
-      if (close.dataset.closeModal === "exerciseModal" && (exercisePickerMode === "routine" || exercisePickerMode === "workoutAdd" || exercisePickerMode === "guideAdd" || exercisePickerMode === "guideReplace" || exercisePickerMode === "guideStartAdd")) cancelExerciseSelection();
+      if (close.dataset.closeModal === "exerciseModal" && (exercisePickerMode === "routine" || exercisePickerMode === "workoutAdd" || exercisePickerMode === "guideAdd" || exercisePickerMode === "guideStartAdd")) cancelExerciseSelection();
       else {
         if (close.dataset.closeModal === "copyConflictModal") cancelPendingConflict();
         else if (close.dataset.closeModal === "copyDestinationModal") { copySourceSessionId = null; closeModal("copyDestinationModal"); }
@@ -6999,7 +6968,7 @@
       if (event.key !== "Escape") return;
       var open = $$(".modal.is-open");
       if (!open.length) return;
-      if (open[open.length - 1].id === "exerciseModal" && (exercisePickerMode === "routine" || exercisePickerMode === "guideAdd" || exercisePickerMode === "guideReplace" || exercisePickerMode === "guideStartAdd")) cancelExerciseSelection();
+      if (open[open.length - 1].id === "exerciseModal" && (exercisePickerMode === "routine" || exercisePickerMode === "guideAdd" || exercisePickerMode === "guideStartAdd")) cancelExerciseSelection();
       else if (open[open.length - 1].id === "nextSetConfirmModal") closeNextSetInput();
       else if (open[open.length - 1].id === "copyConflictModal") cancelPendingConflict();
       else if (open[open.length - 1].id === "copyDestinationModal") { copySourceSessionId = null; closeModal("copyDestinationModal"); }
