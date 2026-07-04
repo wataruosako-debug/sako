@@ -3319,6 +3319,8 @@
     var state = guideState();
     var item = guideCurrentItem();
     if (!state || !item || state.status !== "set") return;
+    // 修正モード中の入力は進行中セットのcurrentInputを上書きしない(戻った時に復元するため)
+    if (state.editingCompleted) return;
     state.currentInput = Object.assign({ itemId: item.id, setIndex: Number(state.currentSetIndex || 0) }, guideInputValues());
     state.updatedAt = nowIso();
   }
@@ -3397,6 +3399,14 @@
   function restoreGuideInputForCurrentItem() {
     var state = guideState();
     var item = guideCurrentItem();
+    // 修正モード中は対象の記録済みセットの値をそのまま表示する
+    if (state && state.editingCompleted && item && state.editingCompleted.itemId === item.id) {
+      var editTarget = guideItemCompletedSets(item)[state.editingCompleted.setIndex];
+      if (editTarget) {
+        populateGuideSetInputs(editTarget);
+        return;
+      }
+    }
     var input = state && state.currentInput;
     if (input && item && input.itemId === item.id && Number(input.setIndex || 0) === Number(state.currentSetIndex || 0)) {
       // 復元時も、重量が提案値のままなら根拠バッジを維持する(手入力で変えたら消えたまま)
@@ -3583,6 +3593,7 @@
     var exercise = guideItemExercise(item);
     var sets = guideItemCompletedSets(item);
     if (!sets.length) return '<div class="empty-state">まだ完了したセットはありません。</div>';
+    // 各セットはタップで修正モードへ(v5)
     return sets.map(function (set, index) {
       var parts = [
         formatWeightForAiExport(exercise, set.weight) + " × " + Number(set.reps || 0) + "回",
@@ -3590,7 +3601,7 @@
         "休憩" + Number(set.restSeconds || 0) + "秒"
       ];
       var memo = set.memo ? '<small>メモ：' + escapeHtml(set.memo) + '</small>' : "";
-      return '<div class="guide-completed-set-row"><strong>' + (index + 1) + 'セット目：' + escapeHtml(parts.join(" / ")) + '</strong>' + memo + '</div>';
+      return '<button class="guide-completed-set-row guide-completed-set-row--editable" type="button" data-guide-edit-completed-set="' + index + '"><strong>' + (index + 1) + 'セット目：' + escapeHtml(parts.join(" / ")) + '</strong>' + memo + '<span class="edit-cue">修正</span></button>';
     }).join("");
   }
 
@@ -3599,7 +3610,7 @@
     if (!item) return;
     var completedCount = item.type === "cardio" ? (item.completedCardio ? 1 : 0) : guideItemCompletedSets(item).length;
     $("#guideCompletedDetailTitle").textContent = guideItemName(item);
-    $("#guideCompletedDetailSummary").textContent = item.type === "cardio" ? (completedCount ? "有酸素完了" : "未完了") : completedCount + "セット完了";
+    $("#guideCompletedDetailSummary").textContent = item.type === "cardio" ? (completedCount ? "有酸素完了" : "未完了") : completedCount + "セット完了" + (completedCount ? "（セットをタップで修正できます）" : "");
     $("#guideCompletedDetailSets").innerHTML = guideCompletedDetailHtml(item);
     $("#guideDetailAddSetButton").classList.toggle("hidden", item.type !== "strength");
   }
@@ -3669,16 +3680,20 @@
     if (showFinished) {
       var finishedMeta = guideSetMeta(item);
       var hasNextSet = guideItemCompletedSets(item).length < guideItemPlannedSets(item).length && item.status !== "completed";
+      // メニュー外から追加した種目は続けてセットを重ねるのが普通なので、セット追加を最上段・濃色にする
+      var addFirst = !hasNextSet && !!item.isMenuExternal;
       $("#guideFinishedExerciseName").textContent = guideItemName(item);
       $("#guideFinishedSetSummary").textContent = finishedMeta.completed.length + "セット目を完了しました";
       $("#guideChooseNextExerciseButton").textContent = hasNextSet ? "次のセットを行う" : "次の種目を行う";
       $("#guideAddExtraSetButton").classList.toggle("hidden", hasNextSet);
+      $("#guideAddExtraSetButton").textContent = addFirst ? "セットを追加する" : "セットを追加して続ける";
       $("#guideEndMenuAfterSetButton").textContent = hasNextSet ? "別の種目を行う" : "メニューを終了";
-      $("#guideChooseNextExerciseButton").style.order = "1";
-      $("#guideAddExtraSetButton").style.order = "2";
+      $("#guideChooseNextExerciseButton").style.order = addFirst ? "2" : "1";
+      $("#guideAddExtraSetButton").style.order = addFirst ? "1" : "2";
       $("#guideEndMenuAfterSetButton").style.order = hasNextSet ? "2" : "3";
-      $("#guideChooseNextExerciseButton").classList.add("finish-button");
-      $("#guideChooseNextExerciseButton").classList.remove("outline-button");
+      $("#guideChooseNextExerciseButton").classList.toggle("finish-button", !addFirst);
+      $("#guideChooseNextExerciseButton").classList.toggle("outline-button", addFirst);
+      $("#guideChooseNextExerciseButton").classList.toggle("outline-button--blue", addFirst);
       $("#guideAddExtraSetButton").classList.add("finish-button");
       $("#guideAddExtraSetButton").classList.remove("outline-button");
       $("#guideEndMenuAfterSetButton").classList.add("outline-button");
@@ -3705,22 +3720,49 @@
     var completed = guideItemCompletedSets(item);
     var meta = guideSetMeta(item);
     var setIndex = meta.setIndex;
+    // 記録済みセットの修正モード(state.editingCompleted)では対象セットの番号・値を表示する
+    var editingCompleted = state.editingCompleted && state.editingCompleted.itemId === item.id ? state.editingCompleted : null;
+    var displayIndex = editingCompleted ? editingCompleted.setIndex : setIndex;
+    var displayTotal = editingCompleted ? Math.max(completed.length, planned.length) : Math.max(planned.length, setIndex + 1);
     $("#guideExerciseProgress").textContent = (currentIndex + 1) + " / " + items.length + "種目";
     $("#guideItemPosition").textContent = (currentIndex + 1) + " / " + items.length + "種目";
     $("#guideCurrentExerciseName").textContent = guideItemName(item);
     $("#guideExerciseName").textContent = guideItemName(item);
-    $("#guidePreviousSummary").textContent = guidePreviousSetSummary(exercise, setIndex);
-    $("#guideCurrentSetNumber").textContent = String(setIndex + 1);
-    $("#guideTotalSetCount").textContent = String(Math.max(planned.length, setIndex + 1));
-    $("#guideSetProgress").textContent = (setIndex + 1) + " / " + Math.max(planned.length, setIndex + 1) + "セット";
+    $("#guidePreviousSummary").textContent = editingCompleted ? (displayIndex + 1) + "セット目を修正中" : guidePreviousSetSummary(exercise, setIndex);
+    $("#guideCurrentSetNumber").textContent = String(displayIndex + 1);
+    $("#guideTotalSetCount").textContent = String(displayTotal);
+    $("#guideSetProgress").textContent = (displayIndex + 1) + " / " + displayTotal + "セット";
+    renderGuideCompletedSetChips(item, editingCompleted);
+    var cancelEditButton = $("#cancelGuideSetEditButton");
+    if (cancelEditButton) cancelEditButton.classList.toggle("hidden", !editingCompleted);
+    var otherActions = $("#guideSetOtherActions");
+    if (otherActions) otherActions.classList.toggle("hidden", !!editingCompleted);
     restoreGuideInputForCurrentItem();
     if (!guideSetSaveLocked) {
-      var label = (setIndex + 1) + "セット目を完了";
+      var label = editingCompleted ? (displayIndex + 1) + "セット目の修正を保存" : (setIndex + 1) + "セット目を完了";
       setGuideCompleteButtonLocked(false, label);
       $("#completeGuideSetButton").setAttribute("aria-label", label);
     }
     renderGuideRestTimer();
     renderGuideMenuList();
+  }
+
+  // 記録済みセットを小さなチップで表示する(タップで修正モードへ)。修正中と未記録時は非表示
+  function renderGuideCompletedSetChips(item, editingCompleted) {
+    var chips = $("#guideCompletedSetChips");
+    if (!chips) return;
+    var exercise = guideItemExercise(item);
+    var completed = guideItemCompletedSets(item);
+    if (editingCompleted || !completed.length || (item && item.type !== "strength")) {
+      chips.innerHTML = "";
+      chips.classList.add("hidden");
+      return;
+    }
+    chips.innerHTML = '<small>記録済み（タップで修正）</small>' + completed.map(function (set, index) {
+      var weightText = exercise && exercise.category === "BODYWEIGHT" ? "自重" : formatSuggestionKg(set.weight);
+      return '<button type="button" data-guide-edit-set="' + index + '">✓' + (index + 1) + ' ' + weightText + '×' + Number(set.reps || 0) + '回</button>';
+    }).join("");
+    chips.classList.remove("hidden");
   }
 
   function renderGuideStartSummary() {
@@ -4134,8 +4176,89 @@
     moveGuideToSelectNext();
   }
 
+  // 記録済みセットの修正モード(v5)。完了ボタンが「修正を保存」になり、
+  // 保存/キャンセルで元いた画面(進行中セット or 完了種目の詳細)に戻る
+  function enterGuideCompletedSetEdit(itemId, setIndex) {
+    var state = guideState();
+    if (!state) return;
+    var item = guideItems(state).find(function (entry) { return entry.id === itemId; });
+    if (!item || item.type !== "strength") return;
+    if (!guideItemCompletedSets(item)[setIndex]) return;
+    captureGuideInputToState();
+    state.editingCompleted = {
+      itemId: itemId,
+      setIndex: Number(setIndex),
+      returnStatus: state.status,
+      returnItemId: state.currentItemId || null,
+      returnDetailItemId: state.detailItemId || null
+    };
+    state.status = "set";
+    state.currentItemId = itemId;
+    state.detailItemId = null;
+    state.updatedAt = nowIso();
+    guideSetSaveLocked = false;
+    renderGuideWorkout();
+    saveDraftNow();
+    scheduleGuideCurrentSetScroll();
+  }
+
+  function exitGuideCompletedSetEdit(state) {
+    var editing = state.editingCompleted;
+    state.editingCompleted = null;
+    if (editing && editing.returnStatus === "completedDetail" && editing.returnDetailItemId) {
+      state.status = "completedDetail";
+      state.detailItemId = editing.returnDetailItemId;
+      state.currentItemId = null;
+    } else {
+      state.status = "set";
+      state.currentItemId = editing && editing.returnItemId ? editing.returnItemId : state.currentItemId;
+      state.detailItemId = null;
+    }
+    state.updatedAt = nowIso();
+  }
+
+  function saveGuideCompletedSetEdit(skipWarning) {
+    var state = guideState();
+    var editing = state && state.editingCompleted;
+    if (!editing) return;
+    var item = guideItems(state).find(function (entry) { return entry.id === editing.itemId; });
+    var target = item ? guideItemCompletedSets(item)[editing.setIndex] : null;
+    if (!target) { cancelGuideCompletedSetEdit(); return; }
+    var values = guideInputValues();
+    var issue = setValueIssue(Number(values.weight || 0) / 1000, Number(values.reps), Number(values.restSeconds));
+    if (issue.invalid) { showToast(issue.invalid); return; }
+    if (issue.warning && skipWarning !== true) {
+      askConfirm(issue.warning, "このまま保存", function () { saveGuideCompletedSetEdit(true); }, "入力に戻る");
+      return;
+    }
+    target.weight = values.weight;
+    target.reps = values.reps;
+    target.rir = values.rir;
+    target.restSeconds = values.restSeconds;
+    target.memo = values.memo;
+    exitGuideCompletedSetEdit(state);
+    renderGuideWorkout();
+    saveDraftNow();
+    scheduleGuideCurrentSetScroll();
+    showToast((editing.setIndex + 1) + "セット目を修正しました");
+  }
+
+  function cancelGuideCompletedSetEdit() {
+    var state = guideState();
+    if (!state || !state.editingCompleted) return;
+    exitGuideCompletedSetEdit(state);
+    renderGuideWorkout();
+    saveDraftNow();
+    scheduleGuideCurrentSetScroll();
+  }
+
   function completeGuideSet(skipWarning) {
     if (guideSetSaveLocked) return;
+    var editState = guideState();
+    if (editState && editState.editingCompleted) {
+      saveGuideCompletedSetEdit(skipWarning);
+      return;
+    }
     var item = guideCurrentItem();
     var exercise = guideItemExercise(item);
     if (!item || !exercise) return;
@@ -4468,7 +4591,7 @@
       showToast("ガイドモードは設定でOFFです");
       return;
     }
-    stopRestTimer();
+    // 休憩タイマーは止めない(種目探し・移動中も休憩時間として計り続ける)
     exercisePickerMode = mode;
     pendingExerciseId = null;
     activeExerciseBodyPart = "chest";
@@ -4489,8 +4612,15 @@
     if (!state || !item) return;
     if (item.type === "strength") item.isMenuExternal = true;
     state.menuItems.push(item);
-    if (activate) activateGuideItem(item.id);
-    else {
+    if (activate) {
+      // 種目を追加する=直前まで別の種目をやって移動してきたはず。
+      // 動いている休憩タイマーは止めず、止まっていれば自動開始する(タイマー設定に従う)
+      activateGuideItem(item.id, { keepRestTimer: true });
+      if (item.type === "strength" && restTimerState.status === "idle") {
+        var firstPlanned = guideItemPlannedSets(item)[0];
+        startRestTimer(Number(firstPlanned && firstPlanned.restSeconds) || 90);
+      }
+    } else {
       renderGuideWorkout();
       saveDraftNow();
     }
@@ -6757,6 +6887,19 @@
     });
     on("#guideDetailAddSetButton", "click", addSetFromGuideCompletedDetail);
     on("#guideDetailBackButton", "click", returnGuideToNextChoice);
+    on("#guideCompletedSetChips", "click", function (event) {
+      var button = event.target.closest("[data-guide-edit-set]");
+      if (!button) return;
+      var item = guideCurrentItem();
+      if (item) enterGuideCompletedSetEdit(item.id, Number(button.dataset.guideEditSet));
+    });
+    on("#guideCompletedDetailSets", "click", function (event) {
+      var button = event.target.closest("[data-guide-edit-completed-set]");
+      if (!button) return;
+      var state = guideState();
+      if (state && state.detailItemId) enterGuideCompletedSetEdit(state.detailItemId, Number(button.dataset.guideEditCompletedSet));
+    });
+    on("#cancelGuideSetEditButton", "click", cancelGuideCompletedSetEdit);
     on("#guideAddExerciseButton", "click", function () { openGuideExercisePicker("guideAdd"); });
     on("#guideMenuAddExercise", "click", function () { openGuideExercisePicker("guideAdd"); });
     // 「別の種目を行う」: 現在の種目を後回しにしてメニュー内の選択画面へ(旧: この種目を後回し と統合)

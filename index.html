@@ -109,7 +109,7 @@
     });
   })();
   </script>
-  <link rel="stylesheet" href="style.css?v=20260704-v4c">
+  <link rel="stylesheet" href="style.css?v=20260704-v5">
 </head>
 <body>
   <div class="app-shell">
@@ -377,6 +377,7 @@
                   <small>/ <b id="guideTotalSetCount">1</b></small>
                 </div>
                 <small id="guidePreviousSummary">前回の記録はありません</small>
+                <div id="guideCompletedSetChips" class="guide-completed-chips hidden" aria-label="記録済みセット（タップで修正）"></div>
                 <span id="guideItemPosition" class="hidden">1 / 1種目</span>
                 <span id="guideExerciseName" class="hidden">種目</span>
                 <span id="guideSetProgress" class="hidden">1 / 1セット</span>
@@ -428,7 +429,8 @@
             </details>
 
             <button id="completeGuideSetButton" class="finish-button" type="button">このセットを完了</button>
-            <details class="guide-other-actions">
+            <button id="cancelGuideSetEditButton" class="outline-button hidden" type="button">修正をやめる</button>
+            <details id="guideSetOtherActions" class="guide-other-actions">
               <summary>その他の操作</summary>
               <div class="guide-secondary-actions">
                 <button id="replaceGuideItemButton" type="button">別の種目を行う</button>
@@ -946,6 +948,6 @@
     </section>
   </div>
 
-  <script src="script.js?v=20260704-v4c"></script>
+  <script src="script.js?v=20260704-v5"></script>
 </body>
 </html>
