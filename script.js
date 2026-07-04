@@ -3709,7 +3709,7 @@
     $("#guideItemPosition").textContent = (currentIndex + 1) + " / " + items.length + "種目";
     $("#guideCurrentExerciseName").textContent = guideItemName(item);
     $("#guideExerciseName").textContent = guideItemName(item);
-    $("#guidePreviousSummary").textContent = historicalExerciseSummary(exercise);
+    $("#guidePreviousSummary").textContent = guidePreviousSetSummary(exercise, setIndex);
     $("#guideCurrentSetNumber").textContent = String(setIndex + 1);
     $("#guideTotalSetCount").textContent = String(Math.max(planned.length, setIndex + 1));
     $("#guideSetProgress").textContent = (setIndex + 1) + " / " + Math.max(planned.length, setIndex + 1) + "セット";
@@ -4648,8 +4648,29 @@
     var sets = getRecordSets(record.id);
     var lastSet = sets[sets.length - 1];
     if (!lastSet) return "前回の記録はありません";
-    var weight = exercise.category === "BODYWEIGHT" ? "自重" : (Number(lastSet.weight || 0) / 1000).toFixed(1) + "kg";
-    return "前回：" + weight + " × " + Number(lastSet.reps || 0) + "回 × " + sets.length + "セット";
+    if (exercise.category === "BODYWEIGHT") return "前回：自重 × " + Number(lastSet.reps || 0) + "回 × " + sets.length + "セット";
+    var weights = sets.map(function (set) { return Number(set.weight || 0); });
+    var allSameWeight = weights.every(function (weight) { return weight === weights[0]; });
+    if (allSameWeight) return "前回：" + (weights[0] / 1000).toFixed(1) + "kg × " + Number(lastSet.reps || 0) + "回 × " + sets.length + "セット";
+    // セットごとに重量が違う場合は1セット目からの重量を順に見せる(プリフィルと同じ並び)
+    var weightList = weights.map(function (weight) {
+      var value = weight / 1000;
+      return value % 1 === 0 ? String(value) : value.toFixed(1);
+    }).join("→");
+    return "前回：" + weightList + "kg（" + sets.length + "セット）";
+  }
+
+  // ガイドの現在セットに対応する「前回の同じセット番号」の実績。プリフィル値と必ず一致する
+  function guidePreviousSetSummary(exercise, setIndex) {
+    if (!exercise) return "前回の記録はありません";
+    var record = getLastHistoricalRecord(exercise.id);
+    var sets = record ? getRecordSets(record.id) : [];
+    if (!sets.length) return "前回の記録はありません";
+    var sameSet = sets[setIndex] || null;
+    var source = sameSet || sets[sets.length - 1];
+    var weight = exercise.category === "BODYWEIGHT" ? "自重" : (Number(source.weight || 0) / 1000).toFixed(1) + "kg";
+    var label = sameSet ? "前回の" + (setIndex + 1) + "セット目" : "前回の最終セット";
+    return label + "：" + weight + " × " + Number(source.reps || 0) + "回（全" + sets.length + "セット）";
   }
 
   function getLastHistoricalCardio(type) {
@@ -4724,9 +4745,16 @@
     var labelWeightGrams = inputSet ? (inputSet.prefillOriginalWeight != null ? inputSet.prefillOriginalWeight : inputSet.weight) : 0;
     var previousWeight = exercise.category === "BODYWEIGHT" ? "自重" : (inputSet ? (Number(labelWeightGrams || 0) / 1000).toFixed(1) + "kg" : "--");
     var suggestionNote = !editingRef && inputSet && inputSet.prefillOriginalWeight != null ? "（提案を反映 → " + formatSuggestionKg(inputSet.weight) + "）" : "";
+    // どのセットの数字を参照しているかが分かるラベル(プリフィル元と必ず一致させる)
+    var previousLabel = "前回の記録";
+    if (!editingRef) {
+      if (historicalSet) previousLabel = "前回の" + nextNumber + "セット目";
+      else if (record.sets.length) previousLabel = "今日の" + record.sets.length + "セット目";
+      else if (historicalSets.length) previousLabel = "前回の最終セット";
+    }
     $("#currentSetLabel").textContent = exercise.name + " セット" + (editingRef ? editingRef.set.setNumber : nextNumber);
     $("#setEditorSuffix").textContent = editingRef ? "を編集中" : "を入力";
-    $("#previousSetSummary").textContent = inputSet ? "前回の記録：" + previousWeight + " × " + Number(inputSet.reps || 0) + "回" + suggestionNote : "前回の記録はありません";
+    $("#previousSetSummary").textContent = inputSet ? previousLabel + "：" + previousWeight + " × " + Number(inputSet.reps || 0) + "回" + suggestionNote : "前回の記録はありません";
     $("#setEditorCard").classList.toggle("is-editing", !!editingRef);
     $("#saveSetButton").textContent = editingRef ? "変更を保存" : nextNumber + "セット目を保存";
     $("#cancelSetEditButton").classList.toggle("hidden", !editingRef);
