@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JDネット｜営業人材ゼロでも、新規アポが毎月届く。AI活用の新規顧客開拓サービス</title>
+<meta name="description" content="東証グロース上場企業が提供する中小企業向け新規顧客開拓サービス。AI×5万件の販売実績データで、アポ率業界平均の約3倍。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0B2447; --navy-2:#13315F; --blue:#1D5FD1; --blue-lt:#4B85E8;
+  --sky:#EEF4FC; --ink:#1C2430; --muted:#5A6678; --line:#D9E2EF;
+  --accent:#F0640C; --accent-dark:#D4530A; --yellow:#FFE45C; --white:#fff;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Noto Sans JP',sans-serif;color:var(--ink);line-height:1.85;background:#fff;-webkit-font-smoothing:antialiased}
+img{max-width:100%;display:block}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+h1,h2,h3{font-family:'Zen Kaku Gothic New',sans-serif;line-height:1.45}
+.num{font-family:'Oswald',sans-serif;font-weight:600}
+.mk{background:linear-gradient(transparent 62%,var(--yellow) 62%);padding:0 2px}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;text-align:center;font-weight:700;border-radius:60px;transition:.18s;cursor:pointer;border:none;font-family:'Noto Sans JP',sans-serif;position:relative;white-space:nowrap}
+.btn-accent{background:linear-gradient(180deg,#FF7A1E,var(--accent));color:#fff;box-shadow:0 5px 0 var(--accent-dark),0 10px 20px rgba(240,100,12,.3)}
+.btn-accent:hover{transform:translateY(3px);box-shadow:0 2px 0 var(--accent-dark),0 6px 12px rgba(240,100,12,.3)}
+.btn-accent::after{content:"›";font-size:1.3em;font-weight:400}
+.btn-ghost{background:#fff;color:var(--blue);border:2px solid var(--blue)}
+.btn-ghost:hover{background:var(--sky)}
+.btn-sm{font-size:13px;padding:10px 20px}
+.btn-lg{font-size:17px;padding:18px 44px}
+@media(max-width:640px){.btn-lg{width:100%;padding:16px 20px;font-size:15.5px}}
+
+/* header */
+.header{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.97);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.header-in{display:flex;align-items:center;justify-content:space-between;height:62px}
+.logo{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;font-size:20px;color:var(--navy);text-decoration:none}
+.logo small{font-size:10px;font-weight:700;color:var(--muted);display:block;line-height:1.2}
+.header-cta{display:flex;gap:10px}
+@media(max-width:640px){
+  .header .btn-ghost{display:none}
+  .header-in{height:56px}
+  .logo{font-size:17px}
+  .logo small{font-size:9px}
+  .header .btn-sm{font-size:12px;padding:9px 15px}
+}
+@media(max-width:400px){.logo small{display:none}}
+
+/* ===== hero ===== */
+.hero{background:linear-gradient(105deg,var(--navy) 0%,var(--navy-2) 48%,rgba(19,49,95,.7) 100%),url('https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1600&q=70&auto=format&fit=crop') center/cover no-repeat;color:#fff;position:relative}
+.hero-in{padding:70px 0 86px;position:relative;z-index:1;max-width:640px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;background:#fff;color:var(--navy);border-radius:6px;font-size:12.5px;font-weight:700;padding:7px 16px;margin-bottom:22px;box-shadow:0 3px 10px rgba(0,0,0,.2)}
+.eyebrow::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.hero h1{font-size:clamp(30px,5.2vw,50px);font-weight:900;margin-bottom:16px;text-shadow:0 2px 14px rgba(0,0,0,.35)}
+.hero h1 .hl{color:#FFC24B}
+.hero .sub{font-size:clamp(14.5px,1.9vw,17px);font-weight:500;color:#E4EDFA;margin-bottom:30px;text-shadow:0 1px 8px rgba(0,0,0,.4)}
+.badges{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:34px}
+.badge{background:rgba(255,255,255,.95);color:var(--navy);border-radius:10px;padding:10px 16px;font-size:11.5px;font-weight:700;line-height:1.45;box-shadow:0 3px 12px rgba(0,0,0,.18)}
+.badge b{display:block;font-size:16px;font-weight:900}
+.badge b .num{font-size:21px;color:var(--blue)}
+.hero-cta{display:flex;gap:14px;flex-wrap:wrap}
+.micro{font-size:12px;color:#D6E2F5;margin-top:14px;text-shadow:0 1px 6px rgba(0,0,0,.5)}
+@media(max-width:640px){.hero-in{padding:46px 0 60px}.hero-cta{flex-direction:column}.hero h1{font-size:clamp(21px,6.6vw,25px);line-height:1.4}.hero .sub{font-size:14.5px}}
+
+/* ===== sections ===== */
+section{padding:80px 0}
+@media(max-width:640px){section{padding:56px 0}}
+.fukidashi{text-align:center;font-size:clamp(15px,2.2vw,18px);font-weight:700;color:var(--blue);margin-bottom:8px}
+.fukidashi span{position:relative;padding:0 34px}
+.fukidashi span::before,.fukidashi span::after{content:"";position:absolute;top:52%;width:2.5px;height:22px;background:var(--blue);border-radius:2px}
+.fukidashi span::before{left:8px;transform:translateY(-50%) rotate(-28deg)}
+.fukidashi span::after{right:8px;transform:translateY(-50%) rotate(28deg)}
+.sec-title{font-size:clamp(24px,3.6vw,36px);font-weight:900;text-align:center;margin-bottom:16px;color:var(--navy)}
+.sec-lead{text-align:center;color:var(--muted);max-width:700px;margin:0 auto 48px;font-size:15px}
+
+/* ===== 課題(写真カード) ===== */
+.pains{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.pain{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 22px rgba(11,36,71,.1);border:1px solid var(--line)}
+.pain-img{height:150px;background:var(--sky);position:relative}
+.pain-img img{width:100%;height:100%;object-fit:cover}
+.pain-body{padding:22px 22px 26px;text-align:center}
+.pain h3{font-size:16.5px;color:var(--navy);margin-bottom:8px}
+.pain p{font-size:13.5px;color:var(--muted);text-align:left}
+.check{display:inline-block;background:var(--blue);color:#fff;border-radius:50%;width:30px;height:30px;line-height:30px;font-weight:900;margin-bottom:10px;margin-top:-38px;position:relative;z-index:2;box-shadow:0 3px 8px rgba(0,0,0,.2);font-size:15px}
+@media(max-width:800px){.pains{grid-template-columns:1fr}.pain-img{height:170px}}
+.arrow-down{text-align:center;margin:46px 0 0}
+.arrow-down span{display:inline-block;width:0;height:0;border-left:30px solid transparent;border-right:30px solid transparent;border-top:24px solid var(--accent)}
+.arrow-label{font-weight:900;color:var(--navy);font-size:clamp(16px,2.4vw,20px);margin-bottom:10px;text-align:center}
+
+/* ===== 原因 ===== */
+.cause{background:var(--navy);color:#fff;position:relative}
+.cause-grid{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center}
+.cause-txt h3{font-size:clamp(21px,3vw,29px);margin-bottom:16px;font-weight:900}
+.cause-txt h3 .hl{color:#FFC24B}
+.cause-txt>p{color:#C9D8F0;font-size:14.5px;margin-bottom:26px}
+.cause-item{display:flex;gap:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:16px 18px;margin-bottom:12px}
+.cause-item .no{font-family:'Oswald',sans-serif;font-weight:600;font-size:22px;color:#FFC24B;line-height:1.2}
+.cause-item h4{font-size:14.5px;margin-bottom:2px}
+.cause-item p{font-size:12.5px;color:#B9CBE8}
+.cause-photo{border-radius:16px;overflow:hidden;box-shadow:0 14px 40px rgba(0,0,0,.35)}
+.cause-photo img{width:100%;height:420px;object-fit:cover}
+@media(max-width:840px){.cause-grid{grid-template-columns:1fr}.cause-photo img{height:230px}}
+
+/* ===== 解決策(交互レイアウト) ===== */
+.zigzag{display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center;margin-bottom:70px}
+.zigzag:last-child{margin-bottom:0}
+.zz-photo{border-radius:16px;overflow:hidden;box-shadow:0 12px 34px rgba(11,36,71,.16);position:relative}
+.zz-photo img{width:100%;height:330px;object-fit:cover}
+.zz-no{position:absolute;top:0;left:0;background:var(--blue);color:#fff;font-family:'Oswald',sans-serif;font-weight:600;font-size:15px;padding:8px 20px;border-radius:0 0 14px 0;letter-spacing:.08em}
+.zz-txt .tag{color:var(--accent);font-weight:700;font-size:13px;letter-spacing:.1em;margin-bottom:8px}
+.zz-txt h3{font-size:clamp(20px,2.8vw,26px);color:var(--navy);font-weight:900;margin-bottom:14px}
+.zz-txt p{font-size:14.5px;color:var(--muted);margin-bottom:14px}
+.zz-pt{background:var(--sky);border-left:4px solid var(--blue);border-radius:0 10px 10px 0;padding:14px 18px;font-size:13.5px;font-weight:700;color:var(--navy)}
+.zz-pt .num{color:var(--accent);font-size:19px;margin:0 2px}
+@media(max-width:840px){
+  .zigzag{grid-template-columns:1fr;gap:22px;margin-bottom:52px}
+  .zigzag .zz-photo{order:-1}
+  .zz-photo img{height:210px}
+}
+
+/* ===== メーター ===== */
+.meter-sec{background:linear-gradient(160deg,var(--navy),#1A4187);color:#fff}
+.meter-sec .sec-title{color:#fff}
+.meter-sec .sec-lead{color:#B9CBE8}
+.meter-sec .fukidashi{color:#FFC24B}
+.meter-sec .fukidashi span::before,.meter-sec .fukidashi span::after{background:#FFC24B}
+.meter{max-width:780px;margin:0 auto;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:18px;padding:40px 36px;display:flex;flex-direction:column;gap:26px}
+.m-row{display:grid;grid-template-columns:150px 1fr 90px;align-items:center;gap:14px}
+.m-label{font-size:13.5px;font-weight:700;color:#C9D8F0;text-align:right}
+.m-track{background:rgba(255,255,255,.12);border-radius:100px;height:28px;overflow:hidden}
+.m-bar{height:100%;border-radius:100px;width:0;transition:width 1.4s cubic-bezier(.2,.7,.2,1)}
+.m-bar.gray{background:#7A8AA3}
+.m-bar.blue{background:linear-gradient(90deg,#2E6FE0,#5D96F2)}
+.m-bar.orange{background:linear-gradient(90deg,#F0640C,#FFB05C)}
+.m-val{font-size:21px;font-weight:600;font-family:'Oswald',sans-serif}
+.m-val small{font-size:11.5px;font-family:'Noto Sans JP',sans-serif;font-weight:700}
+.m-note{font-size:11.5px;color:#8FA5C9;text-align:center;margin-top:8px}
+@media(max-width:640px){
+  .meter{padding:26px 16px;gap:20px}
+  .m-row{grid-template-columns:1fr auto;grid-template-areas:"label val" "track track";gap:8px 12px;align-items:baseline}
+  .m-label{grid-area:label;text-align:left}
+  .m-val{grid-area:val;text-align:right;font-size:18px}
+  .m-track{grid-area:track;height:22px}
+}
+
+/* ===== 事例 ===== */
+.cases{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.case{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 6px 20px rgba(11,36,71,.08);display:flex;flex-direction:column}
+.case-img{height:140px}
+.case-img img{width:100%;height:100%;object-fit:cover}
+.case-head{background:var(--navy);padding:12px 20px;font-weight:700;font-size:13.5px;color:#fff}
+.case-body{padding:20px;flex:1;display:flex;flex-direction:column}
+.ba{font-size:12px;font-weight:900;margin-bottom:4px;display:inline-block;border-radius:4px;padding:1px 10px}
+.ba.before{background:#EDF0F5;color:#7A8598}
+.ba.after{background:#FFEDD9;color:var(--accent)}
+.case-body p{font-size:13px;color:var(--muted);margin-bottom:12px}
+.case-result{margin-top:auto;background:linear-gradient(180deg,#FFF7EF,#FFEEDD);border:1.5px solid #FFCF9E;border-radius:10px;padding:14px;text-align:center}
+.case-result .num{font-size:25px;color:var(--accent)}
+.case-result span{display:block;font-size:11.5px;font-weight:700;color:var(--navy)}
+@media(max-width:800px){.cases{grid-template-columns:1fr}}
+
+/* ===== 手法 ===== */
+.methods{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.method{background:#fff;border-radius:14px;overflow:hidden;border:1px solid var(--line);box-shadow:0 5px 18px rgba(11,36,71,.07)}
+.method-img{height:130px;position:relative}
+.method-img img{width:100%;height:100%;object-fit:cover}
+.method-img .no{position:absolute;left:14px;bottom:-16px;background:var(--accent);color:#fff;font-family:'Oswald',sans-serif;font-weight:600;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 4px 10px rgba(240,100,12,.4)}
+.method-body{padding:28px 22px 24px}
+.method h3{font-size:17px;color:var(--navy);margin-bottom:8px}
+.method p{font-size:13px;color:var(--muted)}
+.method .st{font-size:12.5px;font-weight:700;color:var(--blue);margin-top:12px;background:var(--sky);border-radius:6px;padding:8px 12px}
+@media(max-width:800px){.methods{grid-template-columns:1fr}}
+
+/* ===== 流れ ===== */
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;counter-reset:step}
+.step{background:#fff;border:1px solid var(--line);border-radius:12px;padding:24px 18px;position:relative;box-shadow:0 4px 14px rgba(11,36,71,.06)}
+.step::before{counter-increment:step;content:counter(step,decimal-leading-zero);font-family:'Oswald',sans-serif;font-weight:600;font-size:30px;color:var(--blue);opacity:.25;display:block;line-height:1;margin-bottom:6px}
+.step h3{font-size:14.5px;color:var(--navy);margin-bottom:6px}
+.step p{font-size:12px;color:var(--muted)}
+.step:not(:last-child)::after{content:"›";position:absolute;right:-13px;top:50%;transform:translateY(-50%);font-size:24px;color:var(--accent);font-weight:900;z-index:2}
+@media(max-width:800px){.flow{grid-template-columns:1fr 1fr}.step:nth-child(2)::after{display:none}}
+@media(max-width:520px){.flow{grid-template-columns:1fr}.step::after{display:none!important}}
+
+/* ===== 声 ===== */
+.voice{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.v-card{background:#fff;border-radius:14px;padding:26px;border:1px solid var(--line);box-shadow:0 5px 16px rgba(11,36,71,.06);display:flex;gap:18px}
+.v-face{width:64px;height:64px;border-radius:50%;overflow:hidden;flex-shrink:0;border:3px solid var(--sky)}
+.v-face img{width:100%;height:100%;object-fit:cover}
+.v-body h4{font-size:13px;color:var(--muted);font-weight:700;margin-bottom:6px}
+.v-body p{font-size:13.5px;color:var(--ink)}
+@media(max-width:800px){.voice{grid-template-columns:1fr}}
+
+/* ===== FAQ ===== */
+.faq{max-width:780px;margin:0 auto}
+.faq details{background:#fff;border:1px solid var(--line);border-radius:10px;margin-bottom:12px;overflow:hidden;box-shadow:0 3px 10px rgba(11,36,71,.05)}
+.faq summary{cursor:pointer;padding:18px 22px 18px 58px;font-weight:700;font-size:15px;color:var(--navy);list-style:none;position:relative}
+.faq summary::before{content:"Q";position:absolute;left:18px;top:16px;background:var(--blue);color:#fff;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-family:'Oswald',sans-serif}
+.faq summary::after{content:"+";position:absolute;right:20px;top:50%;transform:translateY(-50%);font-size:22px;color:var(--blue);font-weight:400}
+.faq details[open] summary::after{content:"−"}
+.faq summary::-webkit-details-marker{display:none}
+.faq .a{padding:0 22px 20px 58px;font-size:14px;color:var(--muted)}
+
+/* ===== CV ===== */
+.cv{background:linear-gradient(rgba(11,36,71,.92),rgba(19,49,95,.94)),url('https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1600&q=70&auto=format&fit=crop') center/cover;color:#fff}
+.cv .sec-title{color:#fff}
+.cv .sec-lead{color:#C9D8F0}
+.cv-grid{display:grid;grid-template-columns:1fr 1.05fr;gap:36px;align-items:start}
+.cv-points{display:flex;flex-direction:column;gap:14px}
+.cv-point{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.22);border-radius:10px;padding:16px 20px;font-size:14px}
+.cv-point b{color:#FFC24B}
+.form-card{background:#fff;border-radius:18px;padding:36px 32px;color:var(--ink);box-shadow:0 16px 50px rgba(0,0,0,.35)}
+.form-card h3{font-size:19px;color:var(--navy);text-align:center;margin-bottom:6px}
+.form-card .fc-sub{font-size:12.5px;color:var(--muted);text-align:center;margin-bottom:24px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:var(--navy)}
+.field label .req{background:var(--accent);color:#fff;font-size:10px;border-radius:4px;padding:2px 6px;margin-left:6px}
+.field input{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:13px 14px;font-size:15px;font-family:inherit}
+.field input:focus{outline:none;border-color:var(--blue)}
+.form-card .btn-lg{width:100%;margin-top:8px}
+.form-micro{font-size:11.5px;color:var(--muted);text-align:center;margin-top:14px}
+.cv-alt{text-align:center;margin-top:16px;font-size:13px}
+.cv-alt a{color:var(--blue);font-weight:700}
+@media(max-width:840px){.cv-grid{grid-template-columns:1fr}}
+
+.footer{background:#081A33;color:#8FA5C9;padding:44px 0 60px;font-size:12.5px}
+.footer .company{color:#fff;font-weight:700;font-size:14px;margin-bottom:8px}
+
+.fixed-cta{position:fixed;bottom:0;left:0;right:0;z-index:200;background:rgba(255,255,255,.97);border-top:1px solid var(--line);padding:10px 14px;display:none;box-shadow:0 -4px 16px rgba(11,36,71,.12)}
+.fixed-cta .btn{width:100%;font-size:15px;padding:14px}
+@media(max-width:640px){.fixed-cta{display:block}body{padding-bottom:74px}}
+
+.rv{opacity:0;transform:translateY(22px);transition:opacity .6s,transform .6s}
+.rv.on{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.rv{opacity:1;transform:none;transition:none}.m-bar{transition:none}}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="wrap header-in">
+    <a class="logo" href="#">JDネット<small>AIを活用した成長支援サービス</small></a>
+    <div class="header-cta">
+      <a href="#cv" class="btn btn-ghost btn-sm">無料相談</a>
+      <a href="#cv" class="btn btn-accent btn-sm">資料ダウンロード</a>
+    </div>
+  </div>
+</header>
+
+<!-- FV -->
+<div class="hero">
+  <div class="wrap"><div class="hero-in">
+    <span class="eyebrow">東証グロース上場企業（証券コード：6580）が提供</span>
+    <h1>営業人材ゼロでも、<br><span class="hl">新規アポが毎月届く</span>会社へ。</h1>
+    <p class="sub">AI × 累計5万件の販売実績データで、貴社の「売れる仕組み」をつくる。営業の採用も、社長の飛び込み営業も、もう必要ありません。</p>
+    <div class="badges">
+      <div class="badge">販売支援実績<b><span class="num">50,000</span>件以上</b></div>
+      <div class="badge">パートナー企業<b><span class="num">1,000</span>社</b></div>
+      <div class="badge">助成金支援<b><span class="num">10,000</span>社以上</b></div>
+      <div class="badge">テレアポ アポ率<b>業界平均の約<span class="num">3</span>倍</b></div>
+    </div>
+    <div class="hero-cta">
+      <a href="#cv" class="btn btn-accent btn-lg">無料で資料をダウンロード</a>
+    </div>
+    <p class="micro">✓ 入力は30秒で完了　✓ しつこい営業電話はいたしません</p>
+  </div></div>
+</div>
+
+<!-- 課題 -->
+<section>
+  <div class="wrap">
+    <p class="fukidashi"><span>中小企業の経営者さまへ</span></p>
+    <h2 class="sec-title rv">こんなお悩み、ありませんか？</h2>
+    <div class="pains">
+      <div class="pain rv">
+        <div class="pain-img"><img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=700&q=70&auto=format&fit=crop" alt="" loading="lazy" onerror="this.parentNode.style.background='var(--navy-2)';this.remove()"></div>
+        <div class="pain-body">
+          <span class="check">✓</span>
+          <h3>営業マンが採用できない</h3>
+          <p>求人を出しても応募が来ない。人件費も上がる一方で、営業体制がつくれない。</p>
+        </div>
+      </div>
+      <div class="pain rv">
+        <div class="pain-img"><img src="https://images.unsplash.com/photo-1521791136064-7986c2920216?w=700&q=70&auto=format&fit=crop" alt="" loading="lazy" onerror="this.parentNode.style.background='var(--navy-2)';this.remove()"></div>
+        <div class="pain-body">
+          <span class="check">✓</span>
+          <h3>社長自ら営業していて本業が回らない</h3>
+          <p>経営も現場も営業も社長ひとり。新規開拓はどうしても後回しになってしまう。</p>
+        </div>
+      </div>
+      <div class="pain rv">
+        <div class="pain-img"><img src="https://images.unsplash.com/photo-1553877522-43269d4ea984?w=700&q=70&auto=format&fit=crop" alt="" loading="lazy" onerror="this.parentNode.style.background='var(--navy-2)';this.remove()"></div>
+        <div class="pain-body">
+          <span class="check">✓</span>
+          <h3>営業代行を使ったが成果が出なかった</h3>
+          <p>アポの質が低く、活動もブラックボックス。費用だけかかって受注につながらない。</p>
+        </div>
+      </div>
+    </div>
+    <div class="arrow-down rv">
+      <p class="arrow-label">そのお悩み、<span class="mk">JDネットがすべて解決します</span></p>
+      <span></span>
+    </div>
+  </div>
+</section>
+
+<!-- 原因 -->
+<section class="cause">
+  <div class="wrap">
+    <div class="cause-grid">
+      <div class="cause-txt rv">
+        <h3>営業代行で成果が出ない原因は、<br><span class="hl">「作業代行」に依頼しているから。</span></h3>
+        <p>多くの営業代行は、経験の浅いアルバイトスタッフによる「人手の代わり」。だから成果につながりません。</p>
+        <div class="cause-item"><div class="no">01</div><div><h4>商品知識の不足</h4><p>外部スタッフには貴社サービスへの深い理解がなく、魅力が伝わらない。</p></div></div>
+        <div class="cause-item"><div class="no">02</div><div><h4>モチベーションの差</h4><p>商品への思い入れが薄く、売りにくいとすぐに活動が鈍る。</p></div></div>
+        <div class="cause-item"><div class="no">03</div><div><h4>活動がブラックボックス</h4><p>何をしているか見えず、成果も品質もコントロールできない。</p></div></div>
+      </div>
+      <div class="cause-photo rv"><img src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=900&q=70&auto=format&fit=crop" alt="" loading="lazy" onerror="this.parentNode.remove()"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 選ばれる理由(交互) -->
+<section>
+  <div class="wrap">
+    <p class="fukidashi"><span>JDネットは「代行」ではありません</span></p>
+    <h2 class="sec-title rv">貴社に<span class="mk">「売れる仕組み」</span>をつくります。</h2>
+    <p class="sec-lead rv">私たちのゴールはアポの数ではなく、貴社の黒字化。20年以上・5万件超の販売支援で蓄積したノウハウをAIに学習させ、貴社専用の営業戦略として提供します。</p>
+
+    <div class="zigzag">
+      <div class="zz-photo rv"><span class="zz-no">POINT 01</span><img src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=900&q=70&auto=format&fit=crop" alt="" loading="lazy" onerror="this.parentNode.style.background='var(--sky)'"></div>
+      <div class="zz-txt rv">
+        <p class="tag">QUALITY</p>
+        <h3>質の高いアポが、安定して届く</h3>
+        <p>電話をかけるのはアルバイトではなく、社内教育を受けた専門コールスタッフ。貴社サービスの特徴を理解した上で架電するため、商談につながる質の高いアポを獲得できます。</p>
+        <div class="zz-pt">アポからの受注率<span class="num">30</span>%を、1年のゴールに設定しています</div>
+      </div>
+    </div>
+
+    <div class="zigzag">
+      <div class="zz-txt rv">
+        <p class="tag">AI AUTOMATION</p>
+        <h3>面倒な事務作業は、すべてAIにお任せ</h3>
+        <p>リスト作成・トークスクリプト・営業文面の作成は、5万件の成功データを学習したAIが自動生成。ペルソナ設計から競合分析まで専門家が伴走するので、社長は売上に直結する「商談」だけに集中できます。</p>
+        <div class="zz-pt">貴社の基本稼働は<span class="num">月1</span>回のミーティングのみ</div>
+      </div>
+      <div class="zz-photo rv"><span class="zz-no">POINT 02</span><img src="https://images.unsplash.com/photo-1552664730-d307ca884978?w=900&q=70&auto=format&fit=crop" alt="" loading="lazy" onerror="this.parentNode.style.background='var(--sky)'"></div>
+    </div>
+
+    <div class="zigzag">
+      <div class="zz-photo rv"><span class="zz-no">POINT 03</span><img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=900&q=70&auto=format&fit=crop" alt="" loading="lazy" onerror="this.parentNode.style.background='var(--sky)'"></div>
+      <div class="zz-txt rv">
+        <p class="tag">YOUR ASSET</p>
+        <h3>1年後、ノウハウが貴社の資産になる</h3>
+        <p>「代行して終わり」ではありません。貴社と一緒に作り上げた営業ノウハウはすべて引き継ぎ、自社だけで回せる営業体制が残ります。補助金・助成金を活用したコスト削減のご提案も可能です。</p>
+        <div class="zz-pt">助成金・補助金の支援実績<span class="num">10,000</span>社以上（国内トップクラス）</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- メーター -->
+<section class="meter-sec">
+  <div class="wrap">
+    <p class="fukidashi"><span>数字が違いを物語ります</span></p>
+    <h2 class="sec-title rv">テレアポのアポ獲得率、<br>業界平均の約3倍。</h2>
+    <p class="sec-lead rv">2,000〜3,000件のコール実施時の実績値</p>
+    <div class="meter rv" id="meter">
+      <div class="m-row"><div class="m-label">業界平均</div><div class="m-track"><div class="m-bar gray" data-w="14%"></div></div><div class="m-val">0.3<small>〜</small>0.5<small>%</small></div></div>
+      <div class="m-row"><div class="m-label">JDネット標準</div><div class="m-track"><div class="m-bar blue" data-w="50%"></div></div><div class="m-val">1.5<small>%以上</small></div></div>
+      <div class="m-row"><div class="m-label">JDネット最高実績</div><div class="m-track"><div class="m-bar orange" data-w="98%"></div></div><div class="m-val">2.95<small>%</small></div></div>
+      <p class="m-note">※最高実績は金属加工業の事例。人材紹介2.55%、圧着プリント2.6%など「新規営業は難しい」業種でも高実績。</p>
+    </div>
+  </div>
+</section>
+
+<!-- 事例 -->
+<section>
+  <div class="wrap">
+    <p class="fukidashi"><span>ご支援した企業さまの変化</span></p>
+    <h2 class="sec-title rv">導入事例</h2>
+    <div class="cases">
+      <div class="case rv">
+        <div class="case-img"><img src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=700&q=70&auto=format&fit=crop" alt="" loading="lazy" onerror="this.parentNode.remove()"></div>
+        <div class="case-head">Web制作会社 B社様</div>
+        <div class="case-body">
+          <span class="ba before">Before</span>
+          <p>競合が多く差別化できず、ありきたりな営業で全くアポが取れなかった。</p>
+          <span class="ba after">After</span>
+          <p>競合データを基にコストメリット・得意業界の実績を整理して訴求。</p>
+          <div class="case-result"><span>アポ率</span><span class="num">0.1% → 1.0%</span><span>10倍に向上</span></div>
+        </div>
+      </div>
+      <div class="case rv">
+        <div class="case-img"><img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=700&q=70&auto=format&fit=crop" alt="" loading="lazy" onerror="this.parentNode.remove()"></div>
+        <div class="case-head">SaaS企業 C社様</div>
+        <div class="case-body">
+          <span class="ba before">Before</span>
+          <p>強みはあるのに、お客様に刺さる形で伝える方法が分からなかった。</p>
+          <span class="ba after">After</span>
+          <p>AIで競合優位性と実績を的確に訴求するスクリプトを作成して営業。</p>
+          <div class="case-result"><span>アポ率</span><span class="num">0.3% → 2.0%</span><span>約7倍に向上</span></div>
+        </div>
+      </div>
+      <div class="case rv">
+        <div class="case-img"><img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=700&q=70&auto=format&fit=crop" alt="" loading="lazy" onerror="this.parentNode.remove()"></div>
+        <div class="case-head">研修企業 A社様</div>
+        <div class="case-body">
+          <span class="ba before">Before</span>
+          <p>ペルソナが分からず営業戦略を立てられず、新規営業に踏み出せなかった。</p>
+          <span class="ba after">After</span>
+          <p>専門家と共にサービス価値を再定義し、ピンポイントの営業戦略を実行。</p>
+          <div class="case-result"><span>運用2ヶ月で</span><span class="num">月間20件以上</span><span>の新規相談を獲得</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 手法 -->
+<section style="background:var(--sky)">
+  <div class="wrap">
+    <p class="fukidashi"><span>貴社に合う方法を一緒に選びます</span></p>
+    <h2 class="sec-title rv">3つの営業手法を組み合わせて支援</h2>
+    <div class="methods">
+      <div class="method rv">
+        <div class="method-img"><img src="https://images.unsplash.com/photo-1587560699334-cc4ff634909a?w=700&q=70&auto=format&fit=crop" alt="" loading="lazy" onerror="this.parentNode.style.background='var(--navy)'"><span class="no">01</span></div>
+        <div class="method-body">
+          <h3>テレアポ</h3>
+          <p>AIが作成したスクリプトを基に、教育された社内スタッフが架電。毎月のミーティングで改善を重ねます。</p>
+          <p class="st">アポ率 1.5%以上（業界平均 0.3〜0.5%）</p>
+        </div>
+      </div>
+      <div class="method rv">
+        <div class="method-img"><img src="https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=700&q=70&auto=format&fit=crop" alt="" loading="lazy" onerror="this.parentNode.style.background='var(--navy)'"><span class="no">02</span></div>
+        <div class="method-body">
+          <h3>フォーム営業</h3>
+          <p>企業HPの問い合わせは約8割を社長自身が閲覧。意思決定者に直接届く営業文面を、プロのライター×AIが作成します。</p>
+          <p class="st">反応率 0.7〜0.8%（業界平均 0.3〜0.5%）</p>
+        </div>
+      </div>
+      <div class="method rv">
+        <div class="method-img"><img src="https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=700&q=70&auto=format&fit=crop" alt="" loading="lazy" onerror="this.parentNode.style.background='var(--navy)'"><span class="no">03</span></div>
+        <div class="method-body">
+          <h3>共催セミナー</h3>
+          <p>年間1,000回以上の開催実績。全国10万社超のネットワークから集客し、コンサル・研修など高単価商材と特に好相性。</p>
+          <p class="st">3回開催で240万円の受注事例も</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 流れ -->
+<section>
+  <div class="wrap">
+    <p class="fukidashi"><span>初めての営業支援でも安心</span></p>
+    <h2 class="sec-title rv">導入の流れ</h2>
+    <p class="sec-lead rv">まずは貴社を深く理解するところから。一緒に活動方針を決めていきます。</p>
+    <div class="flow">
+      <div class="step rv"><h3>スタートアップMTG</h3><p>貴社のサービス・強み・目標を丁寧にヒアリング。活動方針を一緒に決めます。</p></div>
+      <div class="step rv"><h3>AIで営業戦略を設計</h3><p>ペルソナ設計・競合分析・スクリプト作成・リスト選定をAI×専門家で実施。</p></div>
+      <div class="step rv"><h3>営業活動スタート</h3><p>テレアポ・フォーム営業を実行。3ヶ月でアポ率1%を目指します。</p></div>
+      <div class="step rv"><h3>毎月改善 → 資産化</h3><p>月次ミーティングで改善を重ね、1年後にノウハウを貴社へ引き継ぎます。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 声 -->
+<section style="background:var(--sky);padding-top:0">
+  <div class="wrap" style="padding-top:70px">
+    <h2 class="sec-title rv">ご利用企業さまの声</h2>
+    <div class="voice">
+      <div class="v-card rv">
+        <div class="v-face"><img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&q=70&auto=format&fit=crop" alt="" loading="lazy" onerror="this.parentNode.style.background='var(--line)'"></div>
+        <div class="v-body">
+          <h4>経営コンサルティング会社 代表</h4>
+          <p>ITに詳しくない当社でも、サポートシステムが分かりやすくすぐに使えました。感覚的に使えるのは非常に重要ですね。</p>
+        </div>
+      </div>
+      <div class="v-card rv">
+        <div class="v-face"><img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=200&q=70&auto=format&fit=crop" alt="" loading="lazy" onerror="this.parentNode.style.background='var(--line)'"></div>
+        <div class="v-body">
+          <h4>PRコンサルティング会社 代表</h4>
+          <p>セミナーを3回共催して90名を集客。6社の受注につながり、毎月240万円の継続収益になりました。個人事業主の私には大きな変化です。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section>
+  <div class="wrap">
+    <h2 class="sec-title rv">よくあるご質問</h2>
+    <div class="faq rv">
+      <details><summary>どんな業種でも利用できますか？</summary><p class="a">はい、業種・業界は基本的に問いません。金属加工、圧着プリント、人材紹介など「新規営業は難しい」と言われる業種でも、業界平均を大きく上回るアポ率の実績があります。</p></details>
+      <details><summary>自社の稼働はどれくらい必要ですか？</summary><p class="a">リスト作成・文面作成・架電・送信はすべて当社側で行うため、貴社の基本稼働は月1回程度のミーティングのみ。商談に集中していただけます。</p></details>
+      <details><summary>成果が出るまでどれくらいかかりますか？</summary><p class="a">初月から活動を開始し、3ヶ月でアポ率1%を目指す設計です。毎月の改善で6ヶ月後には2〜3%も視野に。1年後には受注率30%とノウハウの自社資産化がゴールです。</p></details>
+      <details><summary>費用を抑える方法はありますか？</summary><p class="a">補助金・助成金の申請支援実績1万社以上のノウハウを活かし、活用できる制度のご提案が可能です。詳しくは資料または無料相談でご案内します。</p></details>
+      <details><summary>過去に営業代行で失敗しているのですが…</summary><p class="a">そうした企業様にこそ選ばれています。JDネットは「作業代行」ではなく売れる仕組みづくりが目的。活動内容は毎月すべて共有し、ブラックボックスにはなりません。</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- CV -->
+<section class="cv" id="cv">
+  <div class="wrap">
+    <h2 class="sec-title rv">まずは資料で、詳しい仕組みと<br>料金プランをご確認ください。</h2>
+    <p class="sec-lead rv">貴社の業種での実績値や、具体的な支援内容がわかる資料を無料でお送りします。</p>
+    <div class="cv-grid">
+      <div class="cv-points rv">
+        <div class="cv-point"><b>✓ 業種別のアポ率実績データ</b>を掲載。貴社の業界での見込みが分かります。</div>
+        <div class="cv-point"><b>✓ AI活用の営業戦略4ステップ</b>を図解。何を任せられるかが明確に。</div>
+        <div class="cv-point"><b>✓ 料金プランと補助金・助成金の活用方法</b>もご案内します。</div>
+        <div class="cv-point">「いきなり資料は…」という方は、<b>30分のオンライン無料相談</b>もどうぞ。</div>
+      </div>
+      <div class="form-card rv">
+        <h3>無料資料ダウンロード</h3>
+        <p class="fc-sub">入力は30秒。しつこい営業電話はいたしません。</p>
+        <div class="field"><label>会社名<span class="req">必須</span></label><input type="text" placeholder="株式会社◯◯" autocomplete="organization"></div>
+        <div class="field"><label>お名前<span class="req">必須</span></label><input type="text" placeholder="山田 太郎" autocomplete="name"></div>
+        <div class="field"><label>メールアドレス<span class="req">必須</span></label><input type="email" placeholder="info@example.co.jp" autocomplete="email"></div>
+        <button class="btn btn-accent btn-lg" onclick="alert('（デモ）ここで資料DL完了ページへ遷移します')">無料で資料を受け取る</button>
+        <p class="form-micro">送信いただいた情報は資料送付とご案内のみに使用します。</p>
+        <p class="cv-alt">お急ぎの方は <a href="#" onclick="alert('（デモ）ここで日程調整ページへ遷移します');return false">オンライン無料相談を予約する →</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <p class="company">株式会社ライトアップ</p>
+    <p>東京証券取引所グロース市場上場（証券コード：6580）／2018年6月22日上場</p>
+    <p>「全国、全ての中小企業を黒字にする」をビジョンに、設立から23年間、中小企業の成長を支援しています。</p>
+  </div>
+</footer>
+
+<div class="fixed-cta"><a href="#cv" class="btn btn-accent">無料で資料をダウンロード</a></div>
+
+<script>
+const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('on');io.unobserve(e.target)}})},{threshold:.12});
+document.querySelectorAll('.rv').forEach(el=>io.observe(el));
+const mio=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.querySelectorAll('.m-bar').forEach(b=>{b.style.width=b.dataset.w});mio.unobserve(e.target)}})},{threshold:.4});
+const m=document.getElementById('meter');if(m)mio.observe(m);
+</script>
+</body>
+</html>
