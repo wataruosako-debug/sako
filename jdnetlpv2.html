@@ -131,7 +131,8 @@ section{padding:80px 0}
 .m-row{display:grid;grid-template-columns:150px 1fr 90px;align-items:center;gap:14px}
 .m-label{font-size:13.5px;font-weight:700;color:#C9D8F0;text-align:right}
 .m-track{background:rgba(255,255,255,.12);border-radius:100px;height:28px;overflow:hidden}
-.m-bar{height:100%;border-radius:100px;width:0;transition:width 1.4s cubic-bezier(.2,.7,.2,1)}
+.m-bar{height:100%;border-radius:100px;width:var(--w,0);transition:width 1.4s cubic-bezier(.2,.7,.2,1)}
+.js .m-bar{width:0}
 .m-bar.gray{background:#7A8AA3}
 .m-bar.blue{background:linear-gradient(90deg,#2E6FE0,#5D96F2)}
 .m-bar.orange{background:linear-gradient(90deg,#F0640C,#FFB05C)}
@@ -232,12 +233,14 @@ section{padding:80px 0}
 .fixed-cta .btn{width:100%;font-size:15px;padding:14px}
 @media(max-width:640px){.fixed-cta{display:block}body{padding-bottom:74px}}
 
-.rv{opacity:0;transform:translateY(22px);transition:opacity .6s,transform .6s}
-.rv.on{opacity:1;transform:none}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.rv{opacity:1;transform:none;transition:none}.m-bar{transition:none}}
+.rv{transition:opacity .6s,transform .6s}
+.js .rv{opacity:0;transform:translateY(22px)}
+.js .rv.on{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.js .rv{opacity:1;transform:none;transition:none}.m-bar{transition:none}}
 </style>
 </head>
 <body>
+<script>document.documentElement.classList.add('js')</script>
 
 <header class="header">
   <div class="wrap header-in">
@@ -368,9 +371,9 @@ section{padding:80px 0}
     <h2 class="sec-title rv">テレアポのアポ獲得率、<br>業界平均の約3倍。</h2>
     <p class="sec-lead rv">2,000〜3,000件のコール実施時の実績値</p>
     <div class="meter rv" id="meter">
-      <div class="m-row"><div class="m-label">業界平均</div><div class="m-track"><div class="m-bar gray" data-w="14%"></div></div><div class="m-val">0.3<small>〜</small>0.5<small>%</small></div></div>
-      <div class="m-row"><div class="m-label">JDネット標準</div><div class="m-track"><div class="m-bar blue" data-w="50%"></div></div><div class="m-val">1.5<small>%以上</small></div></div>
-      <div class="m-row"><div class="m-label">JDネット最高実績</div><div class="m-track"><div class="m-bar orange" data-w="98%"></div></div><div class="m-val">2.95<small>%</small></div></div>
+      <div class="m-row"><div class="m-label">業界平均</div><div class="m-track"><div class="m-bar gray" style="--w:14%" data-w="14%"></div></div><div class="m-val">0.3<small>〜</small>0.5<small>%</small></div></div>
+      <div class="m-row"><div class="m-label">JDネット標準</div><div class="m-track"><div class="m-bar blue" style="--w:50%" data-w="50%"></div></div><div class="m-val">1.5<small>%以上</small></div></div>
+      <div class="m-row"><div class="m-label">JDネット最高実績</div><div class="m-track"><div class="m-bar orange" style="--w:98%" data-w="98%"></div></div><div class="m-val">2.95<small>%</small></div></div>
       <p class="m-note">※最高実績は金属加工業の事例。人材紹介2.55%、圧着プリント2.6%など「新規営業は難しい」業種でも高実績。</p>
     </div>
   </div>
