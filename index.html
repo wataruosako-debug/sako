@@ -49,7 +49,9 @@
     }
     var errorLog = "";
     function render() {
-      ensureBox().textContent = "alive:" + alive + " | GymLog:" + (window.GymLog ? "OK" : "未起動") +
+      var scriptTag = document.querySelector('script[src*="script.js"]');
+      var build = scriptTag ? (scriptTag.getAttribute("src").split("?v=")[1] || "?") : "?";
+      ensureBox().textContent = "build:" + build + " | alive:" + alive + " | GymLog:" + (window.GymLog ? "OK" : "未起動") +
         "\nタップ: " + (taps.length ? taps.join(" → ") : "(まだなし)") +
         (errorLog ? "\n" + errorLog : "");
     }
