@@ -8,7 +8,8 @@
   var DRAFT_STORAGE_KEY = "gymlog-draft-v1";
   var PRE_RESTORE_STORAGE_KEY = "gymlog-pre-restore-v1";
   var UI_SETTINGS_KEY = "gymlog-ui-settings-v1";
-  var DEFAULT_UI_SETTINGS = { appearance: "system", colorTheme: "urban-blue", restTimerEnabled: true, autoStartRestTimer: true, restTimerSound: false, restTimerVibration: true, guideModeEnabled: true, guideHelpSeen: false, keepScreenAwake: true, monthlyGoalDays: 12 };
+  var DEFAULT_UI_SETTINGS = { appearance: "system", colorTheme: "urban-blue", restTimerEnabled: true, autoStartRestTimer: true, restTimerSound: false, restTimerVibration: true, guideModeEnabled: true, guideHelpSeen: false, keepScreenAwake: true, monthlyGoalDays: 12, weightSuggestionEnabled: true, promotionReps: 10 };
+  var PROMOTION_REPS_OPTIONS = [8, 10, 12, 15];
   var MONTHLY_GOAL_MIN = 1;
   var MONTHLY_GOAL_MAX = 31;
   var APPEARANCE_OPTIONS = ["system", "light", "dark"];
@@ -116,7 +117,9 @@
       guideModeEnabled: Object.prototype.hasOwnProperty.call(settings, "guideModeEnabled") ? !!settings.guideModeEnabled : DEFAULT_UI_SETTINGS.guideModeEnabled,
       guideHelpSeen: Object.prototype.hasOwnProperty.call(settings, "guideHelpSeen") ? !!settings.guideHelpSeen : DEFAULT_UI_SETTINGS.guideHelpSeen,
       keepScreenAwake: Object.prototype.hasOwnProperty.call(settings, "keepScreenAwake") ? !!settings.keepScreenAwake : DEFAULT_UI_SETTINGS.keepScreenAwake,
-      monthlyGoalDays: normalizeMonthlyGoalDays(settings.monthlyGoalDays)
+      monthlyGoalDays: normalizeMonthlyGoalDays(settings.monthlyGoalDays),
+      weightSuggestionEnabled: Object.prototype.hasOwnProperty.call(settings, "weightSuggestionEnabled") ? !!settings.weightSuggestionEnabled : DEFAULT_UI_SETTINGS.weightSuggestionEnabled,
+      promotionReps: PROMOTION_REPS_OPTIONS.indexOf(Math.round(Number(settings.promotionReps))) >= 0 ? Math.round(Number(settings.promotionReps)) : DEFAULT_UI_SETTINGS.promotionReps
     };
   }
   function normalizeMonthlyGoalDays(value) {
@@ -4582,6 +4585,54 @@
     return sets.length ? sets[sets.length - 1] : null;
   }
 
+  /* 重量自動提案(プログレッシブオーバーロード)。v3指示書。
+     提案値は保存せず、呼び出し時に履歴+設定から毎回計算する(永続化するのは設定値のみ)。
+     ルールは1本: セット単位で前回セッションの重量を継承し、昇格条件を満たした
+     最大重量セット(メインセット)のみ増量する。
+     将来拡張(v3では未実装): RIR"4+"でクリア時の増加幅2倍 /
+     P10ウォームアップフラグ実装時は最大重量ヒューリスティックをフラグ基準へ置換 */
+  function formatSuggestionKg(grams) {
+    var value = Number(grams || 0) / 1000;
+    return (value % 1 === 0 ? String(value) : value.toFixed(1)) + "kg";
+  }
+
+  function calculateWeightSuggestion(exerciseId) {
+    if (uiSettings.weightSuggestionEnabled === false) return null;
+    var exercise = getExercise(exerciseId);
+    if (!exercise || exercise.category === "BODYWEIGHT" || exercise.category === "CARDIO") return null;
+    var record = getLastHistoricalRecord(exerciseId);
+    if (!record) return null;
+    var sets = getRecordSets(record.id);
+    if (!sets.length) return null;
+    var maxWeight = sets.reduce(function (max, set) { return Math.max(max, Number(set.weight || 0)); }, 0);
+    if (maxWeight <= 0) return null;
+    // 最大重量のセット群=メインセット、それ未満=アップ扱い(昇格判定はメインのみ)
+    var mainSets = sets.filter(function (set) { return Number(set.weight || 0) === maxWeight; });
+    var promotionReps = uiSettings.promotionReps || DEFAULT_UI_SETTINGS.promotionReps;
+    // RIRは文字列enum("0"/"1"/"2-3"/"4+"/"")。""(未入力)は判定をスキップし回数のみで見る
+    var promoted = mainSets.every(function (set) {
+      return Number(set.reps || 0) >= promotionReps && String(set.rir || "") !== "0";
+    });
+    var incrementGrams = exercise.bodyPart === "legs" ? 5000 : 2500;
+    var suggestedWeight = promoted ? maxWeight + incrementGrams : maxWeight;
+    var perSetWeights = sets.map(function (set) {
+      var weight = Number(set.weight || 0);
+      return promoted && weight === maxWeight ? weight + incrementGrams : weight;
+    });
+    var minMainReps = mainSets.reduce(function (min, set) { return Math.min(min, Number(set.reps || 0)); }, Infinity);
+    var reason = promoted
+      ? "前回" + formatSuggestionKg(maxWeight) + "×" + (Number.isFinite(minMainReps) ? minMainReps : 0) + "回クリア"
+      : "前回" + formatSuggestionKg(maxWeight) + "を継続";
+    return {
+      exerciseId: exerciseId,
+      baseWeight: maxWeight,
+      suggestedWeight: suggestedWeight,
+      promoted: promoted,
+      perSetWeights: perSetWeights,
+      reason: reason
+    };
+  }
+
   function historicalExerciseSummary(exercise) {
     if (!exercise) return "前回の記録はありません";
     var record = getLastHistoricalRecord(exercise.id);
@@ -7027,6 +7078,7 @@
       handleConflictModalCancel: handleConflictModalCancel,
       draftFromRoutine: draftFromRoutine,
       chooseExercise: chooseExercise,
+      calculateWeightSuggestion: calculateWeightSuggestion,
       deleteDraftRecord: deleteDraftRecord,
       deletePendingCardioType: deletePendingCardioType,
       rebuildDataIndexes: rebuildDataIndexes,
