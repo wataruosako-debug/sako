@@ -1833,6 +1833,30 @@ body.is-keyboard-focus .workout-body {
   background: var(--surface);
   font-size: var(--fs-subtitle);
 }
+/* 重量おすすめ(v3): ガイドの根拠バッジとサマリーの提案セクション */
+.guide-suggestion-badge {
+  display: inline-block;
+  margin: 2px 0 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--brand-primary);
+  background: var(--brand-primary-soft);
+  font-size: var(--fs-micro);
+  font-weight: 800;
+}
+.workout-summary-suggestions {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 22%, var(--border));
+  border-radius: var(--radius-panel);
+  background: color-mix(in srgb, var(--surface-raised) 92%, var(--brand-primary-soft));
+}
+.workout-summary-suggestions h3 { margin: 0; color: var(--brand-primary); font-size: var(--fs-caption); font-weight: 800; }
+.workout-summary-suggestions p { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0; font-size: var(--fs-caption); font-weight: 700; }
+.workout-summary-suggestions p b { font-family: "Inter Tight", sans-serif; font-size: var(--fs-body); font-weight: 800; color: var(--brand-primary); }
+
 /* ワークアウト完了サマリー */
 .workout-summary-pr {
   display: grid;

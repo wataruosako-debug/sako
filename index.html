@@ -305,6 +305,7 @@
 
             <div id="guideWeightBlock" class="guide-input-block">
               <div class="label-row"><label for="guideWeightInput">重量</label><small id="guideWeightStepLabel">10kg / 1kg / 0.5kg</small></div>
+              <span id="guideSuggestionBadge" class="guide-suggestion-badge hidden"></span>
               <div class="guide-large-step-row"><button id="guideWeightMinusLarge" type="button" aria-label="10kg減らす">−10kg</button><button id="guideWeightPlusLarge" type="button" aria-label="10kg増やす">＋10kg</button></div>
               <div class="guide-counter-control">
                 <button id="guideWeightMinus" type="button" aria-label="1kg減らす">−1kg</button>
@@ -452,6 +453,23 @@
               <div class="timer-option-list">
                 <label><input id="keepScreenAwake" type="checkbox" data-timer-setting="keepScreenAwake">記録中は画面をスリープさせない</label>
                 <small class="timer-setting-help">対応しているブラウザでのみ動作します</small>
+              </div>
+            </fieldset>
+            <fieldset class="appearance-section">
+              <legend>重量のおすすめ</legend>
+              <div class="timer-option-list">
+                <label><input id="weightSuggestionEnabled" type="checkbox" data-timer-setting="weightSuggestionEnabled">次回の重量をおすすめする</label>
+                <div id="weightSuggestionSubSettings" class="timer-option-subsettings">
+                  <label class="settings-select-field"><span>増量の目安レップ数</span>
+                    <select id="promotionReps">
+                      <option value="8">8回</option>
+                      <option value="10">10回</option>
+                      <option value="12">12回</option>
+                      <option value="15">15回</option>
+                    </select>
+                  </label>
+                  <small class="timer-setting-help">前回、いちばん重いセットを全てこの回数以上こなせていたら増量を提案します</small>
+                </div>
               </div>
             </fieldset>
             <fieldset class="appearance-section">
@@ -779,6 +797,7 @@
       <h2 id="workoutSummaryTitle">おつかれさまでした！</h2>
       <p id="workoutSummaryLead" class="modal-lead">今日のトレーニングを保存しました。</p>
       <div id="workoutSummaryStats" class="workout-summary-stats"></div>
+      <div id="workoutSummarySuggestions" class="workout-summary-suggestions hidden"></div>
       <div class="modal-actions"><button id="closeWorkoutSummaryButton" class="finish-button" type="button">閉じる</button></div>
     </section>
   </div>

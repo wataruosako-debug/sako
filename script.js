@@ -229,6 +229,18 @@
     if (keepAwake) keepAwake.checked = isKeepScreenAwakeEnabled();
     var goalSelect = $("#monthlyGoalDays");
     if (goalSelect) goalSelect.value = String(uiSettings.monthlyGoalDays);
+    var suggestionEnabled = $("#weightSuggestionEnabled");
+    if (suggestionEnabled) suggestionEnabled.checked = uiSettings.weightSuggestionEnabled !== false;
+    var promotionSelect = $("#promotionReps");
+    if (promotionSelect) {
+      promotionSelect.value = String(uiSettings.promotionReps);
+      promotionSelect.disabled = uiSettings.weightSuggestionEnabled === false;
+    }
+    var suggestionSub = $("#weightSuggestionSubSettings");
+    if (suggestionSub) {
+      suggestionSub.classList.toggle("is-disabled", uiSettings.weightSuggestionEnabled === false);
+      suggestionSub.setAttribute("aria-disabled", uiSettings.weightSuggestionEnabled === false ? "true" : "false");
+    }
   }
   function applyUiSettings(settings) {
     uiSettings = normalizeUiSettings(settings);
@@ -264,7 +276,7 @@
     next[key] = !!value;
     applyUiSettings(next);
     if (key === "restTimerSound" && value) unlockWorkoutAudio();
-    if (saveUiSettings(uiSettings)) showToast(key === "guideModeEnabled" ? "ガイドモード設定を保存しました" : (key === "keepScreenAwake" ? "画面スリープ設定を保存しました" : "タイマー設定を保存しました"));
+    if (saveUiSettings(uiSettings)) showToast(key === "guideModeEnabled" ? "ガイドモード設定を保存しました" : (key === "keepScreenAwake" ? "画面スリープ設定を保存しました" : (key === "weightSuggestionEnabled" ? "重量のおすすめ設定を保存しました" : "タイマー設定を保存しました")));
   }
   function applyGuideModeEnabled(enabled) {
     applyUiSettings(Object.assign({}, uiSettings, { guideModeEnabled: !!enabled }));
@@ -3064,7 +3076,7 @@
     var historical = getLastHistoricalRecord(exerciseId);
     var historicalSets = historical ? getRecordSets(historical.id) : [];
     var source = historicalSets[index] || historicalSets[historicalSets.length - 1] || null;
-    return {
+    var result = {
       id: makeId("guideset"),
       status: "planned",
       weight: source ? Number(source.weight || 0) : 0,
@@ -3073,6 +3085,18 @@
       restSeconds: source ? Number(source.restSeconds || 90) : 90,
       memo: source ? (source.memo || "") : ""
     };
+    applyWeightSuggestionToPlannedSet(result, exerciseId, index, historicalSets.length);
+    return result;
+  }
+
+  // 増量提案をガイドの予定セットに適用する(トグルOFF・提案なし・増量なしのセットは変更しない)
+  function applyWeightSuggestionToPlannedSet(plannedSet, exerciseId, index, sourceCount) {
+    var suggestion = calculateWeightSuggestion(exerciseId);
+    if (!suggestion || !suggestion.promoted) return;
+    var suggested = index < suggestion.perSetWeights.length ? suggestion.perSetWeights[index] : (sourceCount && index >= sourceCount ? suggestion.suggestedWeight : null);
+    if (suggested == null || suggested === plannedSet.weight) return;
+    plannedSet.weight = suggested;
+    plannedSet.suggestedReason = suggestion.reason;
   }
 
   function guideDefaultCardioForType(type, sourceCardio) {
@@ -3172,15 +3196,18 @@
 
   function buildGuidePlannedSets(record) {
     var sourceSets = Array.isArray(record.sets) ? record.sets : [];
+    // コピー/下書き由来のセットがある場合はその値を尊重し、提案は適用しない(v3指示書)
+    var fromHistory = false;
     if (!sourceSets.length) {
       var historical = getLastHistoricalRecord(record.exerciseId);
       sourceSets = historical ? getRecordSets(historical.id) : [];
+      fromHistory = true;
     }
     if (!sourceSets.length) {
       return [0, 1, 2].map(function (index) { return guideDefaultSetForExercise(record.exerciseId, index); });
     }
-    return sourceSets.map(function (set) {
-      return {
+    return sourceSets.map(function (set, index) {
+      var planned = {
         id: makeId("guideset"),
         status: "planned",
         weight: Number(set.weight || 0),
@@ -3189,6 +3216,8 @@
         restSeconds: Number(set.restSeconds || 90),
         memo: set.memo || ""
       };
+      if (fromHistory) applyWeightSuggestionToPlannedSet(planned, record.exerciseId, index, sourceSets.length);
+      return planned;
     });
   }
 
@@ -3310,6 +3339,12 @@
     selectedRir = set.rir === undefined || set.rir === null || set.rir === "" ? null : String(set.rir);
     selectedRest = Number(set.restSeconds || 90);
     $("#guideSetMemo").value = set.memo || "";
+    var badge = $("#guideSuggestionBadge");
+    if (badge) {
+      var showBadge = !!set.suggestedReason && set.status === "planned" && !(exercise && exercise.category === "BODYWEIGHT");
+      if (showBadge) badge.textContent = "↑" + formatSuggestionKg(set.weight) + "（" + set.suggestedReason + "）";
+      badge.classList.toggle("hidden", !showBadge);
+    }
     renderGuideChoices();
   }
 
@@ -6042,6 +6077,29 @@
       statsHtml += '<div><span>有酸素運動</span><strong>' + cardios.length + '<small>件</small>' + (totalDistanceKm > 0 ? '・' + (Math.round(totalDistanceKm * 10) / 10).toLocaleString("ja-JP", { maximumFractionDigits: 1 }) + '<small>km</small>' : '') + '</strong></div>';
     }
     $("#workoutSummaryStats").innerHTML = statsHtml;
+    // 次回への提案(v3): 保存コミット後のデータで計算するため、今保存したセッションが
+    // 「前回」になった状態の提案が出る。増量提案がある種目のみ列挙し、なければ非表示
+    var suggestionsBox = $("#workoutSummarySuggestions");
+    if (suggestionsBox) {
+      var seenExerciseIds = {};
+      var suggestionRows = (summary.records || []).filter(function (record) {
+        if (seenExerciseIds[record.exerciseId]) return false;
+        seenExerciseIds[record.exerciseId] = true;
+        return true;
+      }).map(function (record) {
+        var suggestion = calculateWeightSuggestion(record.exerciseId);
+        if (!suggestion || !suggestion.promoted) return "";
+        var exercise = getExercise(record.exerciseId);
+        return '<p><span>' + escapeHtml(exercise ? exercise.name : "種目") + '</span><b>→ ' + formatSuggestionKg(suggestion.suggestedWeight) + '</b></p>';
+      }).filter(Boolean);
+      if (suggestionRows.length) {
+        suggestionsBox.innerHTML = '<h3>次回への提案</h3>' + suggestionRows.join("");
+        suggestionsBox.classList.remove("hidden");
+      } else {
+        suggestionsBox.innerHTML = "";
+        suggestionsBox.classList.add("hidden");
+      }
+    }
     openModal("workoutSummaryModal");
   }
 
@@ -6212,6 +6270,10 @@
       if (timerInput) setTimerSetting(timerInput.dataset.timerSetting, timerInput.checked);
     });
     on("#monthlyGoalDays", "change", function () { setMonthlyGoalDays(this.value); });
+    on("#promotionReps", "change", function () {
+      applyUiSettings(Object.assign({}, uiSettings, { promotionReps: Number(this.value) }));
+      if (saveUiSettings(uiSettings)) showToast("重量のおすすめ設定を保存しました");
+    });
   }
 
   function bindSettingsDataEvents() {
@@ -6601,6 +6663,8 @@
     if (!exercise || exercise.category === "BODYWEIGHT") return;
     var step = Number(amount || 1);
     var input = $("#guideWeightInput");
+    var suggestionBadge = $("#guideSuggestionBadge");
+    if (suggestionBadge) suggestionBadge.classList.add("hidden");
     input.value = Math.max(0, getNumericInputValue(input) + direction * step).toFixed(1);
     captureGuideInputToState();
     scheduleDraftSave();
@@ -6690,7 +6754,7 @@
     bindHoldRepeat("#guideWeightPlusSmall", function () { changeGuideWeight(1, 0.5); });
     bindHoldRepeat("#guideRepsMinus", function () { changeGuideReps(-1); });
     bindHoldRepeat("#guideRepsPlus", function () { changeGuideReps(1); });
-    on("#guideWeightInput", "input", function () { captureGuideInputToState(); scheduleDraftSave(); });
+    on("#guideWeightInput", "input", function () { var badge = $("#guideSuggestionBadge"); if (badge) badge.classList.add("hidden"); captureGuideInputToState(); scheduleDraftSave(); });
     on("#guideWeightInput", "blur", function () { this.value = Math.max(0, getNumericInputValue(this)).toFixed(1); captureGuideInputToState(); scheduleDraftSave(); });
     on("#guideRepsInput", "input", function () { captureGuideInputToState(); scheduleDraftSave(); });
     on("#guideSetMemo", "input", function () { captureGuideInputToState(); scheduleDraftSave(); });
