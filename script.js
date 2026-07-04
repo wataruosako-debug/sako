@@ -5008,6 +5008,7 @@
     exercises = sortedExerciseChoices(exercises);
     if (!exercises.length) {
       $("#exerciseList").innerHTML = '<div class="empty-state">' + (searchTerm ? "該当する種目がありません" : "この部位の種目はまだありません") + '</div>';
+      updateExercisePickerBottomConfirm();
       return;
     }
     $("#exerciseList").innerHTML = exercises.map(function (exercise) {
@@ -5015,6 +5016,29 @@
       var stepControl = '<span class="exercise-step-placeholder" aria-hidden="true"></span>';
       return '<div class="exercise-choice-row' + (selected ? " is-selected" : "") + '"><button class="exercise-choice-main" type="button" data-exercise-id="' + exercise.id + '"><span class="exercise-choice-circle" aria-hidden="true"><i></i></span><span class="exercise-choice-name"><strong>' + escapeHtml(exercise.name) + '</strong><small>' + CATEGORY_LABELS[exercise.category] + '</small></span></button>' + stepControl + '<button class="favorite-button ' + (exercise.isFavorite ? "is-favorite" : "") + '" type="button" data-favorite-id="' + exercise.id + '" aria-label="' + escapeHtml(exercise.name) + 'をお気に入りにする">★</button></div>';
     }).join("");
+    updateExercisePickerBottomConfirm();
+  }
+
+  // 右上の確定ボタンは親指が届きにくいため、選択できる状態になったら画面下にも同じ確定ボタンを出す
+  function updateExercisePickerBottomConfirm() {
+    var bottom = $("#confirmExerciseSelectionBottom");
+    if (!bottom) return;
+    var top = $("#confirmExerciseSelection");
+    var actionable = top && !top.classList.contains("hidden") && !top.disabled;
+    if (!actionable) {
+      bottom.classList.add("hidden");
+      return;
+    }
+    var selected = pendingExerciseId ? getExercise(pendingExerciseId) : null;
+    if (exercisePickerMode === "routine" && !routinePendingExerciseIds.length) {
+      bottom.classList.add("hidden");
+      return;
+    }
+    if (exercisePickerMode === "workoutAdd" && selected) bottom.textContent = "「" + selected.name + "」を今日のメニューに追加";
+    else if (exercisePickerMode === "routine") bottom.textContent = "選んだ種目で決定（" + routinePendingExerciseIds.length + "件）";
+    else if (selected) bottom.textContent = "「" + selected.name + "」に決定";
+    else bottom.textContent = top.textContent;
+    bottom.classList.remove("hidden");
   }
 
   function openExercisePicker() {
@@ -6578,6 +6602,7 @@
     on("#chooseAnotherExercise", "click", openExercisePickerForMenuAdd);
     on("#cancelExerciseSelection", "click", cancelExerciseSelection);
     on("#confirmExerciseSelection", "click", confirmExerciseSelection);
+    on("#confirmExerciseSelectionBottom", "click", confirmExerciseSelection);
   }
 
   function bindExerciseListEvents() {
