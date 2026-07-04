@@ -28,6 +28,34 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <script>
+  /* デバッグ用オーバーレイ: URLに ?debug=1 を付けた時だけ、JSエラーを画面上部に赤帯で表示する。
+     実機(iPhone Safari等)でコンソールを開けない環境の障害調査用。通常利用時は何もしない */
+  (function () {
+    if (window.location.search.indexOf("debug=1") < 0) return;
+    function show(message) {
+      var box = document.getElementById("__debugErrorBox");
+      if (!box) {
+        box = document.createElement("div");
+        box.id = "__debugErrorBox";
+        box.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#B91C1C;color:#fff;font-size:12px;line-height:1.5;padding:10px;white-space:pre-wrap;word-break:break-all;max-height:45vh;overflow:auto;font-family:monospace;";
+        (document.body || document.documentElement).appendChild(box);
+      }
+      box.textContent += message + "\n";
+    }
+    window.addEventListener("error", function (event) {
+      show("ERROR: " + (event.message || "unknown") + " @ " + (event.filename || "").split("/").pop() + ":" + (event.lineno || "?"));
+    }, true);
+    window.addEventListener("unhandledrejection", function (event) {
+      show("PROMISE: " + (event.reason && event.reason.message ? event.reason.message : event.reason));
+    });
+    window.addEventListener("DOMContentLoaded", function () {
+      setTimeout(function () {
+        show("debug: 起動チェック → GymLog " + (window.GymLog ? "OK(JS正常起動)" : "NG(JSが起動していない)") + " / UA: " + navigator.userAgent.slice(0, 80));
+      }, 500);
+    });
+  })();
+  </script>
   <link rel="stylesheet" href="style.css?v=20260703-v3">
 </head>
 <body>
