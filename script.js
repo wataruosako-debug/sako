@@ -4457,30 +4457,6 @@
     renderAppearanceSettings();
   }
 
-  function suspendGuideToHome() {
-    if (isGuideActive()) captureGuideInputToState();
-    saveDraftNow();
-    stopRestTimer();
-    closeModal("guideExitModal");
-    draft = null;
-    renderHome();
-    showScreen("home");
-    showToast("ガイドモードを一時保存しました");
-  }
-
-  function returnGuideToWorkoutMenu() {
-    if (!isGuideActive()) {
-      closeModal("guideExitModal");
-      return;
-    }
-    if (!convertGuideDraftToNormalInput(true)) return;
-    stopRestTimer();
-    closeModal("guideExitModal");
-    renderWorkout();
-    showScreen("workout");
-    showToast("今日のメニューに戻りました");
-  }
-
   function cancelGuideExitDialog() {
     closeModal("guideExitModal");
     renderGuideWorkout();
@@ -6064,9 +6040,12 @@
     var prList = Object.keys(latestPrByKey).map(function (key) { return latestPrByKey[key]; });
     var prBlock = $("#workoutSummaryPr");
     if (prList.length) {
-      prBlock.innerHTML = prList.map(function (event) {
+      // PRが多い日でもモーダルが縦に伸びすぎないよう、表示は3件+「ほか◯件」に集約する
+      var visiblePrList = prList.slice(0, 3);
+      var hiddenPrCount = prList.length - visiblePrList.length;
+      prBlock.innerHTML = visiblePrList.map(function (event) {
         return '<p><strong>' + escapeHtml(event.exerciseName) + '</strong> ' + escapeHtml(event.metric) + ' ' + formatBestValue(event.value, event.decimals, event.unit) + ' 自己ベスト更新！</p>';
-      }).join("");
+      }).join("") + (hiddenPrCount > 0 ? '<p class="workout-summary-pr-more">ほか' + hiddenPrCount + '件も自己ベスト更新！</p>' : "");
       prBlock.classList.remove("hidden");
     } else {
       prBlock.innerHTML = "";
@@ -6759,7 +6738,7 @@
     on("#skipGuideItemButton", "click", skipCurrentGuideItem);
     on("#replaceGuideCardioButton", "click", deferCurrentGuideItem);
     on("#skipGuideCardioButton", "click", skipCurrentGuideItem);
-    on("#continueGuideButton", "click", returnGuideToWorkoutMenu);
+    on("#guideExitFromSelectButton", "click", openGuideExit);
     on("#cancelGuideExit", "click", cancelGuideExitDialog);
     on("#saveGuideProgress", "click", function () { var button = this; runButtonLocked(button, saveGuideProgress); });
     on("#saveGuideAndDisableButton", "click", function () { var button = this; runButtonLocked(button, saveGuideAndDisableMode); });

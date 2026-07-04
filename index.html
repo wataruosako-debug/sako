@@ -109,7 +109,7 @@
     });
   })();
   </script>
-  <link rel="stylesheet" href="style.css?v=20260704-v4">
+  <link rel="stylesheet" href="style.css?v=20260704-v4b">
 </head>
 <body>
   <div class="app-shell">
@@ -475,6 +475,7 @@
             <div id="guideNextChoiceList" class="guide-choice-list" role="list" aria-label="次に行う種目"></div>
             <div class="guide-next-actions">
               <button id="guideAddExerciseButton" class="outline-button outline-button--blue" type="button">メニュー外の種目を行う</button>
+              <button id="guideExitFromSelectButton" class="guide-exit-link-button" type="button">終了する</button>
             </div>
           </section>
 
@@ -860,7 +861,7 @@
       <h2 id="guideExitTitle">今日のメニューを保存しますか？</h2>
       <p class="modal-lead">ここまで入力したセットは保存途中として残ります。</p>
       <div id="guideExitSummary" class="guide-exit-summary"></div>
-      <div class="modal-actions"><button id="saveGuideProgress" class="finish-button" type="button">保存して終了</button><button id="continueGuideButton" class="outline-button" type="button">今日のメニューに戻る</button><button id="cancelGuideExit" class="outline-button" type="button">キャンセル</button></div>
+      <div class="modal-actions"><button id="saveGuideProgress" class="finish-button" type="button">保存して終了</button><button id="cancelGuideExit" class="outline-button" type="button">ガイドモードに戻る</button></div>
     </section>
   </div>
 
@@ -945,6 +946,6 @@
     </section>
   </div>
 
-  <script src="script.js?v=20260704-v4"></script>
+  <script src="script.js?v=20260704-v4b"></script>
 </body>
 </html>
