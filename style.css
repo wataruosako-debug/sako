@@ -1856,6 +1856,13 @@ body.is-keyboard-focus .workout-body {
 .workout-summary-suggestions h3 { margin: 0; color: var(--brand-primary); font-size: var(--fs-caption); font-weight: 800; }
 .workout-summary-suggestions p { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0; font-size: var(--fs-caption); font-weight: 700; }
 .workout-summary-suggestions p b { font-family: "Inter Tight", sans-serif; font-size: var(--fs-body); font-weight: 800; color: var(--brand-primary); }
+.workout-summary-suggestions .suggestion-hint { color: var(--text-muted); font-size: var(--fs-micro); font-weight: 600; line-height: 1.5; }
+.workout-summary-suggestions .suggestion-exercise { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--brand-primary) 14%, var(--border)); }
+.workout-summary-suggestions .suggestion-exercise h4 { margin: 0; font-size: var(--fs-caption); font-weight: 800; color: var(--text-primary); }
+.workout-summary-suggestions .suggestion-set-row span { color: var(--text-muted); font-weight: 700; }
+.workout-summary-suggestions .suggestion-set-row small { font-family: "Inter Tight", sans-serif; font-size: var(--fs-caption); font-weight: 700; color: var(--text-muted); }
+.workout-summary-suggestions .suggestion-apply-button { min-height: 44px; margin-top: 4px; }
+.workout-summary-suggestions .suggestion-apply-button.is-applied { color: var(--accent-teal); border-color: color-mix(in srgb, var(--accent-teal) 55%, var(--border)); opacity: 1; }
 
 /* ワークアウト完了サマリー */
 .workout-summary-pr {
