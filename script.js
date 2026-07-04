@@ -6130,7 +6130,7 @@
   }
 
   function dayStartActionsHtml(dateValue) {
-    return dayStartActionsHtml(dateValue);
+    return '<button class="finish-button" type="button" data-day-start="gym" data-day-date="' + dateValue + '">ジムトレーニングを記録</button><button class="outline-button" type="button" data-day-start="home" data-day-date="' + dateValue + '">自宅トレーニングを記録</button><button class="outline-button outline-button--blue" type="button" data-day-routine-date="' + dateValue + '">ルーティンから登録</button><button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
   }
 
   function renderDaySummary(dateValue) {
