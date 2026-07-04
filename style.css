@@ -1671,12 +1671,23 @@ body.is-keyboard-focus .workout-body {
   padding: 18px 0 calc(14px + env(safe-area-inset-bottom));
   overflow: hidden;
 }
-.exercise-picker-header { display: grid; grid-template-columns: 82px 1fr 82px; align-items: center; flex: 0 0 auto; padding: 7px 16px 13px; border-bottom: 1px solid var(--border); }
+/* 確定は画面下の大ボタンに一本化したため、ヘッダーは[キャンセル|タイトル|余白]の3列 */
+.exercise-picker-header { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; flex: 0 0 auto; padding: 7px 16px 13px; border-bottom: 1px solid var(--border); }
 .exercise-picker-header h2 { margin: 0; color: var(--text-primary); font-size: var(--fs-subtitle); font-weight: 800; text-align: center; }
-.exercise-picker-header button { min-height: var(--btn-sm); padding: 0 8px; border: 0; color: var(--brand-primary); background: transparent; font-size: var(--fs-body); font-weight: 700; }
-.exercise-picker-header button:first-child { text-align: left; }
-.exercise-picker-header button:last-child { text-align: right; }
-.exercise-picker-header button:disabled { color: var(--text-disabled); cursor: default; }
+.exercise-picker-header .header-spacer { justify-self: end; }
+#cancelExerciseSelection {
+  justify-self: start;
+  width: max-content;
+  min-height: var(--btn-sm);
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-primary);
+  background: var(--surface-subtle);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  white-space: nowrap;
+}
 .exercise-search {
   flex: 0 0 auto;
   width: calc(100% - 32px);
