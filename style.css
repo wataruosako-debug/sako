@@ -256,6 +256,11 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   line-height: 1.1;
   letter-spacing: -.03em;
 }
+/* ホームのロゴ画像(埋め込みPNG)。文字サイズ相当に見えるよう高さで調整 */
+.topbar-logo { display: flex; align-items: center; }
+.topbar-logo img { display: block; width: auto; height: 34px; }
+/* ダークモードでは紺色の文字が沈むため白抜きにする */
+:root[data-appearance="dark"] .topbar-logo img { filter: brightness(0) invert(1); }
 .topbar-month {
   flex: 0 0 auto;
   color: var(--text-secondary);
