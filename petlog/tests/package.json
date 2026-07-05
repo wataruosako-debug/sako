@@ -1,0 +1,9 @@
+{
+  "name": "uchinoko-nisshi-tests",
+  "private": true,
+  "type": "module",
+  "description": "うちのこ日誌 E2E テスト（Playwright + ローカルHTTPサーバー）",
+  "scripts": {
+    "test": "node e2e.mjs"
+  }
+}

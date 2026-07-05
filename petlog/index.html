@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta id="themeColorMeta" name="theme-color" content="#FAF6F1">
+  <title>うちのこ日誌 - シニアペットの健康記録</title>
+  <script>
+  // FOUC回避: 保存済みのテーマ設定をbody描画前に反映する
+  (function () {
+    var defaults = { appearance: "system", colorTheme: "terracotta" };
+    try {
+      var saved = JSON.parse(localStorage.getItem("petlog-ui-settings-v1") || "null");
+      var appearances = ["system", "light", "dark"];
+      var themes = ["terracotta"];
+      var appearance = saved && appearances.indexOf(saved.appearance) >= 0 ? saved.appearance : defaults.appearance;
+      var colorTheme = saved && themes.indexOf(saved.colorTheme) >= 0 ? saved.colorTheme : defaults.colorTheme;
+      var resolved = appearance === "system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : appearance === "dark" ? "dark" : "light";
+      document.documentElement.dataset.appearance = resolved;
+      document.documentElement.dataset.appearanceSetting = appearance;
+      document.documentElement.dataset.colorTheme = colorTheme;
+    } catch (error) {
+      document.documentElement.dataset.appearance = "light";
+      document.documentElement.dataset.appearanceSetting = "system";
+      document.documentElement.dataset.colorTheme = "terracotta";
+    }
+  })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+  <div id="app" class="app">
+    <!-- ===== ホーム ===== -->
+    <main id="screen-home" class="screen" data-screen="home">
+      <header class="app-header">
+        <button id="petSwitcher" class="pet-switcher" type="button">
+          <span id="petSwitcherName" class="pet-switcher-name">—</span>
+          <span id="petSwitcherAge" class="pet-switcher-age"></span>
+          <span class="pet-switcher-caret" aria-hidden="true">▾</span>
+        </button>
+      </header>
+
+      <section class="section">
+        <button id="allGoodButton" class="all-good-button" type="button">
+          <span class="all-good-title">今日もぜんぶ順調</span>
+          <span class="all-good-sub">タップで今日の記録を完了</span>
+        </button>
+      </section>
+
+      <section id="alertArea" class="section alert-area hidden"></section>
+
+      <section class="section">
+        <div id="todayChecklist" class="checklist"></div>
+      </section>
+
+      <section class="section">
+        <div class="summary-card">
+          <div class="hero-ring-wrap">
+            <div id="monthRing" class="hero-ring" style="--ring-progress:0%">
+              <div class="hero-ring-inner">
+                <span id="monthRingCount" class="hero-ring-count">0</span>
+                <span class="hero-ring-label">日 記録</span>
+              </div>
+            </div>
+          </div>
+          <div class="summary-cal">
+            <div class="summary-cal-head">
+              <span id="miniCalTitle" class="summary-cal-title">—</span>
+            </div>
+            <div id="miniCalGrid" class="mini-cal-grid"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ===== グラフ ===== -->
+    <main id="screen-graph" class="screen hidden" data-screen="graph">
+      <header class="app-header"><h1 class="screen-title">体重グラフ</h1></header>
+      <section class="section">
+        <div class="range-tabs" id="weightRangeTabs">
+          <button class="range-tab is-active" type="button" data-range="1m">1ヶ月</button>
+          <button class="range-tab" type="button" data-range="3m">3ヶ月</button>
+          <button class="range-tab" type="button" data-range="1y">1年</button>
+          <button class="range-tab" type="button" data-range="all">全部</button>
+        </div>
+      </section>
+      <section class="section">
+        <div class="chart-card">
+          <div id="weightChart" class="weight-chart"></div>
+          <div id="weightChartEmpty" class="chart-empty hidden">まだ体重の記録がありません</div>
+        </div>
+        <div id="weightReadout" class="chart-readout"></div>
+      </section>
+    </main>
+
+    <!-- ===== レポート ===== -->
+    <main id="screen-report" class="screen hidden" data-screen="report">
+      <header class="app-header"><h1 class="screen-title">獣医レポート</h1></header>
+      <section class="section">
+        <p class="report-note">直近14日間の記録です。診察のときにこの画面をお見せください。</p>
+        <div id="reportBody" class="report-body"></div>
+      </section>
+    </main>
+
+    <!-- ===== 設定 ===== -->
+    <main id="screen-settings" class="screen hidden" data-screen="settings">
+      <header class="app-header"><h1 class="screen-title">設定</h1></header>
+
+      <section class="section">
+        <h2 class="group-title">うちのこ</h2>
+        <div id="settingsPetList" class="settings-list"></div>
+        <button id="addPetButton" class="outline-button" type="button">＋ うちのこを追加</button>
+      </section>
+
+      <section class="section">
+        <h2 class="group-title">お薬</h2>
+        <div id="settingsMedList" class="settings-list"></div>
+        <button id="addMedButton" class="outline-button" type="button">＋ お薬を追加</button>
+      </section>
+
+      <section class="section">
+        <h2 class="group-title">表示</h2>
+        <div class="settings-row">
+          <span class="settings-row-label">テーマ</span>
+          <select id="appearanceSelect" class="settings-select">
+            <option value="system">端末に合わせる</option>
+            <option value="light">ライト</option>
+            <option value="dark">ダーク</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="group-title">データ</h2>
+        <button id="backupButton" class="outline-button" type="button">バックアップを書き出す</button>
+        <button id="restoreButton" class="outline-button" type="button">バックアップから復元</button>
+        <input id="restoreFileInput" type="file" accept="application/json,.json" class="hidden">
+        <button id="deleteAllButton" class="danger-button" type="button">すべてのデータを削除</button>
+      </section>
+      <div class="app-version">うちのこ日誌 v1</div>
+    </main>
+
+    <!-- ===== ボトムタブバー ===== -->
+    <nav id="tabBar" class="tab-bar" aria-label="メインメニュー">
+      <button class="tab-item is-active" type="button" data-tab="home">
+        <span class="tab-icon" aria-hidden="true">🏠</span><span class="tab-label">ホーム</span>
+      </button>
+      <button class="tab-item" type="button" data-tab="graph">
+        <span class="tab-icon" aria-hidden="true">📈</span><span class="tab-label">グラフ</span>
+      </button>
+      <button id="fabWeight" class="tab-fab" type="button" aria-label="体重を記録">
+        <span class="tab-fab-plus" aria-hidden="true">＋</span>
+        <span class="tab-fab-label">体重</span>
+      </button>
+      <button class="tab-item" type="button" data-tab="report">
+        <span class="tab-icon" aria-hidden="true">📋</span><span class="tab-label">レポート</span>
+      </button>
+      <button class="tab-item" type="button" data-tab="settings">
+        <span class="tab-icon" aria-hidden="true">⚙️</span><span class="tab-label">設定</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ===== オンボーディング ===== -->
+  <div id="onboardingModal" class="modal modal-z100" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-sheet">
+      <h2 class="modal-title">うちのこを登録</h2>
+      <p class="modal-lead">まずは記録するこの子のことを教えてください。</p>
+      <div id="onboardingForm"></div>
+      <button id="onboardingSubmit" class="primary-button" type="button">はじめる</button>
+    </div>
+  </div>
+
+  <!-- ===== ペット編集 ===== -->
+  <div id="petModal" class="modal modal-z110" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="petModal"></div>
+    <div class="modal-sheet">
+      <h2 id="petModalTitle" class="modal-title">うちのこを追加</h2>
+      <div id="petForm"></div>
+      <div class="modal-actions">
+        <button class="ghost-button" type="button" data-close="petModal">キャンセル</button>
+        <button id="petSubmit" class="primary-button" type="button">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ペット切替 ===== -->
+  <div id="petPickerModal" class="modal modal-z110" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="petPickerModal"></div>
+    <div class="modal-sheet">
+      <h2 class="modal-title">うちのこを選ぶ</h2>
+      <div id="petPickerList" class="picker-list"></div>
+      <button class="ghost-button block" type="button" data-close="petPickerModal">閉じる</button>
+    </div>
+  </div>
+
+  <!-- ===== お薬編集 ===== -->
+  <div id="medModal" class="modal modal-z110" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="medModal"></div>
+    <div class="modal-sheet">
+      <h2 id="medModalTitle" class="modal-title">お薬を追加</h2>
+      <div id="medForm"></div>
+      <div class="modal-actions">
+        <button class="ghost-button" type="button" data-close="medModal">キャンセル</button>
+        <button id="medSubmit" class="primary-button" type="button">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 体重記録 ===== -->
+  <div id="weightModal" class="modal modal-z110" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="weightModal"></div>
+    <div class="modal-sheet">
+      <h2 class="modal-title">体重を記録</h2>
+      <div class="weight-stepper">
+        <button id="weightMinusBig" class="stepper-btn" type="button" aria-label="1kg減らす">−1</button>
+        <button id="weightMinusSmall" class="stepper-btn small" type="button" aria-label="0.1kg減らす">−0.1</button>
+        <div class="weight-value"><span id="weightValue">0.0</span><span class="weight-unit">kg</span></div>
+        <button id="weightPlusSmall" class="stepper-btn small" type="button" aria-label="0.1kg増やす">＋0.1</button>
+        <button id="weightPlusBig" class="stepper-btn" type="button" aria-label="1kg増やす">＋1</button>
+      </div>
+      <label class="field-label" for="weightDate">日付</label>
+      <input id="weightDate" class="text-input" type="date">
+      <label class="field-label" for="weightMemo">メモ（任意）</label>
+      <input id="weightMemo" class="text-input" type="text" placeholder="ごはん後 など">
+      <div class="modal-actions">
+        <button class="ghost-button" type="button" data-close="weightModal">キャンセル</button>
+        <button id="weightSubmit" class="primary-button" type="button">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 日別記録（過去日・ホーム共通UI） ===== -->
+  <div id="dayModal" class="modal modal-z110" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="dayModal"></div>
+    <div class="modal-sheet">
+      <h2 id="dayModalTitle" class="modal-title">記録</h2>
+      <div id="dayChecklist" class="checklist"></div>
+      <button class="ghost-button block" type="button" data-close="dayModal">閉じる</button>
+    </div>
+  </div>
+
+  <!-- ===== 確認ダイアログ ===== -->
+  <div id="confirmModal" class="modal modal-z130" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-sheet modal-sheet-compact">
+      <p id="confirmMessage" class="confirm-message"></p>
+      <div class="modal-actions">
+        <button id="confirmCancel" class="ghost-button" type="button">キャンセル</button>
+        <button id="confirmAccept" class="danger-button" type="button">削除する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== トースト / Undo ===== -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="undoSnackbar" class="undo-snackbar hidden" role="status">
+    <span id="undoSnackbarText" class="undo-snackbar-text"></span>
+    <button id="undoSnackbarButton" class="undo-snackbar-button" type="button">取り消す</button>
+  </div>
+
+  <script src="script.js?v=1"></script>
+</body>
+</html>
