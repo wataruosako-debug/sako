@@ -55,6 +55,44 @@ async function installNativeMock(page, options) {
   }, { prefsSeed: options.prefsSeed || {}, localStorageSeed: options.localStorageSeed || {} });
 }
 
+// 指示書②: ネイティブ(Capacitor)を偽装し LocalNotifications / Haptics をインメモリでモックする。
+// Preferences は登録しない(=null)ため StorageService は localStorage フォールバックで安全に起動する。
+// checkResult: checkPermissions が返す display / requestResult: requestPermissions が返す display
+async function installTimerNativeMock(page, options) {
+  options = options || {};
+  await page.addInitScript((opts) => {
+    var calls = { schedule: [], cancel: [], vibrate: [], checkPermissions: 0, requestPermissions: 0 };
+    window.__NOTIF_CALLS__ = calls;
+
+    var LocalNotifications = {
+      checkPermissions: function () { calls.checkPermissions++; return Promise.resolve({ display: opts.checkResult || "prompt" }); },
+      requestPermissions: function () { calls.requestPermissions++; return Promise.resolve({ display: opts.requestResult || "granted" }); },
+      schedule: function (o) { calls.schedule.push(o); return Promise.resolve(); },
+      cancel: function (o) { calls.cancel.push(o); return Promise.resolve(); }
+    };
+    var Haptics = {
+      vibrate: function (o) { calls.vibrate.push(o); return Promise.resolve(); }
+    };
+    var mocks = { LocalNotifications: LocalNotifications, Haptics: Haptics };
+
+    window.Capacitor = {
+      isNativePlatform: function () { return true; },
+      registerPlugin: function (name) { return mocks[name] || null; }, // Preferences等は null → StorageServiceはlocalStorageへ
+      Plugins: mocks
+    };
+    window.__GYMLOG_TEST_MODE = true;
+    window.__GYMLOG_SKIP_INIT = true;
+  }, { checkResult: options.checkResult, requestResult: options.requestResult });
+}
+
+// アプリを非表示(background)状態に見せて通知同期を実行する
+async function simulateHiddenAndSync(page) {
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: function () { return "hidden"; } });
+    window.GymLog.__test__.syncRestNotification();
+  });
+}
+
 // validateCurrentData を通る最小の有効データ(指定IDのセッションを1件持つ)
 function buildLegacyData(sessionId) {
   var now = "2026-07-01T00:00:00.000Z";
@@ -79,4 +117,4 @@ async function waitForTestApi(page) {
   });
 }
 
-module.exports = { installBrowserTestMode, installNativeMock, buildLegacyData, waitForTestApi };
+module.exports = { installBrowserTestMode, installNativeMock, installTimerNativeMock, simulateHiddenAndSync, buildLegacyData, waitForTestApi };

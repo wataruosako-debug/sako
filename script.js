@@ -5967,6 +5967,121 @@
     if (topVolume) topVolume.textContent = formatDraftVolume(volumeKg);
   }
 
+  /* 指示書②: レストタイマーの通知/振動(ネイティブのみ)。
+     - @capacitor/local-notifications: タイマー終了時刻にローカル通知を予約(背景・画面ロック中でも発火)
+     - @capacitor/haptics: フォアグラウンド時の振動
+     - 無バンドラ構成で動くよう registerPlugin で取得。取得不能/失敗時は静かに no-op(=画面表示のみで従来動作)
+     - ブラウザ実行時は isNative()===false となり全て no-op(既存挙動を完全維持) */
+  var RestTimerNotify = (function () {
+    var NOTIFICATION_ID = 1001;
+    var native = false;
+    var localNotifications = null;
+    var haptics = null;
+    var permissionState = "unknown"; // unknown | granted | denied
+    var permissionRequested = false;
+
+    function acquire(name) {
+      var cap = window.Capacitor;
+      if (!cap) return null;
+      try {
+        if (typeof cap.registerPlugin === "function") {
+          var plugin = cap.registerPlugin(name);
+          if (plugin) return plugin;
+        }
+      } catch (error) { console.error("プラグイン取得に失敗: " + name, error); }
+      if (cap.Plugins && cap.Plugins[name]) return cap.Plugins[name];
+      return null;
+    }
+    function detectNative() {
+      var cap = window.Capacitor;
+      return !!(cap && typeof cap.isNativePlatform === "function" && cap.isNativePlatform());
+    }
+    if (detectNative()) {
+      localNotifications = acquire("LocalNotifications");
+      haptics = acquire("Haptics");
+      native = !!localNotifications; // 通知プラグインが取れなければネイティブ機能は無効(静かにフォールバック)
+    }
+
+    // 初回だけ許可を要求する。以降は保持した permissionState を使う。
+    function ensurePermission() {
+      if (!native) return Promise.resolve(false);
+      if (permissionRequested) return Promise.resolve(permissionState === "granted");
+      permissionRequested = true;
+      return Promise.resolve()
+        .then(function () { return localNotifications.checkPermissions(); })
+        .then(function (result) {
+          var display = result && result.display;
+          if (display === "granted") { permissionState = "granted"; return true; }
+          if (display === "denied") { permissionState = "denied"; return false; }
+          return localNotifications.requestPermissions().then(function (asked) {
+            permissionState = asked && asked.display === "granted" ? "granted" : "denied";
+            return permissionState === "granted";
+          });
+        })
+        .catch(function (error) {
+          console.error("通知許可の確認に失敗", error);
+          permissionState = "denied";
+          return false;
+        });
+    }
+
+    function schedule(atEpochMs, title, body) {
+      if (!native || permissionState !== "granted") return;
+      try {
+        localNotifications.schedule({
+          notifications: [{
+            id: NOTIFICATION_ID,
+            title: title,
+            body: body,
+            schedule: { at: new Date(atEpochMs), allowWhileIdle: true }
+          }]
+        }).catch(function (error) { console.error("通知予約に失敗", error); });
+      } catch (error) { console.error("通知予約に失敗", error); }
+    }
+    function cancel() {
+      if (!native) return;
+      try {
+        var result = localNotifications.cancel({ notifications: [{ id: NOTIFICATION_ID }] });
+        if (result && typeof result.catch === "function") result.catch(function () { /* no-op */ });
+      } catch (error) { /* no-op(キャンセル失敗は無視) */ }
+    }
+    function vibrate() {
+      if (!native || !haptics || typeof haptics.vibrate !== "function") return false;
+      try {
+        var result = haptics.vibrate({ duration: 300 });
+        if (result && typeof result.catch === "function") result.catch(function () { /* no-op */ });
+        return true;
+      } catch (error) { return false; }
+    }
+
+    return {
+      isNative: function () { return native; },
+      ensurePermission: ensurePermission,
+      schedule: schedule,
+      cancel: cancel,
+      vibrate: vibrate,
+      getPermissionState: function () { return permissionState; }
+    };
+  })();
+  window.GymLog.restTimerNotify = RestTimerNotify;
+
+  /* 通知予約の一元管理:「実行中タイマーがあり、かつアプリが非表示(background/画面ロック)の時だけ」通知を予約する。
+     これによりフォアグラウンドではバナーが出ず(=Haptics＋既存サウンドのみ)、二重通知を避けられる。 */
+  function syncRestNotification() {
+    if (!RestTimerNotify.isNative()) return;
+    var shouldArm = isRestTimerEnabled()
+      && restTimerState.status === "running"
+      && !restTimerState.finishedNotified
+      && Number(restTimerState.endAt || 0) > Date.now()
+      && document.visibilityState === "hidden"
+      && RestTimerNotify.getPermissionState() === "granted";
+    if (shouldArm) {
+      RestTimerNotify.schedule(restTimerState.endAt, "休憩終了", "次のセットを始めましょう");
+    } else {
+      RestTimerNotify.cancel();
+    }
+  }
+
   function formatRestTimerTime(seconds) {
     var value = Math.ceil(Number(seconds || 0));
     var sign = value < 0 ? "-" : "";
@@ -6069,6 +6184,8 @@
 
   function tryRestTimerVibration() {
     if (!isRestTimerEnabled() || !uiSettings.restTimerVibration) return false;
+    // ネイティブ(iOS等)は navigator.vibrate 非対応のため Haptics で振動する
+    if (RestTimerNotify.isNative()) return RestTimerNotify.vibrate();
     try {
       if (navigator.vibrate && typeof navigator.vibrate === "function") {
         return !!navigator.vibrate([150, 80, 150]);
@@ -6090,6 +6207,8 @@
     }
     restTimerState.finishedNotified = true;
     renderRestTimer();
+    // フォアグラウンドで終了到達 → 予約済みOS通知はキャンセルし、Haptics＋サウンドで知らせる(二重通知回避)
+    RestTimerNotify.cancel();
     tryRestTimerVibration();
     playRestTimerEndSound();
   }
@@ -6132,11 +6251,14 @@
     restTimerState.intervalId = setInterval(tickRestTimer, 1000);
     renderRestTimer();
     if (isGuideActive()) renderGuideRestTimer();
+    // 指示書②: 実際にタイマーが起動した瞬間(=初回利用の文脈)に一度だけ許可要求し、通知予約を同期する
+    if (RestTimerNotify.isNative()) RestTimerNotify.ensurePermission().then(syncRestNotification);
   }
 
   function stopRestTimer() {
     clearRestTimerInterval();
     restTimerState = { status: "idle", totalSeconds: 0, remainingSeconds: 0, endAt: 0, intervalId: null, finishedNotified: false };
+    RestTimerNotify.cancel();
     renderRestTimer();
     if (isGuideActive()) renderGuideRestTimer();
   }
@@ -6147,6 +6269,7 @@
       restTimerState.remainingSeconds = calculateRestTimerRemaining(restTimerState);
       restTimerState.status = "paused";
       clearRestTimerInterval();
+      RestTimerNotify.cancel(); // 一時停止中は終了時刻が確定しないため予約を取り消す
       renderRestTimer();
       return;
     }
@@ -6156,6 +6279,7 @@
       clearRestTimerInterval();
       restTimerState.intervalId = setInterval(tickRestTimer, 1000);
       tickRestTimer();
+      syncRestNotification(); // 再開: 新しい終了時刻で(非表示時のみ)予約し直す
     }
   }
 
@@ -6167,6 +6291,7 @@
     restTimerState.totalSeconds = Math.max(restTimerState.totalSeconds, next);
     if (next > 0) restTimerState.finishedNotified = false;
     if (restTimerState.status === "running") restTimerState.endAt = Date.now() + next * 1000;
+    syncRestNotification(); // 終了時刻が変わったため(非表示時のみ)予約し直す
     renderRestTimer();
   }
 
@@ -6995,6 +7120,8 @@
     on("#personalBestClose", "click", function () { $("#personalBestBanner").classList.add("hidden"); });
     document.addEventListener("visibilitychange", function () {
       if (restTimerState.status === "running") tickRestTimer();
+      // 前面復帰=予約解除 / 背面移行=(実行中なら)終了時刻に予約。二重通知を避ける中核。
+      syncRestNotification();
     });
     if (window.addEventListener) window.addEventListener("beforeunload", stopRestTimer);
   }
@@ -7468,7 +7595,11 @@
       shouldShowGuideModeActions: shouldShowGuideModeActions,
       startRestTimer: startRestTimer,
       stopRestTimer: stopRestTimer,
+      pauseRestTimer: pauseRestTimer,
+      addRestTimerSeconds: addRestTimerSeconds,
       getRestTimerState: function () { return restTimerState; },
+      restTimerNotify: RestTimerNotify,
+      syncRestNotification: syncRestNotification,
       skipCurrentGuideItem: skipCurrentGuideItem,
       undoLastGuideAction: undoLastGuideAction,
       migrateDataToCurrentVersion: migrateDataToCurrentVersion,
