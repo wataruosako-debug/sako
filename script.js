@@ -2987,6 +2987,8 @@
 
   function finishCopiedDraft() {
     if (!draft) return;
+    // v4: コピー由来の下書きにも「次回に反映」で承認済みの増量提案を反映する
+    applyPendingSuggestionsToDraftRecords(draft.records);
     // コピーしたセットが入っていることが一目で分かるよう、先頭の種目を開いた状態にする
     expandedDraftExerciseId = draft.records.length ? draft.records[0].exerciseId : null;
     expandedDraftCardioKey = null;
@@ -4941,6 +4943,22 @@
     return sets.map(function (set) {
       if (Number(set.weight || 0) !== Number(pending.fromWeight) || Number(pending.toWeight) === Number(set.weight || 0)) return set;
       return Object.assign({}, set, { weight: Number(pending.toWeight), prefillOriginalWeight: Number(set.weight || 0), suggestedReason: pending.reason });
+    });
+  }
+
+  // v4: コピーで作成した下書きにも承認済み提案を反映する。
+  // 空セット経路(getPrefillSetsForExercise)と同じく、前回メインセット(weight===fromWeight)だけをtoWeightへ差し替える。
+  // 既にtoWeightのセットは対象外のため二重適用にならない(冪等)。ウォームアップ等の別重量セットは据え置き。
+  function applyPendingSuggestionsToDraftRecords(records) {
+    if (!Array.isArray(records) || uiSettings.weightSuggestionEnabled === false) return;
+    records.forEach(function (record) {
+      var pending = record && getPendingSuggestion(record.exerciseId);
+      if (!pending) return;
+      (record.sets || []).forEach(function (set) {
+        if (Number(set.weight || 0) === Number(pending.fromWeight) && Number(pending.toWeight) !== Number(set.weight || 0)) {
+          set.weight = Number(pending.toWeight);
+        }
+      });
     });
   }
 
@@ -7640,6 +7658,7 @@
       getPendingSuggestion: getPendingSuggestion,
       storePendingSuggestion: storePendingSuggestion,
       getPrefillSetsForExercise: getPrefillSetsForExercise,
+      applyPendingSuggestionsToDraftRecords: applyPendingSuggestionsToDraftRecords,
       normalizePromotionReps: normalizePromotionReps,
       deleteDraftRecord: deleteDraftRecord,
       deletePendingCardioType: deletePendingCardioType,
