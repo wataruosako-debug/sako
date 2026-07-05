@@ -916,7 +916,7 @@
       var url = URL.createObjectURL(blob);
       var link = document.createElement("a");
       link.href = url;
-      link.download = (prefix || "gymlog-backup") + "-" + todayString() + ".json";
+      link.download = (prefix || "nobilog-backup") + "-" + todayString() + ".json";
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -964,7 +964,7 @@
       askConfirm("現在のデータを退避できませんでした。バックアップなしで復元を続けると、現在の記録を元に戻せない可能性があります。", "バックアップなしで続ける", function () { applyPendingRestore(true); }, "復元を中止", function () { pendingRestoreData = null; });
       return;
     }
-    downloadBackupData("gymlog-before-restore");
+    downloadBackupData("nobilog-before-restore");
     var restored = cloneData(pendingRestoreData);
     var recoveryWasRequired = dataRecoveryRequired;
     dataRecoveryRequired = false;
@@ -1722,7 +1722,7 @@
         cardioDistance += Number(cardio.distanceKm || 0);
       });
     });
-    var lines = ["【ジムログ トレーニング記録】", "期間：" + formatDateForAiExport(options.startDate) + "〜" + formatDateForAiExport(options.endDate), "対象：" + getAiExportTargetLabel(options.target, options.exerciseId), "【サマリー】", "トレーニング日数：" + Object.keys(workoutDates).length + "日", "ジム：" + gymVisits + "回", "自宅：" + homeVisits + "回", "概算消費カロリー：" + Math.round(totalCalories).toLocaleString("ja-JP") + "kcal", "総ボリューム：" + formatDraftVolume(totalVolume) + "kg", "有酸素距離：" + cardioDistance.toLocaleString("ja-JP", { maximumFractionDigits: 1 }) + "km"];
+    var lines = ["【ノビログ トレーニング記録】", "期間：" + formatDateForAiExport(options.startDate) + "〜" + formatDateForAiExport(options.endDate), "対象：" + getAiExportTargetLabel(options.target, options.exerciseId), "【サマリー】", "トレーニング日数：" + Object.keys(workoutDates).length + "日", "ジム：" + gymVisits + "回", "自宅：" + homeVisits + "回", "概算消費カロリー：" + Math.round(totalCalories).toLocaleString("ja-JP") + "kcal", "総ボリューム：" + formatDraftVolume(totalVolume) + "kg", "有酸素距離：" + cardioDistance.toLocaleString("ja-JP", { maximumFractionDigits: 1 }) + "km"];
     entries.forEach(function (entry) {
       lines.push("");
       lines.push("【" + formatDateForAiExport(entry.session.date) + " " + locationLabelForAiExport(entry.session.locationType) + "】");
@@ -6441,7 +6441,7 @@
 
   function bindSettingsDataEvents() {
     on("#settingsRoutineButton", "click", function () { closeModal("routineMenuModal"); openRoutineList(todayString(), "manage"); });
-    on("#backupDataButton", "click", function () { var button = this; runButtonLocked(button, function () { downloadBackupData("gymlog-backup"); }); });
+    on("#backupDataButton", "click", function () { var button = this; runButtonLocked(button, function () { downloadBackupData("nobilog-backup"); }); });
     on("#restoreDataButton", "click", function () { $("#restoreDataInput").value = ""; $("#restoreDataInput").click(); });
     on("#restoreSnapshotButton", "click", restorePreRestoreSnapshot);
     on("#aiExportButton", "click", openAiExportModal);
