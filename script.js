@@ -8,6 +8,189 @@
   var DRAFT_STORAGE_KEY = "gymlog-draft-v1";
   var PRE_RESTORE_STORAGE_KEY = "gymlog-pre-restore-v1";
   var UI_SETTINGS_KEY = "gymlog-ui-settings-v1";
+
+  /* ストレージ抽象化レイヤー(指示書①・A案: 起動時全ロード＋メモリキャッシュ)。
+     - 読み取りはメモリキャッシュから同期で返す(既存の同期呼び出しをそのまま置換できる)
+     - ブラウザ実行時はlocalStorageを同期バックエンドに使い、挙動を移行前と完全一致させる
+     - ネイティブ実行時(Capacitor)はPreferencesを非同期バックエンドに使う。
+       キャッシュは即時更新し、永続化のみ非同期で実行(失敗時はconsole.error＋リトライ1回)
+     - ネイティブ初回起動時、Preferencesが空かつlocalStorageに既存データがあれば
+       全gymlog-キーをPreferencesへコピーし、完了フラグを立てる(データ削除はしない=安全側)
+     - UI設定キーはネイティブでもlocalStorageへミラー書き込みし、
+       index.html先頭のテーマ先読み(同期・FOUC防止)を正確に保つ
+     - プラグインはバンドラ無し構成で動くよう Capacitor.registerPlugin("Preferences") で取得する
+       (取得不能・呼び出し失敗時はlocalStorageへ安全にフォールバック) */
+  var StorageService = (function () {
+    var MIGRATED_FLAG_KEY = "gymlog-migrated-v1";
+    var APP_KEY_PREFIX = "gymlog-";
+    var MIRROR_TO_LOCALSTORAGE = Object.create(null);
+    MIRROR_TO_LOCALSTORAGE[UI_SETTINGS_KEY] = true;
+
+    var cache = Object.create(null);
+    var prefs = null;
+    var syncBackend = true;   // true: localStorage(同期) / false: Preferences(非同期)
+    var isNativeEnv = false;
+    var writeChain = null;    // 非同期書き込みの直列化(順序保証)
+    var resolveReady;
+    var readyPromise = new Promise(function (resolve) { resolveReady = resolve; });
+
+    function detectNative() {
+      var cap = window.Capacitor;
+      return !!(cap && typeof cap.isNativePlatform === "function" && cap.isNativePlatform());
+    }
+    function acquirePreferences() {
+      var cap = window.Capacitor;
+      if (!cap) return null;
+      try {
+        if (typeof cap.registerPlugin === "function") {
+          var plugin = cap.registerPlugin("Preferences");
+          if (plugin) return plugin;
+        }
+      } catch (error) { console.error("Preferencesプラグインの取得に失敗", error); }
+      if (cap.Plugins && cap.Plugins.Preferences) return cap.Plugins.Preferences;
+      return null;
+    }
+    function readLocalStorage(key) {
+      try { return localStorage.getItem(key); } catch (error) { return null; }
+    }
+    function primeFromLocalStorage() {
+      try {
+        for (var i = 0; i < localStorage.length; i++) {
+          var key = localStorage.key(i);
+          if (key == null) continue;
+          cache[key] = localStorage.getItem(key);
+        }
+      } catch (error) { console.error("localStorageのプリロードに失敗", error); }
+    }
+    function prefsGet(key) {
+      return prefs.get({ key: key }).then(function (result) {
+        return result && result.value != null ? result.value : null;
+      });
+    }
+    function prefsSet(key, value) { return prefs.set({ key: key, value: String(value) }); }
+    function prefsRemove(key) { return prefs.remove({ key: key }); }
+
+    function loadAllFromPreferences() {
+      return prefs.keys().then(function (result) {
+        var keys = result && result.keys ? result.keys : [];
+        var chain = Promise.resolve();
+        keys.forEach(function (key) {
+          chain = chain.then(function () {
+            return prefsGet(key).then(function (value) {
+              if (value == null) { delete cache[key]; } else { cache[key] = value; }
+            });
+          });
+        });
+        return chain;
+      });
+    }
+
+    /* 初回マイグレーション: Preferencesが空(主データ未保存)かつlocalStorageに既存データがあれば
+       gymlog-プレフィックスの全キーをPreferencesへコピーする。完了後にフラグを立て2回目以降は必ずスキップ。 */
+    function migrateIfNeeded() {
+      return prefsGet(MIGRATED_FLAG_KEY).then(function (flag) {
+        if (flag) return null;
+        return prefsGet(STORAGE_KEY).then(function (existing) {
+          var hasLegacyData = !!readLocalStorage(STORAGE_KEY) || !!readLocalStorage(UI_SETTINGS_KEY);
+          var chain = Promise.resolve();
+          if (existing == null && hasLegacyData) {
+            var keys = [];
+            try {
+              for (var i = 0; i < localStorage.length; i++) {
+                var key = localStorage.key(i);
+                if (key != null && key.indexOf(APP_KEY_PREFIX) === 0) keys.push(key);
+              }
+            } catch (error) { console.error("localStorageキー列挙に失敗", error); }
+            keys.forEach(function (key) {
+              chain = chain.then(function () {
+                var value = readLocalStorage(key);
+                if (value == null) return null;
+                return prefsSet(key, value);
+              });
+            });
+          }
+          return chain.then(function () { return prefsSet(MIGRATED_FLAG_KEY, "1"); });
+        });
+      });
+    }
+
+    function fallbackToLocalStorage(error) {
+      if (error) console.error("Preferences初期化に失敗。localStorageで継続します", error);
+      syncBackend = true;
+      isNativeEnv = false;
+      prefs = null;
+      primeFromLocalStorage();
+    }
+
+    if (detectNative()) {
+      prefs = acquirePreferences();
+      if (prefs) {
+        isNativeEnv = true;
+        syncBackend = false;
+        writeChain = Promise.resolve();
+        migrateIfNeeded()
+          .then(loadAllFromPreferences)
+          .then(function () { resolveReady(); }, function (error) { fallbackToLocalStorage(error); resolveReady(); });
+      } else {
+        fallbackToLocalStorage(null);
+        resolveReady();
+      }
+    } else {
+      primeFromLocalStorage();
+      resolveReady();
+    }
+
+    function schedulePersist(operation) {
+      writeChain = (writeChain || Promise.resolve()).then(function () {
+        return operation().then(null, function (error) {
+          console.error("ストレージ書き込みに失敗。リトライします", error);
+          return operation().then(null, function (retryError) {
+            console.error("ストレージ書き込みのリトライに失敗", retryError);
+          });
+        });
+      });
+    }
+
+    return {
+      ready: readyPromise,
+      isSyncBackend: function () { return syncBackend; },
+      isNative: function () { return isNativeEnv; },
+      getItem: function (key) {
+        var value = cache[key];
+        return value == null ? null : value;
+      },
+      setItem: function (key, value) {
+        value = String(value);
+        if (syncBackend) {
+          // ブラウザ: 同期書き込み。容量超過等の例外は呼び出し側のtry/catchへ委ねる(移行前と同一挙動)
+          localStorage.setItem(key, value);
+          cache[key] = value;
+          return true;
+        }
+        // ネイティブ: キャッシュ即時更新＋永続化は非同期
+        cache[key] = value;
+        if (MIRROR_TO_LOCALSTORAGE[key]) {
+          try { localStorage.setItem(key, value); } catch (error) { /* ミラーは best-effort */ }
+        }
+        schedulePersist(function () { return prefsSet(key, value); });
+        return true;
+      },
+      removeItem: function (key) {
+        if (syncBackend) {
+          try { localStorage.removeItem(key); } catch (error) { console.error("localStorage削除に失敗", error); }
+          delete cache[key];
+          return;
+        }
+        delete cache[key];
+        if (MIRROR_TO_LOCALSTORAGE[key]) {
+          try { localStorage.removeItem(key); } catch (error) { /* best-effort */ }
+        }
+        schedulePersist(function () { return prefsRemove(key); });
+      }
+    };
+  })();
+  window.GymLog.storageService = StorageService;
+
   var DEFAULT_UI_SETTINGS = { appearance: "system", colorTheme: "urban-blue", restTimerEnabled: true, autoStartRestTimer: true, restTimerSound: false, restTimerVibration: true, guideModeEnabled: true, guideHelpSeen: false, keepScreenAwake: true, monthlyGoalDays: 12, weightSuggestionEnabled: true, promotionReps: 10 };
   var PROMOTION_REPS_MIN = 1;
   var PROMOTION_REPS_MAX = 20;
@@ -135,13 +318,13 @@
   }
   function loadUiSettings() {
     try {
-      return normalizeUiSettings(JSON.parse(localStorage.getItem(UI_SETTINGS_KEY) || "null"));
+      return normalizeUiSettings(JSON.parse(StorageService.getItem(UI_SETTINGS_KEY) || "null"));
     } catch (error) {
       console.error("Failed to load UI settings", error);
       return normalizeUiSettings(null);
     }
   }
-  var uiSettings = loadUiSettings();
+  var uiSettings;   // 実際の読み込みは bootApp()(ストレージ準備後)で行う
   function isRestTimerEnabled() {
     return uiSettings.restTimerEnabled !== false;
   }
@@ -185,7 +368,7 @@
   }
   function saveUiSettings(settings) {
     try {
-      localStorage.setItem(UI_SETTINGS_KEY, JSON.stringify(normalizeUiSettings(settings)));
+      StorageService.setItem(UI_SETTINGS_KEY, JSON.stringify(normalizeUiSettings(settings)));
       return true;
     } catch (error) {
       console.error("Failed to save UI settings", error);
@@ -625,7 +808,7 @@
   function quarantineCorruptData(raw) {
     corruptDataRaw = raw;
     corruptDataKey = "gymlog-data-corrupt-" + corruptStorageTimestamp();
-    try { localStorage.setItem(corruptDataKey, raw); }
+    try { StorageService.setItem(corruptDataKey, raw); }
     catch (error) { console.error("Failed to quarantine corrupt data", error); }
   }
 
@@ -689,7 +872,7 @@
   function loadData() {
     var saved = null;
     try {
-      saved = localStorage.getItem(STORAGE_KEY);
+      saved = StorageService.getItem(STORAGE_KEY);
       if (!saved) return blankData();
       var parsed = JSON.parse(saved);
       if (!isPlausibleDataRoot(parsed)) throw new Error("Invalid root data");
@@ -711,7 +894,7 @@
     }
   }
 
-  var data = loadData();
+  var data;   // 実際の読み込みは bootApp()(ストレージ準備後)で行う
   var dataIndexes = null;
 
   /* In-memory data access indexes; localStorage data remains the source of truth. */
@@ -755,7 +938,6 @@
     }
   }
 
-  rebuildDataIndexes();
   var calendarCursor = new Date();
   calendarCursor.setDate(1);
   var draft = null;
@@ -863,7 +1045,7 @@
       return false;
     }
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      StorageService.setItem(STORAGE_KEY, JSON.stringify(data));
       return true;
     } catch (error) {
       console.error("Failed to save data", error);
@@ -950,7 +1132,7 @@
 
   function savePreRestoreSnapshot() {
     try {
-      localStorage.setItem(PRE_RESTORE_STORAGE_KEY, JSON.stringify({ savedAt: nowIso(), data: cloneData(data) }));
+      StorageService.setItem(PRE_RESTORE_STORAGE_KEY, JSON.stringify({ savedAt: nowIso(), data: cloneData(data) }));
       return true;
     } catch (error) {
       console.error("Failed to save pre-restore snapshot", error);
@@ -1012,7 +1194,7 @@
 
   function restorePreRestoreSnapshot() {
     try {
-      var saved = localStorage.getItem(PRE_RESTORE_STORAGE_KEY);
+      var saved = StorageService.getItem(PRE_RESTORE_STORAGE_KEY);
       if (!saved) { showToast("復元前データはありません"); return; }
       var parsed = JSON.parse(saved);
       pendingRestoreData = normalizeBackupData(parsed.data);
@@ -1123,10 +1305,10 @@
     try {
       var payload = draftStoragePayload();
       if (!hasMeaningfulDraftContent(draft, payload.editorState)) {
-        localStorage.removeItem(DRAFT_STORAGE_KEY);
+        StorageService.removeItem(DRAFT_STORAGE_KEY);
         return false;
       }
-      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
+      StorageService.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
       return true;
     } catch (error) {
       console.error("Failed to save draft", error);
@@ -1143,28 +1325,28 @@
   function clearSavedDraft() {
     clearTimeout(draftSaveTimer);
     draftSaveTimer = null;
-    try { localStorage.removeItem(DRAFT_STORAGE_KEY); }
+    try { StorageService.removeItem(DRAFT_STORAGE_KEY); }
     catch (error) { console.error("Failed to clear saved draft", error); }
     pendingSavedDraft = null;
   }
 
   function loadSavedDraft() {
     try {
-      var saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+      var saved = StorageService.getItem(DRAFT_STORAGE_KEY);
       if (!saved) return null;
       var parsed = JSON.parse(saved);
       if (!parsed || !parsed.draft || !Array.isArray(parsed.draft.records) || !Array.isArray(parsed.draft.cardios)) {
-        localStorage.removeItem(DRAFT_STORAGE_KEY);
+        StorageService.removeItem(DRAFT_STORAGE_KEY);
         return null;
       }
       if (!hasMeaningfulDraftContent(parsed.draft, parsed.editorState || { mode: "none" })) {
-        localStorage.removeItem(DRAFT_STORAGE_KEY);
+        StorageService.removeItem(DRAFT_STORAGE_KEY);
         return null;
       }
       return parsed;
     } catch (error) {
       console.error("Failed to load draft", error);
-      try { localStorage.removeItem(DRAFT_STORAGE_KEY); }
+      try { StorageService.removeItem(DRAFT_STORAGE_KEY); }
       catch (removeError) { console.error("Failed to remove invalid draft", removeError); }
       return null;
     }
@@ -5785,6 +5967,121 @@
     if (topVolume) topVolume.textContent = formatDraftVolume(volumeKg);
   }
 
+  /* 指示書②: レストタイマーの通知/振動(ネイティブのみ)。
+     - @capacitor/local-notifications: タイマー終了時刻にローカル通知を予約(背景・画面ロック中でも発火)
+     - @capacitor/haptics: フォアグラウンド時の振動
+     - 無バンドラ構成で動くよう registerPlugin で取得。取得不能/失敗時は静かに no-op(=画面表示のみで従来動作)
+     - ブラウザ実行時は isNative()===false となり全て no-op(既存挙動を完全維持) */
+  var RestTimerNotify = (function () {
+    var NOTIFICATION_ID = 1001;
+    var native = false;
+    var localNotifications = null;
+    var haptics = null;
+    var permissionState = "unknown"; // unknown | granted | denied
+    var permissionRequested = false;
+
+    function acquire(name) {
+      var cap = window.Capacitor;
+      if (!cap) return null;
+      try {
+        if (typeof cap.registerPlugin === "function") {
+          var plugin = cap.registerPlugin(name);
+          if (plugin) return plugin;
+        }
+      } catch (error) { console.error("プラグイン取得に失敗: " + name, error); }
+      if (cap.Plugins && cap.Plugins[name]) return cap.Plugins[name];
+      return null;
+    }
+    function detectNative() {
+      var cap = window.Capacitor;
+      return !!(cap && typeof cap.isNativePlatform === "function" && cap.isNativePlatform());
+    }
+    if (detectNative()) {
+      localNotifications = acquire("LocalNotifications");
+      haptics = acquire("Haptics");
+      native = !!localNotifications; // 通知プラグインが取れなければネイティブ機能は無効(静かにフォールバック)
+    }
+
+    // 初回だけ許可を要求する。以降は保持した permissionState を使う。
+    function ensurePermission() {
+      if (!native) return Promise.resolve(false);
+      if (permissionRequested) return Promise.resolve(permissionState === "granted");
+      permissionRequested = true;
+      return Promise.resolve()
+        .then(function () { return localNotifications.checkPermissions(); })
+        .then(function (result) {
+          var display = result && result.display;
+          if (display === "granted") { permissionState = "granted"; return true; }
+          if (display === "denied") { permissionState = "denied"; return false; }
+          return localNotifications.requestPermissions().then(function (asked) {
+            permissionState = asked && asked.display === "granted" ? "granted" : "denied";
+            return permissionState === "granted";
+          });
+        })
+        .catch(function (error) {
+          console.error("通知許可の確認に失敗", error);
+          permissionState = "denied";
+          return false;
+        });
+    }
+
+    function schedule(atEpochMs, title, body) {
+      if (!native || permissionState !== "granted") return;
+      try {
+        localNotifications.schedule({
+          notifications: [{
+            id: NOTIFICATION_ID,
+            title: title,
+            body: body,
+            schedule: { at: new Date(atEpochMs), allowWhileIdle: true }
+          }]
+        }).catch(function (error) { console.error("通知予約に失敗", error); });
+      } catch (error) { console.error("通知予約に失敗", error); }
+    }
+    function cancel() {
+      if (!native) return;
+      try {
+        var result = localNotifications.cancel({ notifications: [{ id: NOTIFICATION_ID }] });
+        if (result && typeof result.catch === "function") result.catch(function () { /* no-op */ });
+      } catch (error) { /* no-op(キャンセル失敗は無視) */ }
+    }
+    function vibrate() {
+      if (!native || !haptics || typeof haptics.vibrate !== "function") return false;
+      try {
+        var result = haptics.vibrate({ duration: 300 });
+        if (result && typeof result.catch === "function") result.catch(function () { /* no-op */ });
+        return true;
+      } catch (error) { return false; }
+    }
+
+    return {
+      isNative: function () { return native; },
+      ensurePermission: ensurePermission,
+      schedule: schedule,
+      cancel: cancel,
+      vibrate: vibrate,
+      getPermissionState: function () { return permissionState; }
+    };
+  })();
+  window.GymLog.restTimerNotify = RestTimerNotify;
+
+  /* 通知予約の一元管理:「実行中タイマーがあり、かつアプリが非表示(background/画面ロック)の時だけ」通知を予約する。
+     これによりフォアグラウンドではバナーが出ず(=Haptics＋既存サウンドのみ)、二重通知を避けられる。 */
+  function syncRestNotification() {
+    if (!RestTimerNotify.isNative()) return;
+    var shouldArm = isRestTimerEnabled()
+      && restTimerState.status === "running"
+      && !restTimerState.finishedNotified
+      && Number(restTimerState.endAt || 0) > Date.now()
+      && document.visibilityState === "hidden"
+      && RestTimerNotify.getPermissionState() === "granted";
+    if (shouldArm) {
+      RestTimerNotify.schedule(restTimerState.endAt, "休憩終了", "次のセットを始めましょう");
+    } else {
+      RestTimerNotify.cancel();
+    }
+  }
+
   function formatRestTimerTime(seconds) {
     var value = Math.ceil(Number(seconds || 0));
     var sign = value < 0 ? "-" : "";
@@ -5887,6 +6184,8 @@
 
   function tryRestTimerVibration() {
     if (!isRestTimerEnabled() || !uiSettings.restTimerVibration) return false;
+    // ネイティブ(iOS等)は navigator.vibrate 非対応のため Haptics で振動する
+    if (RestTimerNotify.isNative()) return RestTimerNotify.vibrate();
     try {
       if (navigator.vibrate && typeof navigator.vibrate === "function") {
         return !!navigator.vibrate([150, 80, 150]);
@@ -5908,6 +6207,8 @@
     }
     restTimerState.finishedNotified = true;
     renderRestTimer();
+    // フォアグラウンドで終了到達 → 予約済みOS通知はキャンセルし、Haptics＋サウンドで知らせる(二重通知回避)
+    RestTimerNotify.cancel();
     tryRestTimerVibration();
     playRestTimerEndSound();
   }
@@ -5950,11 +6251,14 @@
     restTimerState.intervalId = setInterval(tickRestTimer, 1000);
     renderRestTimer();
     if (isGuideActive()) renderGuideRestTimer();
+    // 指示書②: 実際にタイマーが起動した瞬間(=初回利用の文脈)に一度だけ許可要求し、通知予約を同期する
+    if (RestTimerNotify.isNative()) RestTimerNotify.ensurePermission().then(syncRestNotification);
   }
 
   function stopRestTimer() {
     clearRestTimerInterval();
     restTimerState = { status: "idle", totalSeconds: 0, remainingSeconds: 0, endAt: 0, intervalId: null, finishedNotified: false };
+    RestTimerNotify.cancel();
     renderRestTimer();
     if (isGuideActive()) renderGuideRestTimer();
   }
@@ -5965,6 +6269,7 @@
       restTimerState.remainingSeconds = calculateRestTimerRemaining(restTimerState);
       restTimerState.status = "paused";
       clearRestTimerInterval();
+      RestTimerNotify.cancel(); // 一時停止中は終了時刻が確定しないため予約を取り消す
       renderRestTimer();
       return;
     }
@@ -5974,6 +6279,7 @@
       clearRestTimerInterval();
       restTimerState.intervalId = setInterval(tickRestTimer, 1000);
       tickRestTimer();
+      syncRestNotification(); // 再開: 新しい終了時刻で(非表示時のみ)予約し直す
     }
   }
 
@@ -5985,6 +6291,7 @@
     restTimerState.totalSeconds = Math.max(restTimerState.totalSeconds, next);
     if (next > 0) restTimerState.finishedNotified = false;
     if (restTimerState.status === "running") restTimerState.endAt = Date.now() + next * 1000;
+    syncRestNotification(); // 終了時刻が変わったため(非表示時のみ)予約し直す
     renderRestTimer();
   }
 
@@ -6813,6 +7120,8 @@
     on("#personalBestClose", "click", function () { $("#personalBestBanner").classList.add("hidden"); });
     document.addEventListener("visibilitychange", function () {
       if (restTimerState.status === "running") tickRestTimer();
+      // 前面復帰=予約解除 / 背面移行=(実行中なら)終了時刻に予約。二重通知を避ける中核。
+      syncRestNotification();
     });
     if (window.addEventListener) window.addEventListener("beforeunload", stopRestTimer);
   }
@@ -7286,7 +7595,11 @@
       shouldShowGuideModeActions: shouldShowGuideModeActions,
       startRestTimer: startRestTimer,
       stopRestTimer: stopRestTimer,
+      pauseRestTimer: pauseRestTimer,
+      addRestTimerSeconds: addRestTimerSeconds,
       getRestTimerState: function () { return restTimerState; },
+      restTimerNotify: RestTimerNotify,
+      syncRestNotification: syncRestNotification,
       skipCurrentGuideItem: skipCurrentGuideItem,
       undoLastGuideAction: undoLastGuideAction,
       migrateDataToCurrentVersion: migrateDataToCurrentVersion,
@@ -7390,5 +7703,24 @@
     }
   }
 
-  if (!window.__GYMLOG_SKIP_INIT) initializeApp();
+  /* A案のブートストラップ: ストレージ(メモリキャッシュ)の準備完了後にデータを読み込み初期化する。
+     ブラウザ(同期バックエンド)は即時実行し、移行前と同じ同期タイミングを保つ。
+     ネイティブ(Preferences)はキャッシュのプリロード完了(StorageService.ready)を待ってから起動する。 */
+  function loadAppData() {
+    uiSettings = loadUiSettings();
+    data = loadData();
+    rebuildDataIndexes();
+  }
+  function bootApp() {
+    loadAppData();
+    if (!window.__GYMLOG_SKIP_INIT) initializeApp();
+  }
+  if (StorageService.isSyncBackend()) {
+    bootApp();
+  } else {
+    StorageService.ready.then(bootApp, function (error) {
+      console.error("ストレージ初期化に失敗。ローカル保存で起動します", error);
+      bootApp();
+    });
+  }
 })();
