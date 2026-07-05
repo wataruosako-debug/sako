@@ -30,8 +30,26 @@
 
 ## データ保存方式
 
-プロフィールと記録は、ブラウザの `localStorage` に保存されます。
-外部サーバーへの送信はありません。
+プロフィールと記録は、`StorageService`（`script.js` 内）を通じて保存されます。読み取りは起動時に全データをメモリキャッシュへ展開し、同期的に返します。
+
+- **ブラウザ**: これまでどおり `localStorage` に保存します（挙動は移行前と同一）。
+- **iOSアプリ（Capacitor）**: `@capacitor/preferences`（Preferences）に保存します。書き込みは非同期で行います。初回起動時に旧 `localStorage` データがあれば Preferences へ移行します（元データは削除しません）。外観設定は先読み（テーマのちらつき防止）のため `localStorage` にもミラー保存します。
+
+いずれの場合も外部サーバーへの送信はありません。
+
+## 開発・ビルド（iOSアプリ化の下準備）
+
+Capacitor による iOS アプリ化の下準備が入っています（ビルド自体は Mac / Codemagic 側で実施）。
+
+```bash
+npm install          # 依存関係の取得
+npm run build        # index.html / style.css / script.js を www/ へコピー
+npm test             # Playwright によるリグレッションテスト
+npx cap sync ios     # www/ をネイティブ(iOS)へ同期（要: iOSプラットフォーム追加済み）
+```
+
+- `capacitor.config.json` の `appId`（`com.nobilog.app`）は仮の値です。配信前に確定した Bundle ID へ変更してください。
+- `www/` と `ios/`、`node_modules/` はビルド生成物のため Git 管理対象外です（`npm run build` / `npx cap add ios` で再生成されます）。
 
 ## 注意点
 

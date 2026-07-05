@@ -1,0 +1,21 @@
+{
+  "name": "nobilog",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ノビログ - スマホ向け筋トレ記録アプリ（Capacitorによる iOS ラッパーの下準備）",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "serve": "node scripts/serve.js",
+    "test": "playwright test",
+    "cap:sync": "npm run build && npx cap sync ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/ios": "^6.2.0",
+    "@capacitor/preferences": "^6.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0",
+    "@playwright/test": "^1.49.1"
+  }
+}
