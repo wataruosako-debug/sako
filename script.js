@@ -2244,7 +2244,7 @@
       draft.menuSource = scheduleId ? "scheduled" : "routine";
     }
     var legacyRecords = Array.isArray(routine.records) ? routine.records : [];
-    if (legacyRecords.length || (routine.cardios || []).length) appendRecordsAndCardiosToDraft(draft, legacyRecords, routine.cardios || []);
+    if (legacyRecords.length || (routine.cardios || []).length) appendRecordsAndCardiosToDraft(draft, legacyRecords, routine.cardios || [], { cardioAsPending: true });
     if (!legacyRecords.length && Array.isArray(routine.exercises)) {
       routineExerciseEntries(routine).forEach(function (entry, index) {
         var exercise = getExercise(entry.exerciseId);
@@ -2947,7 +2947,11 @@
     openModal("copyDestinationModal");
   }
 
-  function appendRecordsAndCardiosToDraft(targetDraft, sourceRecords, sourceCardios) {
+  // options.cardioAsPending: コピー/ルーティン由来の有酸素を「予定(pendingCardioTypes)」として引き継ぐ。
+  // 実際に記録するまで実績(targetDraft.cardios)に入れない=触っていない有酸素が保存されるのを防ぐ。
+  // マージ系(記録済みドラフトの合流)では指定しない(記録済みの有酸素はそのまま維持)。
+  function appendRecordsAndCardiosToDraft(targetDraft, sourceRecords, sourceCardios, options) {
+    options = options || {};
     (sourceRecords || []).forEach(function (sourceRecord) {
       var sourceSets = Array.isArray(sourceRecord.sets) ? sourceRecord.sets : getRecordSets(sourceRecord.id);
       if (!sourceSets.length) return;
@@ -2961,6 +2965,14 @@
       });
     });
     (sourceCardios || []).forEach(function (sourceCardio) {
+      if (options.cardioAsPending) {
+        var pendingType = sourceCardio.type === "傾斜ウォーク" ? "ウォーキング" : sourceCardio.type;
+        targetDraft.pendingCardioTypes = targetDraft.pendingCardioTypes || [];
+        var alreadyPending = targetDraft.pendingCardioTypes.indexOf(pendingType) >= 0;
+        var alreadyRecorded = targetDraft.cardios.some(function (cardio) { return (cardio.type === "傾斜ウォーク" ? "ウォーキング" : cardio.type) === pendingType; });
+        if (!alreadyPending && !alreadyRecorded) targetDraft.pendingCardioTypes.push(pendingType);
+        return;
+      }
       var copiedCardio = { tempId: makeId("draftcardio"), type: sourceCardio.type, durationMinutes: Number(sourceCardio.durationMinutes || 0), distanceKm: Number(sourceCardio.distanceKm || 0), inclinePercent: Number(sourceCardio.inclinePercent || 0), memo: sourceCardio.memo || "" };
       var result = calculateCardio(copiedCardio);
       copiedCardio.speedKmh = result.speedKmh;
@@ -2981,7 +2993,7 @@
       menuSource: keepSessionId ? "saved" : "copy",
       createdAt: keepSessionId ? source.createdAt : nowIso()
     });
-    appendRecordsAndCardiosToDraft(resultDraft, getSessionRecords(source.id), getSessionCardios(source.id));
+    appendRecordsAndCardiosToDraft(resultDraft, getSessionRecords(source.id), getSessionCardios(source.id), { cardioAsPending: !keepSessionId });
     return resultDraft;
   }
 
@@ -3043,7 +3055,7 @@
     }
     if (mode === "append") {
       draft = createDraftFromSession(existing.id, conflict.targetDate, true);
-      appendRecordsAndCardiosToDraft(draft, getSessionRecords(conflict.sourceId), getSessionCardios(conflict.sourceId));
+      appendRecordsAndCardiosToDraft(draft, getSessionRecords(conflict.sourceId), getSessionCardios(conflict.sourceId), { cardioAsPending: true });
       draft.menuSource = "copy";
     } else {
       draft = createDraftFromSession(conflict.sourceId, conflict.targetDate, false);
@@ -7653,6 +7665,7 @@
       handleConflictModalAction: handleConflictModalAction,
       handleConflictModalCancel: handleConflictModalCancel,
       draftFromRoutine: draftFromRoutine,
+      createDraftFromSession: createDraftFromSession,
       chooseExercise: chooseExercise,
       calculateWeightSuggestion: calculateWeightSuggestion,
       getPendingSuggestion: getPendingSuggestion,
