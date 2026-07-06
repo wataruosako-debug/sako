@@ -638,6 +638,13 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 }
 .location-badge--home { color: var(--home-color-dark); background: var(--home-color-soft); }
 .text-button { min-height: var(--btn-md); padding: 0 8px; border: 0; color: var(--brand-primary); background: transparent; font-size: var(--fs-micro); font-weight: 800; }
+/* 指示書③ B-3: ガイドヘッダーの「終了」は淡い赤にして操作系ボタンと区別する(主張しすぎない) */
+#guideExitButton {
+  padding: 0 12px;
+  border-radius: 999px;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger-soft) 72%, transparent);
+}
 .progress-body, .workout-body { padding: 14px 18px calc(96px + env(safe-area-inset-bottom)); }
 body.is-keyboard-focus .workout-body {
   padding-bottom: calc(168px + env(safe-area-inset-bottom));
@@ -1817,6 +1824,48 @@ body.is-keyboard-focus .workout-body {
   color: var(--danger);
 }
 .rest-timer-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-sm); }
+/* 指示書③ A-1/A-2: 画面上部の追従表示バー。種目選択モーダル(z-index 100〜130)の上にも出す */
+.rest-timer-top-bar {
+  position: fixed;
+  z-index: 140;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 40px;
+  padding: calc(4px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 4px max(12px, env(safe-area-inset-left));
+  border-bottom: 1px solid color-mix(in srgb, var(--brand-accent) 38%, var(--border));
+  background: color-mix(in srgb, var(--surface-raised) 90%, var(--brand-accent-soft));
+  box-shadow: var(--shadow-floating);
+  backdrop-filter: blur(16px);
+}
+.rest-timer-top-bar-time { display: flex; align-items: baseline; gap: 8px; }
+.rest-timer-top-bar-time span { color: var(--text-secondary); font-size: var(--fs-micro); font-weight: 800; }
+.rest-timer-top-bar-time strong {
+  color: var(--text-primary);
+  font-family: "Inter Tight", sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+.rest-timer-top-bar.is-overtime { border-color: color-mix(in srgb, var(--danger) 38%, var(--border)); background: color-mix(in srgb, var(--danger-soft) 72%, var(--surface-raised)); }
+.rest-timer-top-bar.is-overtime span, .rest-timer-top-bar.is-overtime strong { color: var(--danger); }
+.rest-timer-top-bar-actions { display: flex; gap: var(--gap-sm); }
+.rest-timer-top-bar-actions button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  color: var(--text-secondary);
+  background: var(--surface);
+  font-size: var(--fs-micro);
+  font-weight: 800;
+}
 .rest-timer-actions button {
   min-height: var(--btn-md);
   padding: 0 6px;
@@ -1886,6 +1935,9 @@ body.is-keyboard-focus .workout-body {
 .workout-summary-suggestions .suggestion-set-row small { font-family: "Inter Tight", sans-serif; font-size: var(--fs-caption); font-weight: 700; color: var(--text-muted); }
 .workout-summary-suggestions .suggestion-apply-button { min-height: 44px; margin-top: 4px; }
 .workout-summary-suggestions .suggestion-apply-button.is-applied { color: var(--accent-teal); border-color: color-mix(in srgb, var(--accent-teal) 55%, var(--border)); opacity: 1; }
+.workout-summary-ai-copy { display: grid; gap: 6px; margin-top: 12px; }
+.workout-summary-ai-copy .outline-button { width: 100%; margin: 0; min-height: 44px; }
+.workout-summary-ai-copy .ai-export-status { margin: 0; }
 
 /* ワークアウト完了サマリー */
 .workout-summary-pr {
@@ -2343,13 +2395,25 @@ body.is-keyboard-focus .guide-body {
   gap: 8px;
   margin-top: 10px;
 }
-/* 種目選択画面の「終了する」: 目立たせない薄い文字ボタン(誤タップ防止のため主要動線より控えめに) */
+/* 指示書③ B-2: 「メニュー外の種目を行う」を種目選択の一覧ボタンと同じ色・大きさに揃えて押しやすくする */
+.guide-next-actions .guide-add-external-button {
+  min-height: var(--btn-lg);
+  margin-top: 0;
+  border-color: var(--border);
+  border-radius: var(--radius-button);
+  color: var(--text-primary);
+  background: var(--surface);
+  font-size: var(--fs-caption);
+  font-weight: 800;
+}
+/* 種目選択画面の「終了する」: 目立たせない控えめボタン(誤タップ防止のため主要動線より控えめに)。
+   指示書③ B-3: 終了操作は淡い赤で他の操作ボタンと区別する */
 .guide-exit-link-button {
   min-height: var(--btn-md);
   border: 0;
   border-radius: var(--radius-button);
-  background: transparent;
-  color: var(--text-muted);
+  background: color-mix(in srgb, var(--danger-soft) 55%, transparent);
+  color: color-mix(in srgb, var(--danger) 82%, var(--text-muted));
   font-size: var(--fs-caption);
   font-weight: 700;
 }
@@ -2599,7 +2663,9 @@ button.guide-completed-set-row--editable .edit-cue {
   display: grid;
   gap: 10px;
   margin: 0;
-  padding: 14px 14px 12px;
+  /* 指示書③ A-3: ピンチ操作(--rest-timer-scale)で表示サイズを無段階調整。1本指スクロールはそのまま通す */
+  touch-action: pan-y;
+  padding: calc(14px * var(--rest-timer-scale, 1)) 14px calc(12px * var(--rest-timer-scale, 1));
   border: 1px solid color-mix(in srgb, var(--brand-accent) 38%, var(--border));
   border-radius: var(--radius-panel);
   background: color-mix(in srgb, var(--surface-raised) 88%, var(--brand-accent-soft));
@@ -2622,7 +2688,7 @@ button.guide-completed-set-row--editable .edit-cue {
   gap: 2px;
   justify-items: center;
 }
-.guide-rest-timer span { color: var(--text-secondary); font-size: var(--fs-caption); font-weight: 800; }
+.guide-rest-timer span { color: var(--text-secondary); font-size: calc(var(--fs-caption) * var(--rest-timer-scale, 1)); font-weight: 800; }
 .guide-rest-timer.is-finished span { color: var(--brand-primary); }
 .guide-rest-timer.is-overtime span, .guide-rest-timer.is-overtime #guideRestTimerTime, .guide-rest-timer.is-overtime strong {
   color: var(--danger);
@@ -2630,7 +2696,7 @@ button.guide-completed-set-row--editable .edit-cue {
 .guide-rest-timer strong {
   color: var(--text-primary);
   font-family: "Inter Tight", sans-serif;
-  font-size: clamp(44px, 15vw, 64px);
+  font-size: calc(clamp(44px, 15vw, 64px) * var(--rest-timer-scale, 1));
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
