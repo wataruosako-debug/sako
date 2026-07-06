@@ -48,7 +48,7 @@ npm test             # Playwright によるリグレッションテスト
 npx cap sync ios     # www/ をネイティブ(iOS)へ同期（要: iOSプラットフォーム追加済み）
 ```
 
-- `capacitor.config.json` の `appId`（`com.nobilog.app`）は仮の値です。配信前に確定した Bundle ID へ変更してください。
+- `capacitor.config.json` の `appId` は `com.sakoapps.nobilog`（配信用 Bundle ID）です。
 - `www/` と `ios/`、`node_modules/` はビルド生成物のため Git 管理対象外です（`npm run build` / `npx cap add ios` で再生成されます）。
 
 ## 注意点
