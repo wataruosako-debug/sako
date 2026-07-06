@@ -191,9 +191,12 @@
   })();
   window.GymLog.storageService = StorageService;
 
-  var DEFAULT_UI_SETTINGS = { appearance: "system", colorTheme: "urban-blue", restTimerEnabled: true, autoStartRestTimer: true, restTimerSound: false, restTimerVibration: true, guideModeEnabled: true, guideHelpSeen: false, keepScreenAwake: true, monthlyGoalDays: 12, weightSuggestionEnabled: true, promotionReps: 10 };
+  var DEFAULT_UI_SETTINGS = { appearance: "system", colorTheme: "urban-blue", restTimerEnabled: true, autoStartRestTimer: true, restTimerSound: false, restTimerVibration: true, guideModeEnabled: true, guideHelpSeen: false, keepScreenAwake: true, monthlyGoalDays: 12, weightSuggestionEnabled: true, promotionReps: 10, restTimerScale: 1 };
   var PROMOTION_REPS_MIN = 1;
   var PROMOTION_REPS_MAX = 20;
+  // 指示書③ A-3: タイマーのピンチ拡縮の下限/上限(小さすぎて読めない・画面占有しすぎを防ぐ)
+  var REST_TIMER_SCALE_MIN = 0.7;
+  var REST_TIMER_SCALE_MAX = 1.6;
   var MONTHLY_GOAL_MIN = 1;
   var MONTHLY_GOAL_MAX = 31;
   var APPEARANCE_OPTIONS = ["system", "light", "dark"];
@@ -303,8 +306,14 @@
       keepScreenAwake: Object.prototype.hasOwnProperty.call(settings, "keepScreenAwake") ? !!settings.keepScreenAwake : DEFAULT_UI_SETTINGS.keepScreenAwake,
       monthlyGoalDays: normalizeMonthlyGoalDays(settings.monthlyGoalDays),
       weightSuggestionEnabled: Object.prototype.hasOwnProperty.call(settings, "weightSuggestionEnabled") ? !!settings.weightSuggestionEnabled : DEFAULT_UI_SETTINGS.weightSuggestionEnabled,
-      promotionReps: normalizePromotionReps(settings.promotionReps)
+      promotionReps: normalizePromotionReps(settings.promotionReps),
+      restTimerScale: normalizeRestTimerScale(settings.restTimerScale)
     };
+  }
+  function normalizeRestTimerScale(value) {
+    var num = Number(value);
+    if (!Number.isFinite(num)) return DEFAULT_UI_SETTINGS.restTimerScale;
+    return Math.max(REST_TIMER_SCALE_MIN, Math.min(REST_TIMER_SCALE_MAX, Math.round(num * 100) / 100));
   }
   function normalizePromotionReps(value) {
     var num = Math.round(Number(value));
@@ -440,6 +449,7 @@
       root.dataset.appearanceSetting = uiSettings.appearance;
       root.dataset.colorTheme = uiSettings.colorTheme;
     }
+    if (root && root.style) root.style.setProperty("--rest-timer-scale", String(uiSettings.restTimerScale || 1));
     updateThemeColorMeta(resolvedAppearance);
     if (!isRestTimerEnabled() && restTimerState && restTimerState.status !== "idle") stopRestTimer();
     renderAppearanceSettings();
@@ -972,6 +982,7 @@
   var recentlySavedSetTimer = null;
   var exerciseSearchTimer = null;
   var restTimerState = { status: "idle", totalSeconds: 0, remainingSeconds: 0, endAt: 0, intervalId: null, finishedNotified: false };
+  var workoutSummarySessionDate = null;
   var guideAudioState = { context: null, unlocked: false };
   var guideRestTimerDebugKey = "";
   var guideSetSaveLocked = false;
@@ -1481,6 +1492,8 @@
     modal.classList.add("is-open");
     modal.setAttribute("aria-hidden", "false");
     document.body.classList.add("modal-open");
+    // 指示書③ A-2: モーダル(種目選択等)がタイマーを覆っている間は上部バーで残り時間を見せる
+    renderRestTimerTopBar();
   }
 
   function closeModal(id) {
@@ -1489,6 +1502,7 @@
     modal.classList.remove("is-open");
     modal.setAttribute("aria-hidden", "true");
     if (!$(".modal.is-open")) document.body.classList.remove("modal-open");
+    renderRestTimerTopBar();
   }
 
   function askConfirm(message, actionLabel, callback, cancelLabel, cancelCallback) {
@@ -2020,6 +2034,58 @@
     else onFailure();
   }
 
+  // 指示書③ C-3: 完了サマリーから「保存した日の記録だけ」をAIテキスト出力形式でコピーする
+  function buildAiExportTextForDate(dateValue) {
+    var date = dateValue || todayString();
+    return buildAiExportText({ rangeType: "today", startDate: date, endDate: date, rangeError: "", target: "all", exerciseId: "" });
+  }
+
+  // aiExportPreview(別モーダル内)に依存しない汎用のクリップボードフォールバック
+  function fallbackCopyPlainText(text) {
+    var textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "readonly");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    var copied = false;
+    try {
+      textarea.focus();
+      textarea.select();
+      if (textarea.setSelectionRange) textarea.setSelectionRange(0, text.length);
+      copied = !!(document.execCommand && document.execCommand("copy"));
+    } catch (error) {
+      console.warn("Clipboard fallback failed", error);
+    }
+    document.body.removeChild(textarea);
+    return copied;
+  }
+
+  function copyWorkoutSummaryAiText() {
+    var text = buildAiExportTextForDate(workoutSummarySessionDate);
+    var status = $("#workoutSummaryAiCopyStatus");
+    if (!isAiExportTextCopyable(text)) {
+      if (status) status.textContent = "コピーできる記録がありません";
+      return;
+    }
+    var onSuccess = function () {
+      if (status) status.textContent = "コピーしました。ChatGPTなどに貼り付けて分析できます。";
+    };
+    var onFailure = function () {
+      if (status) status.textContent = "コピーできませんでした。設定の「AI分析用にテキスト出力」をお使いください。";
+    };
+    if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(onSuccess).catch(function (error) {
+        console.warn("Clipboard API failed", error);
+        if (fallbackCopyPlainText(text)) onSuccess();
+        else onFailure();
+      });
+      return;
+    }
+    if (fallbackCopyPlainText(text)) onSuccess();
+    else onFailure();
+  }
+
   function renderHome() {
     renderMonthlySummary();
     renderCalendar();
@@ -2385,6 +2451,7 @@
     window.scrollTo(0, 0);
     updateTabBar(name);
     syncScreenWakeLock();
+    renderRestTimerTopBar();
   }
 
   /* Progress analysis and chart rendering */
@@ -3001,8 +3068,9 @@
     if (!draft) return;
     // v4: コピー由来の下書きにも「次回に反映」で承認済みの増量提案を反映する
     applyPendingSuggestionsToDraftRecords(draft.records);
-    // コピーしたセットが入っていることが一目で分かるよう、先頭の種目を開いた状態にする
-    expandedDraftExerciseId = draft.records.length ? draft.records[0].exerciseId : null;
+    // 指示書③ C-2: 以前は「コピーしたセットが入っていることが一目で分かるよう」先頭種目を
+    // 開いた状態にしていたが、実使用では一覧を見渡しにくいため全種目を閉じた状態で表示する
+    expandedDraftExerciseId = null;
     expandedDraftCardioKey = null;
     resetWorkoutEditorState();
     resetCardioForm();
@@ -3688,6 +3756,51 @@
     if (!item) return "休憩終了";
     var meta = guideSetMeta(item);
     return "休憩終了 / " + meta.setNumber + "セット目を開始できます";
+  }
+
+  /* 指示書③ A-3: タイマー表示を2本指ピンチで無段階に拡大・縮小する。
+     - サイズは REST_TIMER_SCALE_MIN〜MAX にクランプ
+     - 1本指スクロールとは touches.length === 2 の判定で分離(touch-action: pan-y と併用)
+     - 選んだサイズは uiSettings.restTimerScale に保存して次回表示でも維持 */
+  var restTimerPinchState = null;
+
+  function setRestTimerScale(value) {
+    var scale = normalizeRestTimerScale(value);
+    uiSettings.restTimerScale = scale;
+    if (document.documentElement && document.documentElement.style) {
+      document.documentElement.style.setProperty("--rest-timer-scale", String(scale));
+    }
+    return scale;
+  }
+
+  function bindRestTimerPinch() {
+    var box = $("#guideRestTimer");
+    if (!box) return;
+    var touchDistance = function (event) {
+      var first = event.touches[0];
+      var second = event.touches[1];
+      return Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY);
+    };
+    box.addEventListener("touchstart", function (event) {
+      if (!event.touches || event.touches.length !== 2) return;
+      restTimerPinchState = { startDistance: touchDistance(event), startScale: Number(uiSettings.restTimerScale) || 1 };
+      event.preventDefault();
+    }, { passive: false });
+    box.addEventListener("touchmove", function (event) {
+      if (!restTimerPinchState || !event.touches || event.touches.length !== 2) return;
+      // 2本指の間だけ既定動作(スクロール/ページ拡大)を止めて拡縮に割り当てる
+      event.preventDefault();
+      var distance = touchDistance(event);
+      if (!restTimerPinchState.startDistance || !distance) return;
+      setRestTimerScale(restTimerPinchState.startScale * (distance / restTimerPinchState.startDistance));
+    }, { passive: false });
+    var endPinch = function () {
+      if (!restTimerPinchState) return;
+      restTimerPinchState = null;
+      saveUiSettings(uiSettings);
+    };
+    box.addEventListener("touchend", endPinch);
+    box.addEventListener("touchcancel", endPinch);
   }
 
   function animateGuideSetStage() {
@@ -6134,6 +6247,45 @@
     }
   }
 
+  /* 指示書③ A-1/A-2: 画面上部の追従表示バー。
+     - ガイド画面で定位置のタイマーカードが画面上端から外れたら表示(A-1)
+     - 種目選択などモーダルが開いてタイマーが隠れている間も表示(A-2)
+     表示条件の判定だけを行い、タイマー自体の起動仕様(非自動起動ロック)には触れない */
+  function isAnyModalOpen() {
+    return !!document.querySelector(".modal.is-open");
+  }
+
+  function shouldShowRestTimerTopBar() {
+    if (!isRestTimerEnabled() || restTimerState.status === "idle") return false;
+    if (isAnyModalOpen()) return true;
+    var guideScreen = $("#guideWorkoutScreen");
+    var guideScreenActive = isGuideActive() && guideScreen && guideScreen.classList.contains("screen--active");
+    // ガイド画面以外は下部固定パネル(restTimerPanel)が常に見えているためバー不要
+    if (!guideScreenActive) return false;
+    var box = $("#guideRestTimer");
+    if (!box || box.classList.contains("hidden")) return true;
+    // 定位置カードの上端が画面上端から外れそうになったらバーに切り替える
+    var rect = box.getBoundingClientRect();
+    return rect.top < 6;
+  }
+
+  function renderRestTimerTopBar() {
+    var bar = $("#restTimerTopBar");
+    if (!bar) return;
+    var show = shouldShowRestTimerTopBar();
+    bar.classList.toggle("hidden", !show);
+    if (!show) {
+      bar.classList.remove("is-overtime");
+      return;
+    }
+    var remaining = calculateRestTimerRemaining(restTimerState);
+    var isOvertime = remaining < 0;
+    bar.classList.toggle("is-overtime", isOvertime);
+    $("#restTimerTopBarLabel").textContent = isOvertime ? "休憩超過" : "休憩中";
+    $("#restTimerTopBarTime").textContent = formatRestTimerTime(remaining);
+    $("#restTimerTopBarPause").textContent = restTimerState.status === "paused" ? "再開" : "一時停止";
+  }
+
   function renderRestTimer() {
     var panel = $("#restTimerPanel");
     if (!panel) return;
@@ -6141,6 +6293,7 @@
     var guideScreenActive = isGuideActive() && $("#guideWorkoutScreen") && $("#guideWorkoutScreen").classList.contains("screen--active");
     panel.classList.toggle("hidden", !isActive || guideScreenActive);
     if (guideScreenActive) renderGuideRestTimer();
+    renderRestTimerTopBar();
     if (!isActive) {
       panel.classList.remove("is-overtime");
       return;
@@ -6530,6 +6683,9 @@
   }
 
   function showWorkoutSummary(summary) {
+    workoutSummarySessionDate = summary.date || todayString();
+    var aiCopyStatus = $("#workoutSummaryAiCopyStatus");
+    if (aiCopyStatus) aiCopyStatus.textContent = "";
     var setCount = (summary.records || []).reduce(function (sum, record) { return sum + record.sets.length; }, 0);
     var cardios = summary.cardios || [];
     var totalDistanceKm = cardios.reduce(function (sum, prepared) { return sum + Number(prepared.cardio.distanceKm || 0); }, 0);
@@ -6650,6 +6806,7 @@
     showScreen("home");
     showWorkoutSummary({
       wasUpdate: !!oldSession,
+      date: savedSessionDate,
       records: validRecords,
       cardios: preparedCardios,
       calories: totalCalories,
@@ -7147,6 +7304,10 @@
     on("#restTimerPauseButton", "click", pauseRestTimer);
     on("#restTimerAddButton", "click", function () { addRestTimerSeconds(30); });
     on("#restTimerSkipButton", "click", stopRestTimer);
+    on("#restTimerTopBarPause", "click", pauseRestTimer);
+    on("#restTimerTopBarSkip", "click", stopRestTimer);
+    // 指示書③ A-1: スクロールで定位置タイマーが画面外に出たら上部バーへ切り替える
+    window.addEventListener("scroll", renderRestTimerTopBar, { passive: true });
     on("#personalBestClose", "click", function () { $("#personalBestBanner").classList.add("hidden"); });
     document.addEventListener("visibilitychange", function () {
       if (restTimerState.status === "running") tickRestTimer();
@@ -7301,6 +7462,7 @@
     });
     on("#guideRestPause", "click", pauseRestTimer);
     on("#guideRestEnd", "click", stopRestTimer);
+    bindRestTimerPinch();
     on("#guideMenuList", "click", function (event) {
       var button = event.target.closest("[data-guide-start-item]");
       if (!button) return;
@@ -7537,6 +7699,7 @@
     bindConfirmAndKeyboardEvents();
     on("#undoSnackbarButton", "click", undoSnackbarRestore);
     on("#closeWorkoutSummaryButton", "click", function () { closeModal("workoutSummaryModal"); });
+    on("#copyWorkoutSummaryAiButton", "click", copyWorkoutSummaryAiText);
     on("#workoutSummarySuggestions", "click", function (event) {
       var button = event.target.closest("[data-apply-suggestion]");
       if (!button || button.disabled) return;
@@ -7628,6 +7791,10 @@
       pauseRestTimer: pauseRestTimer,
       addRestTimerSeconds: addRestTimerSeconds,
       getRestTimerState: function () { return restTimerState; },
+      setRestTimerScale: setRestTimerScale,
+      normalizeRestTimerScale: normalizeRestTimerScale,
+      shouldShowRestTimerTopBar: shouldShowRestTimerTopBar,
+      renderRestTimerTopBar: renderRestTimerTopBar,
       restTimerNotify: RestTimerNotify,
       syncRestNotification: syncRestNotification,
       skipCurrentGuideItem: skipCurrentGuideItem,
@@ -7666,6 +7833,9 @@
       handleConflictModalCancel: handleConflictModalCancel,
       draftFromRoutine: draftFromRoutine,
       createDraftFromSession: createDraftFromSession,
+      finishCopiedDraft: finishCopiedDraft,
+      showWorkoutSummary: showWorkoutSummary,
+      buildAiExportTextForDate: buildAiExportTextForDate,
       chooseExercise: chooseExercise,
       calculateWeightSuggestion: calculateWeightSuggestion,
       getPendingSuggestion: getPendingSuggestion,

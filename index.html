@@ -249,7 +249,8 @@
             <div class="draft-menu-edit-panel">
               <p>メニュー編集</p>
               <div class="draft-menu-edit-actions">
-                <button id="chooseAnotherExercise" class="draft-menu-add-button draft-menu-add-button--bottom hidden" type="button">種目を追加</button>
+                <!-- 指示書③ B-1: パネル内の他ボタンとサイズ・見た目を揃える(特大バリアントを外す) -->
+                <button id="chooseAnotherExercise" class="hidden" type="button">種目を追加</button>
                 <button id="openRoutineListButton" type="button">ルーティンから追加</button>
                 <button id="saveRoutineButton" type="button">ルーティンとして保存</button>
               </div>
@@ -476,7 +477,7 @@
             <p id="guideSelectNextText">種目をタップするとすぐ始まります。</p>
             <div id="guideNextChoiceList" class="guide-choice-list" role="list" aria-label="次に行う種目"></div>
             <div class="guide-next-actions">
-              <button id="guideAddExerciseButton" class="outline-button outline-button--blue" type="button">メニュー外の種目を行う</button>
+              <button id="guideAddExerciseButton" class="outline-button guide-add-external-button" type="button">メニュー外の種目を行う</button>
               <button id="guideExitFromSelectButton" class="guide-exit-link-button" type="button">終了する</button>
             </div>
           </section>
@@ -507,6 +508,10 @@
               <span class="settings-profile-info"><strong>プロフィール</strong><small id="settingsProfileSummary">体重 -- ・身長 -- ・年齢 --</small></span>
               <span class="settings-profile-chevron" aria-hidden="true">›</span>
             </button>
+            <!-- 指示書③ C-1: 見つけやすいようAIテキスト出力の入口をプロフィール直下に配置 -->
+            <div class="settings-menu-list">
+              <button id="aiExportButton" type="button"><strong>AI分析用にテキスト出力</strong><small>期間を選んで、記録をコピーできます</small></button>
+            </div>
           </section>
 
           <section class="settings-group" aria-label="トレーニング">
@@ -610,7 +615,6 @@
             <div class="settings-menu-list">
               <button id="backupDataButton" type="button"><strong>データをバックアップ</strong><small>すべての記録をJSONファイルに保存</small></button>
               <button id="restoreDataButton" type="button"><strong>バックアップから復元</strong><small>保存したJSONファイルを読み込む</small></button>
-              <button id="aiExportButton" type="button"><strong>AI分析用にテキスト出力</strong><small>期間を選んで、記録をコピーできます</small></button>
               <button id="restoreSnapshotButton" type="button"><strong>直前の復元前データに戻す</strong><small>復元直前に自動保存したデータを使用</small></button>
               <input id="restoreDataInput" class="hidden" type="file" accept="application/json,.json">
             </div>
@@ -898,6 +902,11 @@
       <p id="workoutSummaryLead" class="modal-lead">今日のトレーニングを保存しました。</p>
       <div id="workoutSummaryStats" class="workout-summary-stats"></div>
       <div id="workoutSummarySuggestions" class="workout-summary-suggestions hidden"></div>
+      <!-- 指示書③ C-3: その日行ったメニューだけをAIテキスト出力形式でその場でコピーできるショートカット -->
+      <div class="workout-summary-ai-copy">
+        <button id="copyWorkoutSummaryAiButton" class="outline-button outline-button--blue" type="button">今日のメニューをAI用にコピー</button>
+        <p id="workoutSummaryAiCopyStatus" class="ai-export-status" role="status" aria-live="polite"></p>
+      </div>
       <div class="modal-actions"><button id="closeWorkoutSummaryButton" class="finish-button" type="button">閉じる</button></div>
     </section>
   </div>
@@ -908,6 +917,15 @@
       <button id="restTimerPauseButton" type="button">一時停止</button>
       <button id="restTimerAddButton" type="button">＋30秒</button>
       <button id="restTimerSkipButton" type="button">スキップ</button>
+    </div>
+  </div>
+
+  <!-- 指示書③ A-1/A-2: タイマーの定位置が画面外の時や種目選択中に、画面上部で残り時間を追従表示する細いバー -->
+  <div id="restTimerTopBar" class="rest-timer-top-bar hidden" role="status" aria-live="polite">
+    <div class="rest-timer-top-bar-time"><span id="restTimerTopBarLabel">休憩中</span><strong id="restTimerTopBarTime">00:00</strong></div>
+    <div class="rest-timer-top-bar-actions">
+      <button id="restTimerTopBarPause" type="button" aria-label="休憩タイマーを一時停止または再開">一時停止</button>
+      <button id="restTimerTopBarSkip" type="button" aria-label="休憩をスキップ">スキップ</button>
     </div>
   </div>
 
