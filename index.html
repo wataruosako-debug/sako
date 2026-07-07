@@ -166,6 +166,10 @@
           <div class="legend"><span><i class="legend-dot legend-dot--gym"></i>ジム</span><span><i class="legend-dot legend-dot--home"></i>自宅</span><span><i class="today-ring"></i>今日</span></div>
         </section>
 
+        <!-- 指示書④-2: v1.1でバナー広告(320×50/アダプティブ相当)を載せる予定の枠。
+             v1では広告なしのため、背景に馴染む空白としてカレンダー〜メニュー間に確保する -->
+        <div id="homeAdSlot" class="home-ad-slot" aria-hidden="true"></div>
+
       </section>
 
       <section id="progressScreen" class="screen" aria-labelledby="progressTitle">
@@ -508,10 +512,12 @@
               <span class="settings-profile-info"><strong>プロフィール</strong><small id="settingsProfileSummary">体重 -- ・身長 -- ・年齢 --</small></span>
               <span class="settings-profile-chevron" aria-hidden="true">›</span>
             </button>
-            <!-- 指示書③ C-1: 見つけやすいようAIテキスト出力の入口をプロフィール直下に配置 -->
-            <div class="settings-menu-list">
-              <button id="aiExportButton" type="button"><strong>AI分析用にテキスト出力</strong><small>期間を選んで、記録をコピーできます</small></button>
-            </div>
+            <!-- 指示書③ C-1: 見つけやすいようAIテキスト出力の入口をプロフィール直下に配置。
+                 指示書④-1: プロフィールボタンと同じ見た目(settings-profile-card)に統一 -->
+            <button id="aiExportButton" class="settings-profile-card" type="button">
+              <span class="settings-profile-info"><strong>AI分析用にテキスト出力</strong><small>期間を選んで、記録をコピーできます</small></span>
+              <span class="settings-profile-chevron" aria-hidden="true">›</span>
+            </button>
           </section>
 
           <section class="settings-group" aria-label="トレーニング">
