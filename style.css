@@ -206,6 +206,8 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  /* 指示書④-2: iOSのラバーバンドでTOPが引っ張られてスライドして見えるのを防ぐ */
+  overscroll-behavior-y: none;
   color: var(--text-primary);
   background: var(--page-background);
   font-family: "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", sans-serif;
@@ -234,12 +236,22 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 }
 .screen { display: none; min-height: 100vh; padding: 20px 18px calc(22px + env(safe-area-inset-bottom)); }
 .screen--active { display: block; }
+/* 指示書④-2: TOPは画面ぴったりの高さに固定し、スクロール(カレンダーのスライド)を不可にする。
+   カレンダー下の余りは .home-ad-slot が吸収し、メニューとの間に広告用の隙間として残る。
+   displayはIDセレクタが .screen { display: none } に勝ってしまうため、アクティブ時のみflexにする */
+#homeScreen.screen--active { display: flex; flex-direction: column; }
 #homeScreen {
-  min-height: 100dvh;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
   padding: max(14px, env(safe-area-inset-top)) 10px calc(72px + env(safe-area-inset-bottom));
+}
+#homeScreen > * { flex: 0 0 auto; }
+/* v1.1でバナー広告(320×50/アダプティブ相当)を載せる予定枠。
+   v1では背景と同色の空白にして「未完成の隙間」に見せない */
+.home-ad-slot {
+  flex: 1 1 56px;
+  min-height: 50px;
 }
 
 .topbar, .sub-header { display: flex; align-items: center; justify-content: space-between; }
@@ -1575,6 +1587,8 @@ body.is-keyboard-focus .workout-body {
   padding: 15px 16px; border: 1px solid var(--border); border-radius: var(--radius-panel);
   background: var(--surface); box-shadow: var(--shadow-card); text-align: left;
 }
+/* 指示書④-1: プロフィール直下のAIテキスト出力など、同型カードが並ぶときの間隔 */
+.settings-profile-card + .settings-profile-card { margin-top: 10px; }
 .settings-profile-info { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
 .settings-profile-info strong { color: var(--text-primary); font-size: var(--fs-body); font-weight: 800; }
 .settings-profile-info small { color: var(--text-muted); font-size: var(--fs-caption); font-weight: 600; }
@@ -2952,6 +2966,8 @@ button, input, select, textarea, .stat-card, .flow-card, .modal-sheet, .calendar
   body { padding: 24px 0; }
   .app { min-height: calc(100vh - 48px); border-radius: 30px; }
   .screen { min-height: calc(100vh - 48px); }
+  /* 指示書④-2: bodyの上下24px余白の分だけTOPの固定高さも縮める */
+  #homeScreen { height: calc(100vh - 48px); }
   .modal { align-items: center; }
   .modal-sheet { border-radius: var(--radius-card); }
 }
