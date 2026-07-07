@@ -206,6 +206,10 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  /* 指示書⑤: iOS Safariではvh=ツールバー折りたたみ時の大きい方の高さになり、
+     100dvhのTOP画面より文書が背高になってページ全体がスクロールできてしまう。
+     dvh(実際の表示領域)を優先し、非対応ブラウザのみ上のvhへフォールバックする */
+  min-height: 100dvh;
   /* 指示書④-2: iOSのラバーバンドでTOPが引っ張られてスライドして見えるのを防ぐ */
   overscroll-behavior-y: none;
   color: var(--text-primary);
@@ -226,15 +230,16 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .hidden { display: none !important; }
 .startup-error { margin: 12px; padding: 12px 14px; border: 1px solid var(--danger); border-radius: var(--radius-button); color: var(--danger); background: var(--danger-soft); font-size: var(--fs-caption); font-weight: 700; }
 
-.app-shell { width: 100%; min-height: 100vh; }
+.app-shell { width: 100%; min-height: 100vh; min-height: 100dvh; }
 .app {
   width: min(100%, 560px);
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0 auto;
   overflow: hidden;
   background: var(--canvas);
 }
-.screen { display: none; min-height: 100vh; padding: 20px 18px calc(22px + env(safe-area-inset-bottom)); }
+.screen { display: none; min-height: 100vh; min-height: 100dvh; padding: 20px 18px calc(22px + env(safe-area-inset-bottom)); }
 .screen--active { display: block; }
 /* 指示書④-2: TOPは画面ぴったりの高さに固定し、スクロール(カレンダーのスライド)を不可にする。
    カレンダー下の余りは .home-ad-slot が吸収し、メニューとの間に広告用の隙間として残る。
@@ -248,11 +253,28 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 }
 #homeScreen > * { flex: 0 0 auto; }
 /* v1.1でバナー広告(320×50/アダプティブ相当)を載せる予定枠。
-   v1では背景と同色の空白にして「未完成の隙間」に見せない */
+   v1では背景と同色の空白にして「未完成の隙間」に見せない。
+   指示書⑤: 隙間は広告に必要な分だけに固定し、余りは詰める(過剰な余白の解消)。
+   画面が低い端末では50pxまで縮んでカレンダーを守る */
 .home-ad-slot {
-  flex: 1 1 56px;
+  flex: 0 1 60px;
+  height: 60px;
   min-height: 50px;
 }
+/* 指示書⑤: 縦の余りは広告枠ではなくカレンダーが吸収する。
+   日付の行(grid-auto-rows: 1fr)が均等に広がり、下に不自然な空白が残らない。
+   縮む方向は許さない(flex-shrink 0)。画面が低い端末で自然高さより狭くなった場合は
+   ④と同様に広告枠が50pxまで縮んで吸収し、日付行や凡例は潰れない */
+#homeScreen .calendar-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+}
+#homeScreen .calendar-grid {
+  flex: 1 1 auto;
+  grid-auto-rows: 1fr;
+}
+#homeScreen .calendar-day { align-self: center; }
 
 .topbar, .sub-header { display: flex; align-items: center; justify-content: space-between; }
 .topbar {
@@ -309,20 +331,26 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
   border-radius: 50%;
   background: var(--surface);
 }
+/* 指示書⑤-2: 数字を円の上下左右中央に置く。
+   place-content: center で「数字+日」のまとまりごと中央へ、
+   align-items: baseline で数字と「日」のベースラインを揃える */
 .hero-ring-center {
   position: absolute;
   inset: 0;
   z-index: 1;
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  place-content: center;
   align-items: baseline;
-  justify-content: center;
   gap: 2px;
 }
 .hero-ring-center strong {
   font-family: "Inter Tight", sans-serif;
-  font-size: var(--fs-display);
+  /* 円(内径64px)に2桁+「日」が収まる固定サイズ。tabular-numsなので桁数が変わっても中央を保つ */
+  font-size: 27px;
   font-weight: 800;
   line-height: 1;
+  letter-spacing: -.02em;
   font-variant-numeric: tabular-nums;
 }
 .hero-ring-center small { color: var(--text-muted); font-size: var(--fs-caption); font-weight: 700; }
@@ -2938,6 +2966,8 @@ button, input, select, textarea, .stat-card, .flow-card, .modal-sheet, .calendar
   .hero-card { padding: 10px 12px; gap: 12px; }
   .hero-ring { width: 66px; height: 66px; }
   .hero-ring::after { inset: 7px; }
+  /* 指示書⑤-2: 小さいリング(内径52px)でも2桁+「日」が収まるサイズ */
+  .hero-ring-center strong { font-size: 22px; }
   .hero-chips { margin-top: 0; }
   .home-subcards { gap: 6px; margin-top: 6px; }
   .home-subcards .stat-card { padding: 8px 7px 6px; }
