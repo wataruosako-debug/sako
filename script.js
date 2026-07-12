@@ -2310,7 +2310,7 @@
       draft.menuSource = scheduleId ? "scheduled" : "routine";
     }
     var legacyRecords = Array.isArray(routine.records) ? routine.records : [];
-    if (legacyRecords.length || (routine.cardios || []).length) appendRecordsAndCardiosToDraft(draft, legacyRecords, routine.cardios || [], { cardioAsPending: true });
+    if (legacyRecords.length || (routine.cardios || []).length) appendRecordsAndCardiosToDraft(draft, legacyRecords, routine.cardios || [], { cardioAsPending: true, blankMemos: true });
     if (!legacyRecords.length && Array.isArray(routine.exercises)) {
       routineExerciseEntries(routine).forEach(function (entry, index) {
         var exercise = getExercise(entry.exerciseId);
@@ -3019,6 +3019,9 @@
   // マージ系(記録済みドラフトの合流)では指定しない(記録済みの有酸素はそのまま維持)。
   function appendRecordsAndCardiosToDraft(targetDraft, sourceRecords, sourceCardios, options) {
     options = options || {};
+    // 指示書⑥-3: コピー/ルーティン適用ではその日と関係ない古いメモを引き継がない(blankMemos)。
+    // 保存済み記録の再編集(keepSessionId)では従来どおりメモを保持する
+    var blankMemos = options.blankMemos === true;
     (sourceRecords || []).forEach(function (sourceRecord) {
       var sourceSets = Array.isArray(sourceRecord.sets) ? sourceRecord.sets : getRecordSets(sourceRecord.id);
       if (!sourceSets.length) return;
@@ -3028,7 +3031,7 @@
         targetDraft.records.push(targetRecord);
       }
       sourceSets.forEach(function (sourceSet) {
-        targetRecord.sets.push({ tempId: makeId("draftset"), setNumber: targetRecord.sets.length + 1, weight: Number(sourceSet.weight || 0), reps: Number(sourceSet.reps || 0), rir: sourceSet.rir || "", restSeconds: Number(sourceSet.restSeconds || 90), memo: sourceSet.memo || "" });
+        targetRecord.sets.push({ tempId: makeId("draftset"), setNumber: targetRecord.sets.length + 1, weight: Number(sourceSet.weight || 0), reps: Number(sourceSet.reps || 0), rir: sourceSet.rir || "", restSeconds: Number(sourceSet.restSeconds || 90), memo: blankMemos ? "" : (sourceSet.memo || "") });
       });
     });
     (sourceCardios || []).forEach(function (sourceCardio) {
@@ -3040,7 +3043,7 @@
         if (!alreadyPending && !alreadyRecorded) targetDraft.pendingCardioTypes.push(pendingType);
         return;
       }
-      var copiedCardio = { tempId: makeId("draftcardio"), type: sourceCardio.type, durationMinutes: Number(sourceCardio.durationMinutes || 0), distanceKm: Number(sourceCardio.distanceKm || 0), inclinePercent: Number(sourceCardio.inclinePercent || 0), memo: sourceCardio.memo || "" };
+      var copiedCardio = { tempId: makeId("draftcardio"), type: sourceCardio.type, durationMinutes: Number(sourceCardio.durationMinutes || 0), distanceKm: Number(sourceCardio.distanceKm || 0), inclinePercent: Number(sourceCardio.inclinePercent || 0), memo: blankMemos ? "" : (sourceCardio.memo || "") };
       var result = calculateCardio(copiedCardio);
       copiedCardio.speedKmh = result.speedKmh;
       copiedCardio.calories = result.calories;
@@ -3060,7 +3063,7 @@
       menuSource: keepSessionId ? "saved" : "copy",
       createdAt: keepSessionId ? source.createdAt : nowIso()
     });
-    appendRecordsAndCardiosToDraft(resultDraft, getSessionRecords(source.id), getSessionCardios(source.id), { cardioAsPending: !keepSessionId });
+    appendRecordsAndCardiosToDraft(resultDraft, getSessionRecords(source.id), getSessionCardios(source.id), { cardioAsPending: !keepSessionId, blankMemos: !keepSessionId });
     return resultDraft;
   }
 
@@ -3355,7 +3358,8 @@
       reps: source ? Number(source.reps || 10) : 10,
       rir: source && source.rir != null ? source.rir : "",
       restSeconds: source ? Number(source.restSeconds || 90) : 90,
-      memo: source ? (source.memo || "") : ""
+      // 指示書⑥-3: 前回記録からのプリフィルでは、その日と関係ない古いメモを引き継がない
+      memo: ""
     };
     if (source && source.suggestedReason) result.suggestedReason = source.suggestedReason;
     return result;
@@ -3364,12 +3368,14 @@
   function guideDefaultCardioForType(type, sourceCardio) {
     var normalizedType = type === "傾斜ウォーク" ? "ウォーキング" : type;
     var source = sourceCardio || getLastHistoricalCardio(normalizedType) || {};
+    // 指示書⑥-3: 今日の下書き由来(sourceCardio)のメモは保持し、過去履歴からのプリフィルでは引き継がない
+    var memoValue = sourceCardio ? (sourceCardio.memo || "") : "";
     var result = calculateCardio({
       type: normalizedType,
       durationMinutes: Number(source.durationMinutes || 0),
       distanceKm: Number(source.distanceKm || 0),
       inclinePercent: Number(source.inclinePercent || 0),
-      memo: source.memo || ""
+      memo: memoValue
     });
     return {
       tempId: source.tempId || null,
@@ -3377,7 +3383,7 @@
       durationMinutes: Number(source.durationMinutes || 0),
       distanceKm: Number(source.distanceKm || 0),
       inclinePercent: Number(source.inclinePercent || 0),
-      memo: source.memo || "",
+      memo: memoValue,
       speedKmh: result.speedKmh,
       calories: result.calories
     };
@@ -3475,7 +3481,8 @@
         reps: Number(set.reps || 10),
         rir: set.rir == null ? "" : set.rir,
         restSeconds: Number(set.restSeconds || 90),
-        memo: set.memo || ""
+        // 指示書⑥-3: 過去履歴からのプリフィルではメモを引き継がない(下書き由来=今日のメモは保持)
+        memo: fromHistory ? "" : (set.memo || "")
       };
       if (fromHistory && set.suggestedReason) planned.suggestedReason = set.suggestedReason;
       return planned;
@@ -3986,23 +3993,12 @@
     if (showFinished) {
       var finishedMeta = guideSetMeta(item);
       var hasNextSet = guideItemCompletedSets(item).length < guideItemPlannedSets(item).length && item.status !== "completed";
-      // メニュー外から追加した種目は続けてセットを重ねるのが普通なので、セット追加を最上段・濃色にする
-      var addFirst = !hasNextSet && !!item.isMenuExternal;
+      // 指示書⑥-1: 以前は予定セット消化後やメニュー外種目でボタンの表示/文言/並び順を切り替えていたが、
+      // ジムでは「ボタンが毎回同じ場所にある」ことが最優先のため、3ボタン固定・並び替えなしに統一した。
+      // 先頭ボタンだけ「予定の次セット」か「セット追加」かで文言が変わる(どちらも“この種目を続ける”)
       $("#guideFinishedExerciseName").textContent = guideItemName(item);
       $("#guideFinishedSetSummary").textContent = finishedMeta.completed.length + "セット目を完了しました";
-      $("#guideChooseNextExerciseButton").textContent = hasNextSet ? "次のセットを行う" : "次の種目を行う";
-      $("#guideAddExtraSetButton").classList.toggle("hidden", hasNextSet);
-      $("#guideAddExtraSetButton").textContent = addFirst ? "セットを追加する" : "セットを追加して続ける";
-      $("#guideEndMenuAfterSetButton").textContent = hasNextSet ? "別の種目を行う" : "メニューを終了";
-      $("#guideChooseNextExerciseButton").style.order = addFirst ? "2" : "1";
-      $("#guideAddExtraSetButton").style.order = addFirst ? "1" : "2";
-      $("#guideEndMenuAfterSetButton").style.order = hasNextSet ? "2" : "3";
-      $("#guideChooseNextExerciseButton").classList.toggle("finish-button", !addFirst);
-      $("#guideChooseNextExerciseButton").classList.toggle("outline-button", addFirst);
-      $("#guideChooseNextExerciseButton").classList.toggle("outline-button--blue", addFirst);
-      $("#guideAddExtraSetButton").classList.add("finish-button");
-      $("#guideAddExtraSetButton").classList.remove("outline-button");
-      $("#guideEndMenuAfterSetButton").classList.add("outline-button");
+      $("#guideChooseNextExerciseButton").textContent = hasNextSet ? "次のセットを行う" : "セットを追加して続ける";
       renderGuideRestTimer();
       renderGuideMenuList();
       return;
@@ -4211,6 +4207,15 @@
     saveDraftNow();
   }
 
+  // このガイドセッションで既に何か記録したか(=休憩に値する運動をしたか)
+  function guideHasAnyCompletedWork(state) {
+    if (!state) return false;
+    return guideItems(state).some(function (item) {
+      if (item.type === "cardio") return !!item.completedCardio;
+      return guideItemCompletedSets(item).length > 0;
+    });
+  }
+
   function activateGuideItem(itemId, options) {
     options = options || {};
     var state = guideState();
@@ -4218,6 +4223,11 @@
     var item = guideItems(state).find(function (entry) { return entry.id === itemId; });
     if (!item || item.status === "skipped") return;
     if (options.keepRestTimer !== true) stopRestTimer();
+    // ジムフィードバック(⑥後): セット完了後に次の種目へ切り替えた時、タイマーが止まっていれば
+    // メニュー外追加(addExerciseToGuide)と同じく自動起動して挙動を統一する。
+    // ガイド開始直後(まだ何も記録していない)は休憩ではないので起動しない
+    var shouldAutoStartRest = options.keepRestTimer === true && item.type === "strength" &&
+      restTimerState.status === "idle" && guideHasAnyCompletedWork(state);
     clearGuideExtraSetMode(state);
     guideSetSaveLocked = false;
     captureGuideInputToState();
@@ -4231,6 +4241,10 @@
     state.updatedAt = nowIso();
     if (item.type === "cardio") populateGuideCardioInputs(item);
     else restoreGuideInputForCurrentItem();
+    if (shouldAutoStartRest) {
+      var nextPlanned = currentGuidePlannedSet(item);
+      startRestTimer(Number(nextPlanned && nextPlanned.restSeconds) || 90);
+    }
     renderGuideWorkout();
     closeModal("guideMenuModal");
     saveDraftNow();
@@ -4274,7 +4288,8 @@
   }
 
   function proceedGuideToNextExercise() {
-    stopRestTimer();
+    // 指示書⑥-2: 種目を切り替えても休憩タイマーは止めない。
+    // 直前のセットで始まった休憩は、次の種目を探して移動している間も続いている
     clearGuideExtraSetMode();
     moveGuideToSelectNext("alternate");
   }
@@ -4339,9 +4354,11 @@
     });
   }
 
+  // 指示書⑥-1: 先頭ボタンは常に「この種目を続ける」。予定セットが残っていれば次のセット、
+  // 消化済みならセットを追加して続ける(位置・順番は変えない)
   function handleGuideCompletePrimaryAction() {
     if (guideCompleteHasNextSet()) finishGuideRestAndContinue();
-    else showGuideNextExercisePicker();
+    else handleGuideAddExtraSetAction();
   }
 
   function handleGuideAddExtraSetAction() {
@@ -4397,12 +4414,10 @@
     scheduleGuideCurrentSetScroll();
   }
 
+  // 指示書⑥-1: 「メニューを終了」は常に終了確認へ(以前はセット残ありだと別の種目選択に化けていた)
   function handleGuideCompleteSecondaryAction() {
-    if (guideCompleteHasNextSet()) showGuideNextExercisePicker();
-    else {
-      clearGuideExtraSetMode();
-      openGuideExit();
-    }
+    clearGuideExtraSetMode();
+    openGuideExit();
   }
 
   function rememberGuideSkipAction(item) {
@@ -4672,7 +4687,8 @@
       openGuideExit();
       return;
     }
-    activateGuideItem(next.id);
+    // 指示書⑥-2: メニュー内の種目へ切り替えてもタイマーを維持(メニュー外追加と同じ挙動に統一)
+    activateGuideItem(next.id, { keepRestTimer: true });
   }
 
   function startSelectedGuideItem() {
@@ -4684,7 +4700,8 @@
       renderGuideNextChoiceList(state);
       return;
     }
-    activateGuideItem(item.id);
+    // 指示書⑥-2: メニュー内の種目へ切り替えてもタイマーを維持(メニュー外追加と同じ挙動に統一)
+    activateGuideItem(item.id, { keepRestTimer: true });
   }
 
   function handleGuideStrengthSetCompleted(item, state, newSet, plannedSet, setIndex, best) {
@@ -4768,7 +4785,8 @@
   function openGuideExit() {
     var state = guideState();
     if (!state) return;
-    stopRestTimer();
+    // 指示書⑥-2: 確認を開いただけではタイマーを止めない(キャンセルで戻れる)。
+    // 実際の保存(prepareGuideDraftForSave)・破棄(discardGuideAndDisableMode)側で停止する
     captureGuideInputToState();
     clearGuideExtraSetMode(state);
     var lines = guideItems(state).map(function (item) {
@@ -4908,7 +4926,14 @@
 
   function addExerciseToGuide(exerciseId, activate) {
     var state = guideState();
-    var item = createGuideItemFromExercise(exerciseId, [guideDefaultSetForExercise(exerciseId, 0)]);
+    // ジムフィードバック(⑥後): メニュー外で追加した種目も前回記録の全セットを予定化し、
+    // 2セット目以降にも「前回の同じセット番号の重量」がプリフィルされるようにする(メニュー内種目と同じ挙動)。
+    // 前回記録がない種目は従来どおり1セットから始める
+    var historySets = getPrefillSetsForExercise(exerciseId);
+    var plannedSets = historySets.length
+      ? historySets.map(function (unusedSet, index) { return guideDefaultSetForExercise(exerciseId, index); })
+      : [guideDefaultSetForExercise(exerciseId, 0)];
+    var item = createGuideItemFromExercise(exerciseId, plannedSets);
     if (!state || !item) return;
     if (item.type === "strength") item.isMenuExternal = true;
     state.menuItems.push(item);
@@ -7371,7 +7396,7 @@
     on("#guideMenuUndoLastActionButton", "click", undoLastGuideAction);
     on("#guideExercisePickerUndoButton", "click", undoLastGuideAction);
     on("#guideChooseNextExerciseButton", "click", handleGuideCompletePrimaryAction);
-    on("#guideAddExtraSetButton", "click", handleGuideAddExtraSetAction);
+    on("#guideAlternateExerciseButton", "click", showGuideNextExercisePicker);
     on("#guideEndMenuAfterSetButton", "click", handleGuideCompleteSecondaryAction);
     on("#guideLeaveFinishButton", "click", confirmGuideLeaveAsFinished);
     on("#guideLeaveDeferButton", "click", confirmGuideLeaveAsDeferred);
@@ -7387,7 +7412,8 @@
       var state = guideState();
       var item = state ? guideItems(state).find(function (entry) { return entry.id === button.dataset.guideSelectItem; }) : null;
       if (item && item.status === "completed") showGuideCompletedDetail(item.id);
-      else activateGuideItem(button.dataset.guideSelectItem);
+      // 指示書⑥-2: メニュー内の種目へ切り替えても休憩タイマーを維持(メニュー外追加と同じ挙動に統一)
+      else activateGuideItem(button.dataset.guideSelectItem, { keepRestTimer: true });
     });
     on("#guideDetailAddSetButton", "click", addSetFromGuideCompletedDetail);
     on("#guideDetailBackButton", "click", returnGuideToNextChoice);
@@ -7466,7 +7492,8 @@
     on("#guideMenuList", "click", function (event) {
       var button = event.target.closest("[data-guide-start-item]");
       if (!button) return;
-      activateGuideItem(button.dataset.guideStartItem);
+      // 指示書⑥-2: メニュー一覧からの種目切替でも休憩タイマーを維持する
+      activateGuideItem(button.dataset.guideStartItem, { keepRestTimer: true });
     });
   }
 

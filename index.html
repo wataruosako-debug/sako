@@ -468,9 +468,11 @@
             <p class="section-kicker">セット完了</p>
             <h2 id="guideFinishedExerciseName">種目</h2>
             <p id="guideFinishedSetSummary">0 / 0セット完了</p>
+            <!-- 指示書⑥-1: セットの進行状況やメニュー内外にかかわらず、ボタンの種類・位置・順番は常に一定にする
+                 (①この種目を続ける ②別の種目を行う ③メニューを終了)。誤タップ防止のため動的な並び替えはしない -->
             <div class="guide-next-actions guide-complete-actions">
-              <button id="guideChooseNextExerciseButton" class="finish-button" type="button">次の種目を行う</button>
-              <button id="guideAddExtraSetButton" class="finish-button guide-extra-set-button hidden" type="button">セットを追加して続ける</button>
+              <button id="guideChooseNextExerciseButton" class="finish-button" type="button">次のセットを行う</button>
+              <button id="guideAlternateExerciseButton" class="outline-button" type="button">別の種目を行う</button>
               <button id="guideEndMenuAfterSetButton" class="outline-button" type="button">メニューを終了</button>
             </div>
           </section>
