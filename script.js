@@ -4207,6 +4207,15 @@
     saveDraftNow();
   }
 
+  // このガイドセッションで既に何か記録したか(=休憩に値する運動をしたか)
+  function guideHasAnyCompletedWork(state) {
+    if (!state) return false;
+    return guideItems(state).some(function (item) {
+      if (item.type === "cardio") return !!item.completedCardio;
+      return guideItemCompletedSets(item).length > 0;
+    });
+  }
+
   function activateGuideItem(itemId, options) {
     options = options || {};
     var state = guideState();
@@ -4214,6 +4223,11 @@
     var item = guideItems(state).find(function (entry) { return entry.id === itemId; });
     if (!item || item.status === "skipped") return;
     if (options.keepRestTimer !== true) stopRestTimer();
+    // ジムフィードバック(⑥後): セット完了後に次の種目へ切り替えた時、タイマーが止まっていれば
+    // メニュー外追加(addExerciseToGuide)と同じく自動起動して挙動を統一する。
+    // ガイド開始直後(まだ何も記録していない)は休憩ではないので起動しない
+    var shouldAutoStartRest = options.keepRestTimer === true && item.type === "strength" &&
+      restTimerState.status === "idle" && guideHasAnyCompletedWork(state);
     clearGuideExtraSetMode(state);
     guideSetSaveLocked = false;
     captureGuideInputToState();
@@ -4227,6 +4241,10 @@
     state.updatedAt = nowIso();
     if (item.type === "cardio") populateGuideCardioInputs(item);
     else restoreGuideInputForCurrentItem();
+    if (shouldAutoStartRest) {
+      var nextPlanned = currentGuidePlannedSet(item);
+      startRestTimer(Number(nextPlanned && nextPlanned.restSeconds) || 90);
+    }
     renderGuideWorkout();
     closeModal("guideMenuModal");
     saveDraftNow();
@@ -4908,7 +4926,14 @@
 
   function addExerciseToGuide(exerciseId, activate) {
     var state = guideState();
-    var item = createGuideItemFromExercise(exerciseId, [guideDefaultSetForExercise(exerciseId, 0)]);
+    // ジムフィードバック(⑥後): メニュー外で追加した種目も前回記録の全セットを予定化し、
+    // 2セット目以降にも「前回の同じセット番号の重量」がプリフィルされるようにする(メニュー内種目と同じ挙動)。
+    // 前回記録がない種目は従来どおり1セットから始める
+    var historySets = getPrefillSetsForExercise(exerciseId);
+    var plannedSets = historySets.length
+      ? historySets.map(function (unusedSet, index) { return guideDefaultSetForExercise(exerciseId, index); })
+      : [guideDefaultSetForExercise(exerciseId, 0)];
+    var item = createGuideItemFromExercise(exerciseId, plannedSets);
     if (!state || !item) return;
     if (item.type === "strength") item.isMenuExternal = true;
     state.menuItems.push(item);

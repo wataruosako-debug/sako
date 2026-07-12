@@ -101,7 +101,8 @@ test("1: 予定セット消化後・メニュー外種目でも完了カード�
   await expect(page.locator("#guideFinishedSetCard")).toBeVisible();
   const external = await finishedCardButtons(page);
   expect(external.map((b) => b.id)).toEqual(withinPlan.map((b) => b.id));
-  expect(external[0].text).toBe("セットを追加して続ける");
+  // ベンチには前回2セットの記録があるため、メニュー外追加でも予定2セット扱い=まだ予定内
+  expect(external[0].text).toBe("次のセットを行う");
   expect(external.slice(1)).toEqual(withinPlan.slice(1));
 });
 
@@ -208,6 +209,74 @@ test("3: ルーティン適用ではメモを引き継がず、セット構成�
     { weight: 40000, reps: 12, rir: "2-3", restSeconds: 60, memo: "" },
     { weight: 42500, reps: 10, rir: "1", restSeconds: 90, memo: "" }
   ]);
+});
+
+test("FB: メニュー外で追加した種目も前回記録の全セットが予定になり、2セット目に前回の重量が入る", async ({ page }) => {
+  await bootApp(page);
+  // メニューはスクワットのみ → ベンチ(前回: 50kg/52.5kg)はメニュー外から追加する
+  await page.evaluate(() => {
+    const api = window.GymLog.__test__;
+    const data = api.getData();
+    const squat = data.exercises.find((e) => e.name === "スクワット") || data.exercises[1];
+    api.draftFromRoutine({ id: "rt-fb", name: "FB", locationType: "gym", exercises: [{ exerciseId: squat.id }] }, new Date().toISOString().slice(0, 10), null);
+  });
+  await page.click("#startGuideModeButton");
+  await page.click("#guideStartSummary .guide-start-item-main");
+  await expect(page.locator("#guideSetCard")).toBeVisible();
+
+  // スクワット1セット目を完了してからベンチをメニュー外で追加
+  await page.click("#completeGuideSetButton");
+  await expect(page.locator("#guideFinishedSetCard")).toBeVisible();
+  await page.click("#guideAlternateExerciseButton");
+  await expect(page.locator("#guideLeaveItemModal")).toHaveClass(/is-open/);
+  await page.click("#guideLeaveDeferButton");
+  await page.click("#guideAddExerciseButton");
+  await page.evaluate(() => {
+    const bench = window.GymLog.__test__.getData().exercises.find((e) => e.name === "ベンチプレス");
+    document.querySelector(`#exerciseList [data-exercise-id="${bench.id}"]`).click();
+  });
+  await expect(page.locator("#guideSetCard")).toBeVisible();
+
+  // 予定セット数は前回どおり2、1セット目は前回セット1の重量(50kg)
+  await expect(page.locator("#guideTotalSetCount")).toHaveText("2");
+  expect(await page.evaluate(() => document.querySelector("#guideWeightInput").value)).toBe("50.0");
+
+  // 1セット目完了 → 2セット目には前回セット2の重量(52.5kg)がプリフィルされる
+  await page.click("#completeGuideSetButton");
+  await expect(page.locator("#guideFinishedSetCard")).toBeVisible();
+  await page.click("#guideChooseNextExerciseButton");
+  await expect(page.locator("#guideSetCard")).toBeVisible();
+  expect(await page.evaluate(() => document.querySelector("#guideCurrentSetNumber").textContent)).toBe("2");
+  expect(await page.evaluate(() => document.querySelector("#guideWeightInput").value)).toBe("52.5");
+});
+
+test("FB: タイマー停止中でも、セット完了後にメニュー内種目へ切り替えると自動起動する", async ({ page }) => {
+  await bootApp(page);
+  await page.evaluate(() => {
+    const api = window.GymLog.__test__;
+    const data = api.getData();
+    const bench = data.exercises.find((e) => e.name === "ベンチプレス");
+    const squat = data.exercises.find((e) => e.name === "スクワット") || data.exercises[1];
+    api.draftFromRoutine({ id: "rt-fb2", name: "FB2", locationType: "gym", exercises: [{ exerciseId: bench.id }, { exerciseId: squat.id }] }, new Date().toISOString().slice(0, 10), null);
+  });
+  await page.click("#startGuideModeButton");
+  await page.click("#guideStartSummary .guide-start-item-main");
+  await expect(page.locator("#guideSetCard")).toBeVisible();
+  // ガイド開始直後(何も記録していない)はタイマーは起動していない
+  expect(await restTimerStatus(page)).toBe("idle");
+
+  // セット完了 → タイマーを手動停止してから別の種目(メニュー内)へ切り替え
+  await page.click("#completeGuideSetButton");
+  await expect(page.locator("#guideFinishedSetCard")).toBeVisible();
+  await page.evaluate(() => window.GymLog.__test__.stopRestTimer());
+  expect(await restTimerStatus(page)).toBe("idle");
+  await page.click("#guideAlternateExerciseButton");
+  await expect(page.locator("#guideLeaveItemModal")).toHaveClass(/is-open/);
+  await page.click("#guideLeaveDeferButton");
+  await page.evaluate(() => document.querySelector("#guideNextChoiceList button").click());
+  await expect(page.locator("#guideSetCard")).toBeVisible();
+  // メニュー外追加と同じく、切替時にタイマーが自動起動している
+  expect(await restTimerStatus(page)).toBe("running");
 });
 
 test("3: ガイドのプリフィル(前回記録・メニュー外追加)でもメモ欄は空になる", async ({ page }) => {
