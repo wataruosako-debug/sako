@@ -304,7 +304,8 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 }
 
 /* Clean Tab §3: ヒーローカード（運動日数リング）＋サブカード2枚 */
-.home-summary { margin-bottom: 12px; }
+/* 指示書⑦-7: 月次カードの注記1行分を吸収するため余白を12→8pxに詰めている */
+.home-summary { margin-bottom: 8px; }
 .hero-card {
   display: flex;
   align-items: center;
@@ -487,6 +488,16 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .summary-metric-unit {
   align-self: flex-end;
   margin-bottom: 2px;
+}
+/* 指示書⑦-7: カロリーが概算であることの注記。
+   TOPは高さ固定(指示書⑤)のため、行送りを詰めて広告枠の縮小余地内に収める */
+.calorie-note {
+  display: block;
+  margin-top: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  line-height: 1.15;
 }
 
 .calendar-card, .flow-card, .progress-chart-card, .progress-summary-card, .routine-card, .summary-session, .planned-routine, .copy-date-choice, .saved-group, .record-menu-button, .routine-menu-button {

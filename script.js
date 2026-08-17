@@ -214,10 +214,31 @@
   var WEIGHT_STEPS = { BARBELL: 1, DUMBBELL: 0.5, MACHINE: 1, BODYWEIGHT: 0 };
   var WEIGHT_STEP_OPTIONS = [0.5, 1, 1.25, 2, 2.5, 5, 10];
   var RIR_LABELS = { "0": "限界", "1": "かなりキツい", "2-3": "結構キツい", "4+": "まだ余裕", "": "未入力" };
-  var RIR_METS = { "0": 7, "1": 6, "2-3": 5, "4+": 3.5, "": 5 };
+  /* 指示書⑦: カロリーの種目別化。値はすべて「目安」を狙った係数 */
+  // 筋トレ: 動作タイプ別の基礎METs(実働時間に適用)
+  var STRENGTH_BASE_METS = { COMPOUND_LARGE: 6.0, COMPOUND_MID: 5.0, ISOLATION: 3.5, STATIC: 2.5 };
+  // 筋トレ: RIR(追い込み度)による実働METsの補正係数
+  var RIR_EFFORT_FACTORS = { "0": 1.15, "1": 1.10, "2-3": 1.00, "4+": 0.90, "": 1.00 };
+  // セット間休憩は種目によらず立位安静相当
+  var REST_METS = 2.5;
+  // バイク: kcal = W × 分 × 0.0734(機械仕事60/4184を人体効率0.195で除した値。Matrix実測と一致)
+  var WATT_KCAL_FACTOR = 0.0734;
   // The legacy entry keeps previously saved localStorage records readable.
   var CARDIO_METS = { "ウォーキング": 3.5, "傾斜ウォーク": 5, "ジョギング": 7, "ランニング": 9.8, "バイク": 6.8, "クロストレーナー": 5.5, "階段": 8.8 };
   var CARDIO_TYPES = ["ウォーキング", "ジョギング", "ランニング", "バイク", "クロストレーナー", "階段"];
+  // 指示書⑦: 有酸素の計算モード。weightBearing=体重を運ぶ(ACSM式) / power=ワット実測 / mets=固定METs
+  var CARDIO_CALC_MODES = {
+    "ウォーキング": "weightBearing",
+    "ジョギング": "weightBearing",
+    "ランニング": "weightBearing",
+    "バイク": "power",
+    "クロストレーナー": "mets",
+    "階段": "mets",
+    "傾斜ウォーク": "weightBearing"
+  };
+  function cardioCalcMode(type) {
+    return CARDIO_CALC_MODES[type] || "weightBearing";
+  }
   var STRENGTH_METRICS = {
     maxWeight: { label: "最大重量", unit: "kg", decimals: 1, help: "その日に扱った中で一番重い重量です。" },
     maxReps: { label: "最高回数", unit: "回", decimals: 0, help: "その日の1セットで一番多くできた回数です。" },
@@ -240,51 +261,53 @@
     { id: "back", label: "背中" }, { id: "legs", label: "脚" }, { id: "abs", label: "腹" },
     { id: "cardio", label: "有酸素" }, { id: "other", label: "その他" }
   ];
+  // 指示書⑦-4: エントリは [名前, カテゴリ, movementType, romMeters, bodyweightRatio, assistMode]。
+  // assistMode省略時はfalse。有酸素(CARDIO)はcalcMode側(CARDIO_CALC_MODES)で扱うため属性なし
   var EXERCISE_CATALOG_GROUPS = [
     { bodyPart: "chest", entries: [
-      ["ベンチプレス", "BARBELL"], ["インクラインベンチプレス", "BARBELL"], ["デクラインベンチプレス", "BARBELL"],
-      ["チェストプレス", "MACHINE"], ["インクラインチェストプレス", "MACHINE"], ["ダンベルプレス", "DUMBBELL"],
-      ["インクラインダンベルプレス", "DUMBBELL"], ["ダンベルフライ", "DUMBBELL"], ["ペックフライ", "MACHINE"],
-      ["ケーブルクロスオーバー", "MACHINE"], ["腕立て伏せ", "BODYWEIGHT"], ["ディップス", "BODYWEIGHT"]
+      ["ベンチプレス", "BARBELL", "COMPOUND_MID", 0.40, null], ["インクラインベンチプレス", "BARBELL", "COMPOUND_MID", 0.40, null], ["デクラインベンチプレス", "BARBELL", "COMPOUND_MID", 0.40, null],
+      ["チェストプレス", "MACHINE", "COMPOUND_MID", 0.40, null], ["インクラインチェストプレス", "MACHINE", "COMPOUND_MID", 0.40, null], ["ダンベルプレス", "DUMBBELL", "COMPOUND_MID", 0.40, null],
+      ["インクラインダンベルプレス", "DUMBBELL", "COMPOUND_MID", 0.40, null], ["ダンベルフライ", "DUMBBELL", "ISOLATION", 0.28, null], ["ペックフライ", "MACHINE", "ISOLATION", 0.28, null],
+      ["ケーブルクロスオーバー", "MACHINE", "ISOLATION", 0.28, null], ["腕立て伏せ", "BODYWEIGHT", "COMPOUND_MID", 0.40, 0.65], ["ディップス", "BODYWEIGHT", "COMPOUND_MID", 0.40, 1.00]
     ] },
     { bodyPart: "shoulder", entries: [
-      ["ショルダープレス", "MACHINE"], ["ミリタリープレス", "BARBELL"], ["ダンベルショルダープレス", "DUMBBELL"],
-      ["サイドレイズ", "DUMBBELL"], ["フロントレイズ", "DUMBBELL"], ["リアレイズ", "DUMBBELL"],
-      ["リアデルト", "MACHINE"], ["アーノルドプレス", "DUMBBELL"], ["アップライトロウ", "BARBELL"],
-      ["シュラッグ", "DUMBBELL"], ["ラテラルレイズマシン", "MACHINE"]
+      ["ショルダープレス", "MACHINE", "COMPOUND_MID", 0.45, null], ["ミリタリープレス", "BARBELL", "COMPOUND_MID", 0.45, null], ["ダンベルショルダープレス", "DUMBBELL", "COMPOUND_MID", 0.45, null],
+      ["サイドレイズ", "DUMBBELL", "ISOLATION", 0.32, null], ["フロントレイズ", "DUMBBELL", "ISOLATION", 0.32, null], ["リアレイズ", "DUMBBELL", "ISOLATION", 0.32, null],
+      ["リアデルト", "MACHINE", "ISOLATION", 0.32, null], ["アーノルドプレス", "DUMBBELL", "COMPOUND_MID", 0.45, null], ["アップライトロウ", "BARBELL", "COMPOUND_MID", 0.45, null],
+      ["シュラッグ", "DUMBBELL", "ISOLATION", 0.10, null], ["ラテラルレイズマシン", "MACHINE", "ISOLATION", 0.32, null]
     ] },
     { bodyPart: "arm", entries: [
-      ["アームカール", "MACHINE"], ["バーベルカール", "BARBELL"], ["EZバーアームカール", "BARBELL"],
-      ["ダンベルカール", "DUMBBELL"], ["ハンマーカール", "DUMBBELL"], ["インクラインダンベルカール", "DUMBBELL"],
-      ["コンセントレーションカール", "DUMBBELL"], ["ケーブルカール", "MACHINE"], ["トライセプスプレス", "MACHINE"],
-      ["ケーブルプレスダウン", "MACHINE"], ["ナローベンチプレス", "BARBELL"], ["スカルクラッシャー", "BARBELL"],
-      ["ダンベルキックバック", "DUMBBELL"], ["フレンチプレス", "DUMBBELL"], ["ベンチディップス", "BODYWEIGHT"]
+      ["アームカール", "MACHINE", "ISOLATION", 0.25, null], ["バーベルカール", "BARBELL", "ISOLATION", 0.25, null], ["EZバーアームカール", "BARBELL", "ISOLATION", 0.25, null],
+      ["ダンベルカール", "DUMBBELL", "ISOLATION", 0.25, null], ["ハンマーカール", "DUMBBELL", "ISOLATION", 0.25, null], ["インクラインダンベルカール", "DUMBBELL", "ISOLATION", 0.25, null],
+      ["コンセントレーションカール", "DUMBBELL", "ISOLATION", 0.25, null], ["ケーブルカール", "MACHINE", "ISOLATION", 0.25, null], ["トライセプスプレス", "MACHINE", "ISOLATION", 0.35, null],
+      ["ケーブルプレスダウン", "MACHINE", "ISOLATION", 0.35, null], ["ナローベンチプレス", "BARBELL", "COMPOUND_MID", 0.40, null], ["スカルクラッシャー", "BARBELL", "ISOLATION", 0.35, null],
+      ["ダンベルキックバック", "DUMBBELL", "ISOLATION", 0.25, null], ["フレンチプレス", "DUMBBELL", "ISOLATION", 0.35, null], ["ベンチディップス", "BODYWEIGHT", "COMPOUND_MID", 0.40, 0.60]
     ] },
     { bodyPart: "back", entries: [
-      ["ラットプルダウン", "MACHINE"], ["シーテッドロー", "MACHINE"], ["ローロー", "MACHINE"], ["ハイロー", "MACHINE"],
-      ["デッドリフト", "BARBELL"], ["ベントオーバーロウ", "BARBELL"], ["Tバーロウ", "BARBELL"],
-      ["ワンハンドロー", "DUMBBELL"], ["ダンベルロー", "DUMBBELL"], ["ダンベルプルオーバー", "DUMBBELL"],
-      ["バックエクステンション", "BODYWEIGHT"], ["アシストチンニング", "MACHINE"], ["懸垂", "BODYWEIGHT"], ["チンニング", "BODYWEIGHT"]
+      ["ラットプルダウン", "MACHINE", "COMPOUND_MID", 0.50, null], ["シーテッドロー", "MACHINE", "COMPOUND_MID", 0.50, null], ["ローロー", "MACHINE", "COMPOUND_MID", 0.50, null], ["ハイロー", "MACHINE", "COMPOUND_MID", 0.50, null],
+      ["デッドリフト", "BARBELL", "COMPOUND_LARGE", 0.50, null], ["ベントオーバーロウ", "BARBELL", "COMPOUND_MID", 0.50, null], ["Tバーロウ", "BARBELL", "COMPOUND_MID", 0.50, null],
+      ["ワンハンドロー", "DUMBBELL", "COMPOUND_MID", 0.50, null], ["ダンベルロー", "DUMBBELL", "COMPOUND_MID", 0.50, null], ["ダンベルプルオーバー", "DUMBBELL", "ISOLATION", 0.35, null],
+      ["バックエクステンション", "BODYWEIGHT", "COMPOUND_MID", 0.35, 0.50], ["アシストチンニング", "MACHINE", "COMPOUND_MID", 0.50, null, true], ["懸垂", "BODYWEIGHT", "COMPOUND_MID", 0.50, 1.00], ["チンニング", "BODYWEIGHT", "COMPOUND_MID", 0.50, 1.00]
     ] },
     { bodyPart: "legs", entries: [
-      ["スクワット", "BARBELL"], ["フロントスクワット", "BARBELL"], ["レッグプレス", "MACHINE"],
-      ["レッグエクステンション", "MACHINE"], ["レッグカール", "MACHINE"], ["ヒップアダクション", "MACHINE"],
-      ["ヒップアブダクション", "MACHINE"], ["カーフレイズ", "MACHINE"], ["グルートマシン", "MACHINE"],
-      ["ルーマニアンデッドリフト", "BARBELL"], ["ブルガリアンスクワット", "BODYWEIGHT"], ["ダンベルスクワット", "DUMBBELL"],
-      ["ダンベルランジ", "DUMBBELL"], ["ダンベルブルガリアンスクワット", "DUMBBELL"], ["ダンベルルーマニアンデッドリフト", "DUMBBELL"],
-      ["自重スクワット", "BODYWEIGHT"], ["スクワット自重", "BODYWEIGHT"], ["ランジ", "BODYWEIGHT"],
-      ["ヒップリフト", "BODYWEIGHT"], ["カーフレイズ自重", "BODYWEIGHT"]
+      ["スクワット", "BARBELL", "COMPOUND_LARGE", 0.50, null], ["フロントスクワット", "BARBELL", "COMPOUND_LARGE", 0.50, null], ["レッグプレス", "MACHINE", "COMPOUND_LARGE", 0.50, null],
+      ["レッグエクステンション", "MACHINE", "ISOLATION", 0.35, null], ["レッグカール", "MACHINE", "ISOLATION", 0.35, null], ["ヒップアダクション", "MACHINE", "ISOLATION", 0.35, null],
+      ["ヒップアブダクション", "MACHINE", "ISOLATION", 0.35, null], ["カーフレイズ", "MACHINE", "ISOLATION", 0.15, null], ["グルートマシン", "MACHINE", "ISOLATION", 0.35, null],
+      ["ルーマニアンデッドリフト", "BARBELL", "COMPOUND_LARGE", 0.50, null], ["ブルガリアンスクワット", "BODYWEIGHT", "COMPOUND_LARGE", 0.50, 0.50], ["ダンベルスクワット", "DUMBBELL", "COMPOUND_LARGE", 0.50, null],
+      ["ダンベルランジ", "DUMBBELL", "COMPOUND_LARGE", 0.50, null], ["ダンベルブルガリアンスクワット", "DUMBBELL", "COMPOUND_LARGE", 0.50, null], ["ダンベルルーマニアンデッドリフト", "DUMBBELL", "COMPOUND_LARGE", 0.50, null],
+      ["自重スクワット", "BODYWEIGHT", "COMPOUND_LARGE", 0.50, 0.50], ["スクワット自重", "BODYWEIGHT", "COMPOUND_LARGE", 0.50, 0.50], ["ランジ", "BODYWEIGHT", "COMPOUND_LARGE", 0.50, 0.50],
+      ["ヒップリフト", "BODYWEIGHT", "COMPOUND_LARGE", 0.30, 0.50], ["カーフレイズ自重", "BODYWEIGHT", "ISOLATION", 0.15, 1.00]
     ] },
     { bodyPart: "abs", entries: [
-      ["アブドミナル", "MACHINE"], ["ロータリートルソー", "MACHINE"], ["クランチ", "BODYWEIGHT"],
-      ["シットアップ", "BODYWEIGHT"], ["レッグレイズ", "BODYWEIGHT"], ["プランク", "BODYWEIGHT"],
-      ["サイドプランク", "BODYWEIGHT"], ["バイシクルクランチ", "BODYWEIGHT"], ["マウンテンクライマー", "BODYWEIGHT"],
-      ["ロシアンツイスト", "BODYWEIGHT"]
+      ["アブドミナル", "MACHINE", "ISOLATION", 0.30, null], ["ロータリートルソー", "MACHINE", "ISOLATION", 0.30, null], ["クランチ", "BODYWEIGHT", "ISOLATION", 0.30, 0.50],
+      ["シットアップ", "BODYWEIGHT", "ISOLATION", 0.30, 0.50], ["レッグレイズ", "BODYWEIGHT", "ISOLATION", 0.21, 0.50], ["プランク", "BODYWEIGHT", "STATIC", 0, 0],
+      ["サイドプランク", "BODYWEIGHT", "STATIC", 0, 0], ["バイシクルクランチ", "BODYWEIGHT", "ISOLATION", 0.30, 0.50], ["マウンテンクライマー", "BODYWEIGHT", "ISOLATION", 0.30, 0.50],
+      ["ロシアンツイスト", "BODYWEIGHT", "ISOLATION", 0.30, 0.50]
     ] },
     { bodyPart: "cardio", entries: CARDIO_TYPES.map(function (name) { return [name, "CARDIO"]; }) },
     { bodyPart: "other", entries: [
-      ["ストレッチ", "BODYWEIGHT"], ["ヨガ", "BODYWEIGHT"], ["フォームローラー", "BODYWEIGHT"],
-      ["体幹トレーニング", "BODYWEIGHT"], ["その他トレーニング", "BODYWEIGHT"]
+      ["ストレッチ", "BODYWEIGHT", "STATIC", 0, 0], ["ヨガ", "BODYWEIGHT", "STATIC", 0, 0], ["フォームローラー", "BODYWEIGHT", "STATIC", 0, 0],
+      ["体幹トレーニング", "BODYWEIGHT", "COMPOUND_MID", 0.30, 0.50], ["その他トレーニング", "BODYWEIGHT", "COMPOUND_MID", 0.30, 0.50]
     ] }
   ];
 
@@ -605,9 +628,90 @@
   function exerciseCatalog() {
     var result = [];
     EXERCISE_CATALOG_GROUPS.forEach(function (group) {
-      group.entries.forEach(function (entry) { result.push({ name: entry[0], category: entry[1], bodyPart: group.bodyPart }); });
+      group.entries.forEach(function (entry) {
+        var item = { name: entry[0], category: entry[1], bodyPart: group.bodyPart };
+        // 指示書⑦-4: 筋トレ種目は計算属性をカタログの確定値で持つ(有酸素は2要素のまま)
+        if (entry.length > 2) {
+          item.movementType = entry[2];
+          item.romMeters = entry[3];
+          item.bodyweightRatio = entry[4] == null ? null : entry[4];
+          item.assistMode = entry[5] === true;
+        }
+        result.push(item);
+      });
     });
     return result;
+  }
+
+  /* 指示書⑦-4-2: 独自種目・属性を持たない旧データ種目の計算属性を自動導出する。
+     Step1: bodyPart既定 → Step2: 名前キーワード上書き(「プレス」を含む場合はISOLATION化しない)
+     → Step3: 自重換算率 → Step4: assistMode */
+  function deriveExerciseCalcAttrs(exercise) {
+    var name = String(exercise && exercise.name || "");
+    var bodyPart = exercise && exercise.bodyPart || "other";
+    var category = exercise && exercise.category || "";
+    var defaults = {
+      legs: { movementType: "COMPOUND_LARGE", romMeters: 0.50 },
+      back: { movementType: "COMPOUND_MID", romMeters: 0.50 },
+      chest: { movementType: "COMPOUND_MID", romMeters: 0.40 },
+      shoulder: { movementType: "COMPOUND_MID", romMeters: 0.45 },
+      arm: { movementType: "ISOLATION", romMeters: 0.35 },
+      abs: { movementType: "ISOLATION", romMeters: 0.30 },
+      other: { movementType: "COMPOUND_MID", romMeters: 0.30 }
+    };
+    var base = defaults[bodyPart] || defaults.other;
+    var movementType = base.movementType;
+    var romMeters = base.romMeters;
+    var includesAny = function (keywords) { return keywords.some(function (keyword) { return name.indexOf(keyword) >= 0; }); };
+    var isPress = name.indexOf("プレス") >= 0;
+    if (includesAny(["カール", "エクステンション", "レイズ", "フライ", "ペックデック", "プルオーバー", "シュラッグ", "キックバック", "アダクション", "アブダクション", "クロスオーバー", "リアデルト"]) && !isPress) {
+      movementType = "ISOLATION";
+      romMeters = Math.round(base.romMeters * 0.7 * 100) / 100;
+    }
+    if (includesAny(["デッドリフト", "スクワット"])) { movementType = "COMPOUND_LARGE"; romMeters = 0.50; }
+    if (includesAny(["プランク", "ストレッチ", "ヨガ", "ホールド", "フォームローラー"])) { movementType = "STATIC"; romMeters = 0; }
+    // 「プレス」を含む種目がbodyPart既定でISOLATIONに落ちるのも誤分類(ナローベンチプレス等)なので引き上げる
+    if (isPress && movementType === "ISOLATION") { movementType = "COMPOUND_MID"; romMeters = 0.40; }
+    var bodyweightRatio = null;
+    if (category === "BODYWEIGHT") {
+      if (movementType === "STATIC") bodyweightRatio = 0;
+      else if (name.indexOf("ベンチディップス") >= 0) bodyweightRatio = 0.60;
+      else if (includesAny(["懸垂", "チンニング", "ディップス"])) bodyweightRatio = 1.00;
+      else if (includesAny(["腕立て", "プッシュアップ"])) bodyweightRatio = 0.65;
+      else if (name.indexOf("カーフレイズ") >= 0) bodyweightRatio = 1.00;
+      else bodyweightRatio = 0.50;
+    }
+    return {
+      movementType: movementType,
+      romMeters: romMeters,
+      bodyweightRatio: bodyweightRatio,
+      assistMode: name.indexOf("アシスト") >= 0
+    };
+  }
+
+  // 種目の計算属性を返す。属性を持たない場合(旧データ・不明種目)は自動導出で補う
+  function exerciseCalcAttrs(exercise) {
+    if (exercise && typeof exercise.movementType === "string" && STRENGTH_BASE_METS[exercise.movementType] !== undefined) {
+      return {
+        movementType: exercise.movementType,
+        romMeters: Number(exercise.romMeters || 0),
+        bodyweightRatio: typeof exercise.bodyweightRatio === "number" ? exercise.bodyweightRatio : null,
+        assistMode: exercise.assistMode === true
+      };
+    }
+    return deriveExerciseCalcAttrs(exercise);
+  }
+
+  // 種目オブジェクトに計算属性が無ければ自動導出で補完する(冪等)
+  function ensureExerciseCalcAttrs(exercise) {
+    if (!exercise || exercise.category === "CARDIO") return exercise;
+    if (typeof exercise.movementType === "string" && STRENGTH_BASE_METS[exercise.movementType] !== undefined) return exercise;
+    var attrs = deriveExerciseCalcAttrs(exercise);
+    exercise.movementType = attrs.movementType;
+    exercise.romMeters = attrs.romMeters;
+    exercise.bodyweightRatio = attrs.bodyweightRatio;
+    exercise.assistMode = attrs.assistMode;
+    return exercise;
   }
 
   function inferBodyPart(name, category) {
@@ -706,7 +810,8 @@
       exercise.bodyPart = exercise.bodyPart || inferBodyPart(exercise.name, exercise.category);
       exercise.defaultWeightStep = normalizeExerciseWeightStep(exercise.defaultWeightStep, exercise.category);
       exercise.isFavorite = !!exercise.isFavorite;
-      return exercise;
+      // 指示書⑦-4-3: データversionは上げず、計算属性が無い種目はここで冪等に補完する
+      return ensureExerciseCalcAttrs(exercise);
     });
     var exerciseIds = {};
     normalized.exercises.forEach(function (exercise) { exerciseIds[exercise.id] = true; });
@@ -748,6 +853,7 @@
       cardio.distanceKm = Math.max(0, Number(cardio.distanceKm || 0));
       cardio.durationMinutes = Math.max(0, Number(cardio.durationMinutes || 0));
       cardio.inclinePercent = Math.max(0, Number(cardio.inclinePercent || 0));
+      cardio.avgWatts = Math.max(0, Number(cardio.avgWatts || 0));
       cardio.memo = cardio.memo || "";
       return cardio;
     });
@@ -837,7 +943,7 @@
     catalog.forEach(function (item) {
       if (names[item.name]) return;
       var stamp = nowIso();
-      result.push({ id: makeId("ex"), name: item.name, category: item.category, bodyPart: item.bodyPart, defaultWeightStep: defaultWeightStepForCategory(item.category), isFavorite: false, createdAt: stamp, updatedAt: stamp });
+      result.push(ensureExerciseCalcAttrs({ id: makeId("ex"), name: item.name, category: item.category, bodyPart: item.bodyPart, defaultWeightStep: defaultWeightStepForCategory(item.category), isFavorite: false, movementType: item.movementType, romMeters: item.romMeters, bodyweightRatio: item.bodyweightRatio == null ? null : item.bodyweightRatio, assistMode: item.assistMode === true, createdAt: stamp, updatedAt: stamp }));
       names[item.name] = true;
       exerciseMigrationChanged = true;
     });
@@ -847,7 +953,7 @@
   function seedExercises() {
     var stamp = nowIso();
     return exerciseCatalog().map(function (item) {
-      return { id: makeId("ex"), name: item.name, category: item.category, bodyPart: item.bodyPart, defaultWeightStep: defaultWeightStepForCategory(item.category), isFavorite: false, createdAt: stamp, updatedAt: stamp };
+      return ensureExerciseCalcAttrs({ id: makeId("ex"), name: item.name, category: item.category, bodyPart: item.bodyPart, defaultWeightStep: defaultWeightStepForCategory(item.category), isFavorite: false, movementType: item.movementType, romMeters: item.romMeters, bodyweightRatio: item.bodyweightRatio == null ? null : item.bodyweightRatio, assistMode: item.assistMode === true, createdAt: stamp, updatedAt: stamp });
     });
   }
 
@@ -1285,6 +1391,7 @@
       durationMinutes: editorInputValue("#cardioDuration"),
       distanceKm: editorInputValue("#cardioDistance"),
       inclinePercent: editorInputValue("#cardioIncline"),
+      avgWatts: editorInputValue("#cardioWatts"),
       cardioMemo: editorInputValue("#cardioMemo")
     };
   }
@@ -1298,7 +1405,7 @@
     if (String(draftValue.memo || "").trim()) return true;
     if (!editorState || editorState.mode === "none") return false;
     if (editorState.mode === "cardio") {
-      return !!(String(editorState.durationMinutes || "").trim() || String(editorState.distanceKm || "").trim() || String(editorState.inclinePercent || "").trim() || String(editorState.cardioMemo || "").trim());
+      return !!(String(editorState.durationMinutes || "").trim() || String(editorState.distanceKm || "").trim() || String(editorState.inclinePercent || "").trim() || String(editorState.avgWatts || "").trim() || String(editorState.cardioMemo || "").trim());
     }
     return !!(
       String(editorState.weightKg || "").trim() ||
@@ -1435,6 +1542,7 @@
       $("#cardioDuration").value = editorState.durationMinutes;
       $("#cardioDistance").value = editorState.distanceKm;
       $("#cardioIncline").value = editorState.inclinePercent;
+      $("#cardioWatts").value = editorState.avgWatts || "";
       $("#cardioMemo").value = editorState.cardioMemo || "";
       updateCardioPreview();
     }
@@ -1559,22 +1667,49 @@
   function profileWeight() { return data.profile && Number(data.profile.weightKg) > 0 ? Number(data.profile.weightKg) : 60; }
 
   /* Training calculations */
-  function calculateStrengthCalories(sets) {
+  /* 指示書⑦-5: 筋トレは種目属性(movementType/romMeters/bodyweightRatio/assistMode)で計算する。
+     1セット = 実働項(基礎METs×RIR係数) + 休憩項(一律2.5METs・最終セットは0) + 仕事項(有効重量×ROM)。
+     休憩を種目METsから分離したのが従来からの変更点(休憩が長い高重量種目の過大評価を解消) */
+  function calculateStrengthCalories(sets, exercise) {
     if (!sets.length) return 0;
     var weight = profileWeight();
+    var attrs = exerciseCalcAttrs(exercise);
+    var baseMets = STRENGTH_BASE_METS[attrs.movementType] || STRENGTH_BASE_METS.COMPOUND_MID;
     return sets.reduce(function (total, set, index) {
-      var activeSeconds = Number(set.reps || 0) * 4;
-      var restSeconds = index === sets.length - 1 ? 0 : Number(set.restSeconds || 0);
-      var mets = RIR_METS[set.rir == null ? "" : set.rir] || 5;
-      return total + mets * 3.5 * weight / 200 * ((activeSeconds + restSeconds) / 60);
+      var reps = Number(set.reps || 0);
+      var activeMinutes = reps * 4 / 60;
+      var restMinutes = index === sets.length - 1 ? 0 : Number(set.restSeconds || 0) / 60;
+      var effortFactor = RIR_EFFORT_FACTORS[set.rir == null ? "" : set.rir] || 1.0;
+      var activeKcal = baseMets * effortFactor * 3.5 * weight / 200 * activeMinutes;
+      var restKcal = REST_METS * 3.5 * weight / 200 * restMinutes;
+      var workKcal = 0;
+      // STATIC種目はrepsが回数の意味を持たないため仕事項なし
+      if (attrs.movementType !== "STATIC") {
+        var loadKg = Number(set.weight || 0) / 1000;
+        var effectiveKg;
+        if (attrs.assistMode) effectiveKg = Math.max(0, weight - loadKg); // 入力重量=補助量
+        else if (typeof attrs.bodyweightRatio === "number") effectiveKg = weight * attrs.bodyweightRatio + loadKg;
+        else effectiveKg = loadKg;
+        workKcal = effectiveKg * 9.8 * Number(attrs.romMeters || 0) * reps * 1.33 / 4184 / 0.25;
+      }
+      return total + activeKcal + restKcal + workKcal;
     }, 0);
   }
 
   function calculateStrengthCaloriesForRecords(records) {
     return (records || []).reduce(function (total, record) {
       var sets = Array.isArray(record.sets) ? record.sets : getRecordSets(record.id);
-      return total + calculateStrengthCalories(sets);
+      return total + calculateStrengthCalories(sets, getExercise(record.exerciseId));
     }, 0);
+  }
+
+  // 指示書⑦-6: 保存済みセッションは保存値を正とする(式変更後も表示が変わらない)。
+  // totalCaloriesを持たない古いセッションのみ都度再計算にフォールバック
+  function sessionTotalCaloriesValue(session) {
+    if (!session) return 0;
+    var saved = Number(session.totalCalories);
+    if (session.totalCalories !== null && session.totalCalories !== undefined && session.totalCalories !== "" && Number.isFinite(saved)) return saved;
+    return calculateSessionCalories(session.id);
   }
 
   function calculateSessionCalories(sessionId) {
@@ -1608,13 +1743,23 @@
     }, 0);
   }
 
+  /* 指示書⑦: 有酸素はcalcModeで式を分ける。
+     - weightBearing(歩く/走る): 体重を運ぶのでACSM歩行/走行式(従来どおり)
+     - power(バイク): 体重を運ばないためワット実測から算出。W未入力なら計算しない(0)
+     - mets(クロストレーナー/階段): 距離が仮想値のため速度補正せず固定METs
+     speedKmhは全モードで表示用に算出する */
   function calculateCardio(cardio) {
     var duration = Number(cardio.durationMinutes || 0);
     var distance = Number(cardio.distanceKm || 0);
     var incline = Number(cardio.inclinePercent || 0);
     var speed = duration > 0 && distance > 0 ? distance / (duration / 60) : 0;
+    var mode = cardioCalcMode(cardio.type);
+    if (mode === "power") {
+      var watts = Number(cardio.avgWatts || 0);
+      return { speedKmh: speed, calories: watts > 0 ? watts * duration * WATT_KCAL_FACTOR : 0 };
+    }
     var mets;
-    if (speed > 0) {
+    if (mode === "weightBearing" && speed > 0) {
       var speedMMin = speed * 1000 / 60;
       var grade = incline / 100;
       var vo2 = speed < 8 ? (0.1 * speedMMin + 1.8 * speedMMin * grade + 3.5) : (0.2 * speedMMin + 0.9 * speedMMin * grade + 3.5);
@@ -1623,6 +1768,14 @@
       mets = CARDIO_METS[cardio.type] || 5;
     }
     return { speedKmh: speed, calories: mets * 3.5 * profileWeight() / 200 * duration };
+  }
+
+  // 指示書⑦-3: 非表示項目の値は保存しない(傾斜はweightBearingのみ、ワットはpowerのみ)
+  function sanitizeCardioInput(cardio) {
+    var mode = cardioCalcMode(cardio.type);
+    if (mode !== "weightBearing") cardio.inclinePercent = 0;
+    if (mode !== "power") cardio.avgWatts = 0;
+    return cardio;
   }
 
   function draftCalories() {
@@ -1655,15 +1808,15 @@
     }, []) : data.sessions.filter(function (session) { return session.date.indexOf(prefix) === 0; });
     var sessionIds = {};
     monthSessions.forEach(function (session) { sessionIds[session.id] = true; });
-    var strengthCalories = 0;
-    var cardioCalories = 0;
     var upperBodyVolumeKg = 0;
     var lowerBodyVolumeKg = 0;
     var cardioDistanceKm = 0;
 
+    // 指示書⑦-6: カロリーは保存値(session.totalCalories)を正とし、式変更後も過去の表示を変えない
+    var totalCalories = monthSessions.reduce(function (sum, session) { return sum + sessionTotalCaloriesValue(session); }, 0);
+
     data.records.forEach(function (record) {
       if (!sessionIds[record.sessionId]) return;
-      strengthCalories += calculateStrengthCaloriesForRecords([record]);
       var exercise = getExercise(record.exerciseId);
       var volumeKg = calculateRecordStrengthVolume(record);
       if (!volumeKg) return;
@@ -1673,9 +1826,6 @@
 
     data.cardios.forEach(function (cardio) {
       if (!sessionIds[cardio.sessionId]) return;
-      var savedCalories = Number(cardio.calories);
-      var hasSavedCalories = cardio.calories !== null && cardio.calories !== undefined && cardio.calories !== "" && Number.isFinite(savedCalories);
-      cardioCalories += hasSavedCalories ? savedCalories : calculateCardio(cardio).calories;
       cardioDistanceKm += Math.max(0, Number(cardio.distanceKm || 0));
     });
 
@@ -1683,9 +1833,7 @@
       workoutDays: Object.keys(monthSessions.reduce(function (dates, session) { dates[session.date] = true; return dates; }, {})).length,
       gymVisits: monthSessions.filter(function (session) { return session.locationType === "gym"; }).length,
       homeVisits: monthSessions.filter(function (session) { return session.locationType === "home"; }).length,
-      totalCalories: strengthCalories + cardioCalories,
-      strengthCalories: strengthCalories,
-      cardioCalories: cardioCalories,
+      totalCalories: totalCalories,
       totalStrengthVolumeKg: upperBodyVolumeKg + lowerBodyVolumeKg,
       upperBodyVolumeKg: upperBodyVolumeKg,
       lowerBodyVolumeKg: lowerBodyVolumeKg,
@@ -2512,7 +2660,8 @@
     var daily = {};
     data.sessions.forEach(function (session) {
       if (!daily[session.date]) daily[session.date] = { totalCalories: 0, totalVolume: 0 };
-      daily[session.date].totalCalories += calculateSessionCalories(session.id);
+      // 指示書⑦-6: 成長グラフも保存値を正とする(月次集計と同じ経路)
+      daily[session.date].totalCalories += sessionTotalCaloriesValue(session);
       daily[session.date].totalVolume += calculateSessionStrengthVolume(session.id);
     });
     return Object.keys(daily).sort().map(function (date) {
@@ -2917,6 +3066,7 @@
     $("#cardioDuration").value = "";
     $("#cardioDistance").value = "";
     $("#cardioIncline").value = "";
+    $("#cardioWatts").value = "";
     $("#cardioMemo").value = "";
     $("#cardioEditorCard").classList.add("hidden");
     $("#cardioEditorTitle").textContent = "有酸素の内容を入力";
@@ -2936,6 +3086,7 @@
     $("#cardioDuration").value = formatNumberForInput(Number(cardio.durationMinutes || 0), 1);
     $("#cardioDistance").value = formatNumberForInput(Number(cardio.distanceKm || 0), 0.1);
     $("#cardioIncline").value = formatNumberForInput(Number(cardio.inclinePercent || 0), 0.5);
+    $("#cardioWatts").value = Number(cardio.avgWatts || 0) > 0 ? formatNumberForInput(Number(cardio.avgWatts || 0), 1) : "";
     $("#cardioMemo").value = cardio.memo || "";
     $("#cardioEditorCard").classList.remove("hidden");
     $("#cardioEditorTitle").textContent = normalizedType + "を編集中";
@@ -3043,7 +3194,7 @@
         if (!alreadyPending && !alreadyRecorded) targetDraft.pendingCardioTypes.push(pendingType);
         return;
       }
-      var copiedCardio = { tempId: makeId("draftcardio"), type: sourceCardio.type, durationMinutes: Number(sourceCardio.durationMinutes || 0), distanceKm: Number(sourceCardio.distanceKm || 0), inclinePercent: Number(sourceCardio.inclinePercent || 0), memo: blankMemos ? "" : (sourceCardio.memo || "") };
+      var copiedCardio = { tempId: makeId("draftcardio"), type: sourceCardio.type, durationMinutes: Number(sourceCardio.durationMinutes || 0), distanceKm: Number(sourceCardio.distanceKm || 0), inclinePercent: Number(sourceCardio.inclinePercent || 0), avgWatts: Number(sourceCardio.avgWatts || 0), memo: blankMemos ? "" : (sourceCardio.memo || "") };
       var result = calculateCardio(copiedCardio);
       copiedCardio.speedKmh = result.speedKmh;
       copiedCardio.calories = result.calories;
@@ -3375,6 +3526,7 @@
       durationMinutes: Number(source.durationMinutes || 0),
       distanceKm: Number(source.distanceKm || 0),
       inclinePercent: Number(source.inclinePercent || 0),
+      avgWatts: Number(source.avgWatts || 0),
       memo: memoValue
     });
     return {
@@ -3383,6 +3535,7 @@
       durationMinutes: Number(source.durationMinutes || 0),
       distanceKm: Number(source.distanceKm || 0),
       inclinePercent: Number(source.inclinePercent || 0),
+      avgWatts: Number(source.avgWatts || 0),
       memo: memoValue,
       speedKmh: result.speedKmh,
       calories: result.calories
@@ -3617,31 +3770,49 @@
   function guideCardioFormValue() {
     var item = guideCurrentItem();
     var type = item && item.type === "cardio" ? item.cardioType : "ウォーキング";
-    return {
+    return sanitizeCardioInput({
       type: type,
       durationMinutes: numberValue("#guideCardioDuration"),
       distanceKm: numberValue("#guideCardioDistance"),
       inclinePercent: numberValue("#guideCardioIncline"),
+      avgWatts: numberValue("#guideCardioWatts"),
       memo: $("#guideCardioMemo") ? $("#guideCardioMemo").value.trim() : ""
-    };
+    });
+  }
+
+  // 指示書⑦-3: ガイドでも種目のcalcModeに応じて傾斜/平均ワット欄を出し分ける
+  function renderGuideCardioFieldVisibility(type) {
+    var mode = cardioCalcMode(type);
+    var inclineField = $("#guideCardioInclineField");
+    var wattsField = $("#guideCardioWattsField");
+    if (inclineField) inclineField.classList.toggle("hidden", mode !== "weightBearing");
+    if (wattsField) wattsField.classList.toggle("hidden", mode !== "power");
   }
 
   function updateGuideCardioPreview() {
     var preview = $("#guideCardioPreview");
     if (!preview) return;
     var cardio = guideCardioFormValue();
+    var mode = cardioCalcMode(cardio.type);
+    renderGuideCardioFieldVisibility(cardio.type);
+    var inclinePart = mode === "weightBearing" ? '傾斜 <strong>' + (Number(cardio.inclinePercent || 0) > 0 ? formatNumberForInput(Number(cardio.inclinePercent || 0), 0.5) + '%' : '--') + '</strong>' : null;
+    var wattsPart = mode === "power" ? '平均ワット <strong>' + (Number(cardio.avgWatts || 0) > 0 ? formatNumberForInput(Number(cardio.avgWatts || 0), 1) + 'W' : '--') + '</strong>' : null;
     if (!cardio.durationMinutes) {
-      preview.innerHTML = ['時間 <strong>--</strong>', '距離 <strong>--</strong>', '速度 <strong>--</strong>', '傾斜 <strong>--</strong>', '概算消費カロリー <strong>--</strong>'].map(function (part) { return "<span>" + part + "</span>"; }).join("");
+      preview.innerHTML = ['時間 <strong>--</strong>', '距離 <strong>--</strong>', '速度 <strong>--</strong>', inclinePart ? '傾斜 <strong>--</strong>' : null, wattsPart ? '平均ワット <strong>--</strong>' : null, '概算消費カロリー <strong>--</strong>'].filter(Boolean).map(function (part) { return "<span>" + part + "</span>"; }).join("");
       return;
     }
     var result = calculateCardio(cardio);
+    var caloriePart = mode === "power" && !(Number(cardio.avgWatts || 0) > 0)
+      ? 'カロリー未算出（Wを入力すると計算されます）'
+      : '概算消費カロリー <strong>' + Math.round(result.calories) + ' kcal</strong>';
     var parts = [
       '時間 <strong>' + formatNumberForInput(Number(cardio.durationMinutes || 0), 1) + '分</strong>',
       '距離 <strong>' + (Number(cardio.distanceKm || 0) > 0 ? formatNumberForInput(Number(cardio.distanceKm || 0), 0.1) + 'km' : '--') + '</strong>',
       '速度 <strong>' + (result.speedKmh ? result.speedKmh.toFixed(1) + ' km/h' : '距離未入力') + '</strong>',
-      '傾斜 <strong>' + (Number(cardio.inclinePercent || 0) > 0 ? formatNumberForInput(Number(cardio.inclinePercent || 0), 0.5) + '%' : '--') + '</strong>',
-      '概算消費カロリー <strong>' + Math.round(result.calories) + ' kcal</strong>'
-    ];
+      inclinePart,
+      wattsPart,
+      caloriePart
+    ].filter(Boolean);
     preview.innerHTML = parts.map(function (part) { return "<span>" + part + "</span>"; }).join("");
   }
 
@@ -3652,7 +3823,9 @@
     $("#guideCardioDuration").value = source && Number(source.durationMinutes || 0) ? formatNumberForInput(Number(source.durationMinutes || 0), 1) : "";
     $("#guideCardioDistance").value = source && Number(source.distanceKm || 0) ? formatNumberForInput(Number(source.distanceKm || 0), 0.1) : "";
     $("#guideCardioIncline").value = source && Number(source.inclinePercent || 0) ? formatNumberForInput(Number(source.inclinePercent || 0), 0.5) : "";
+    $("#guideCardioWatts").value = source && Number(source.avgWatts || 0) ? formatNumberForInput(Number(source.avgWatts || 0), 1) : "";
     $("#guideCardioMemo").value = source && source.memo ? source.memo : "";
+    renderGuideCardioFieldVisibility(item.cardioType);
     updateGuideCardioPreview();
   }
 
@@ -4635,6 +4808,7 @@
       durationMinutes: cardio.durationMinutes,
       distanceKm: cardio.distanceKm,
       inclinePercent: cardio.inclinePercent,
+      avgWatts: cardio.avgWatts,
       memo: cardio.memo,
       speedKmh: result.speedKmh,
       calories: result.calories
@@ -5462,8 +5636,9 @@
   }
 
   function cardioValueIssue(cardio) {
-    var values = [cardio.durationMinutes, cardio.distanceKm, cardio.inclinePercent];
-    if (!values.every(function (value) { return Number.isFinite(value) && value >= 0; })) return { invalid: "時間・距離・傾斜には0以上の数値を入力してください" };
+    var values = [cardio.durationMinutes, cardio.distanceKm, cardio.inclinePercent, Number(cardio.avgWatts || 0)];
+    if (!values.every(function (value) { return Number.isFinite(value) && value >= 0; })) return { invalid: "時間・距離・傾斜・ワットには0以上の数値を入力してください" };
+    if (Number(cardio.avgWatts || 0) > 600) return { warning: "平均ワットが" + cardio.avgWatts + "Wになっています。入力内容に間違いはありませんか？" };
     var result = calculateCardio(cardio);
     if (!Number.isFinite(result.speedKmh) || !Number.isFinite(result.calories)) return { invalid: "有酸素記録を正しく計算できません" };
     if (cardio.durationMinutes >= 600) return { warning: "運動時間が" + cardio.durationMinutes + "分になっています。入力内容に間違いはありませんか？" };
@@ -5945,30 +6120,48 @@
   }
 
   function cardioFormValue() {
-    return {
+    return sanitizeCardioInput({
       type: $("#cardioType").value,
       durationMinutes: numberValue("#cardioDuration"),
       distanceKm: numberValue("#cardioDistance"),
       inclinePercent: numberValue("#cardioIncline"),
+      avgWatts: numberValue("#cardioWatts"),
       memo: $("#cardioMemo").value.trim()
-    };
+    });
+  }
+
+  // 指示書⑦-3: 種目のcalcModeに応じて傾斜/平均ワット欄を出し分ける
+  function renderCardioFieldVisibility() {
+    var mode = cardioCalcMode($("#cardioType") ? $("#cardioType").value : "ウォーキング");
+    var inclineField = $("#cardioInclineField");
+    var wattsField = $("#cardioWattsField");
+    if (inclineField) inclineField.classList.toggle("hidden", mode !== "weightBearing");
+    if (wattsField) wattsField.classList.toggle("hidden", mode !== "power");
   }
 
   function updateCardioPreview() {
+    renderCardioFieldVisibility();
     var cardio = cardioFormValue();
+    var mode = cardioCalcMode(cardio.type);
     var preview = $("#cardioPreview");
     if (!preview) return;
+    var inclinePart = mode === "weightBearing" ? '<span>傾斜 <strong>' + (Number(cardio.inclinePercent || 0) > 0 ? formatNumberForInput(Number(cardio.inclinePercent || 0), 0.5) + '%' : '--') + '</strong></span>' : "";
+    var wattsPart = mode === "power" ? '<span>平均ワット <strong>' + (Number(cardio.avgWatts || 0) > 0 ? formatNumberForInput(Number(cardio.avgWatts || 0), 1) + 'W' : '--') + '</strong></span>' : "";
     if (!cardio.durationMinutes) {
-      preview.innerHTML = '<span>時間 <strong>--</strong></span><span>距離 <strong>--</strong></span><span>速度 <strong>--</strong></span><span>傾斜 <strong>--</strong></span><span>概算消費カロリー <strong>--</strong></span>';
+      preview.innerHTML = '<span>時間 <strong>--</strong></span><span>距離 <strong>--</strong></span><span>速度 <strong>--</strong></span>' + inclinePart.replace(/<strong>[^<]*<\/strong>/, "<strong>--</strong>") + wattsPart.replace(/<strong>[^<]*<\/strong>/, "<strong>--</strong>") + '<span>概算消費カロリー <strong>--</strong></span>';
       return;
     }
     var result = calculateCardio(cardio);
+    var caloriePart = mode === "power" && !(Number(cardio.avgWatts || 0) > 0)
+      ? '<span>カロリー未算出（Wを入力すると計算されます）</span>'
+      : '<span>概算消費カロリー <strong>' + Math.round(result.calories) + ' kcal</strong></span>';
     preview.innerHTML = [
       '<span>時間 <strong>' + formatNumberForInput(Number(cardio.durationMinutes || 0), 1) + '分</strong></span>',
       '<span>距離 <strong>' + (Number(cardio.distanceKm || 0) > 0 ? formatNumberForInput(Number(cardio.distanceKm || 0), 0.1) + 'km' : '--') + '</strong></span>',
       '<span>速度 <strong>' + (result.speedKmh ? result.speedKmh.toFixed(1) + " km/h" : "距離未入力") + '</strong></span>',
-      '<span>傾斜 <strong>' + (Number(cardio.inclinePercent || 0) > 0 ? formatNumberForInput(Number(cardio.inclinePercent || 0), 0.5) + '%' : '--') + '</strong></span>',
-      '<span>概算消費カロリー <strong>' + Math.round(result.calories) + ' kcal</strong></span>'
+      inclinePart,
+      wattsPart,
+      caloriePart
     ].join("");
   }
 
@@ -5984,6 +6177,7 @@
       durationMinutes: values.durationMinutes,
       distanceKm: values.distanceKm,
       inclinePercent: values.inclinePercent,
+      avgWatts: values.avgWatts,
       memo: values.memo,
       speedKmh: result.speedKmh,
       calories: result.calories
@@ -6013,6 +6207,7 @@
       $("#cardioDuration").value = "";
       $("#cardioDistance").value = "";
       $("#cardioIncline").value = "";
+      $("#cardioWatts").value = "";
       $("#cardioMemo").value = "";
       $("#cardioEditorTitle").textContent = cardio.type + "を入力";
       $("#saveCardioButton").textContent = "この有酸素記録を保存";
@@ -6032,6 +6227,7 @@
     $("#cardioDuration").value = "";
     $("#cardioDistance").value = "";
     $("#cardioIncline").value = "";
+    $("#cardioWatts").value = "";
     $("#cardioMemo").value = "";
     updateCardioPreview();
     renderSavedCardios();
@@ -6806,7 +7002,7 @@
       });
       preparedCardios.forEach(function (prepared) {
         var cardio = prepared.cardio, result = prepared.result;
-        data.cardios.push({ id: makeId("cardio"), sessionId: sessionId, type: cardio.type, distanceKm: Number(cardio.distanceKm || 0), durationMinutes: Number(cardio.durationMinutes), speedKmh: result.speedKmh, inclinePercent: Number(cardio.inclinePercent || 0), calories: result.calories, memo: cardio.memo || "", createdAt: stamp, updatedAt: stamp });
+        data.cardios.push({ id: makeId("cardio"), sessionId: sessionId, type: cardio.type, distanceKm: Number(cardio.distanceKm || 0), durationMinutes: Number(cardio.durationMinutes), speedKmh: result.speedKmh, inclinePercent: Number(cardio.inclinePercent || 0), avgWatts: Number(cardio.avgWatts || 0), calories: result.calories, memo: cardio.memo || "", createdAt: stamp, updatedAt: stamp });
       });
       data.sessions.push({ id: sessionId, date: draft.date, locationType: draft.locationType, totalCalories: totalCalories, memo: draft.memo, createdAt: oldSession ? oldSession.createdAt : stamp, updatedAt: stamp });
       if (draft.sourceScheduleId) data.scheduledRoutines = data.scheduledRoutines.filter(function (schedule) { return schedule.id !== draft.sourceScheduleId; });
@@ -7222,7 +7418,8 @@
         return;
       }
       var stamp = nowIso();
-      var exercise = { id: makeId("ex"), name: name, category: category, bodyPart: bodyPart, defaultWeightStep: defaultWeightStepForCategory(category), isFavorite: false, createdAt: stamp, updatedAt: stamp };
+      // 指示書⑦-4-3: 独自種目の計算属性は自動導出のみ(選択UIは設けない)
+      var exercise = ensureExerciseCalcAttrs({ id: makeId("ex"), name: name, category: category, bodyPart: bodyPart, defaultWeightStep: defaultWeightStepForCategory(category), isFavorite: false, createdAt: stamp, updatedAt: stamp });
       if (!runDataTransaction(function () { data.exercises.push(exercise); })) return;
       closeModal("addExerciseModal");
       if (exercisePickerMode === "routine") {
@@ -7274,7 +7471,7 @@
   }
 
   function bindCardioEvents() {
-    ["#cardioType", "#cardioDuration", "#cardioDistance", "#cardioIncline", "#cardioMemo"].forEach(function (selector) { on(selector, "input", handleCardioInputChange); });
+    ["#cardioType", "#cardioDuration", "#cardioDistance", "#cardioIncline", "#cardioWatts", "#cardioMemo"].forEach(function (selector) { on(selector, "input", handleCardioInputChange); });
     $$('[data-number-target]').forEach(function (button) {
       bindHoldRepeat(button, function () {
         changeNumericInput(button.dataset.numberTarget, Number(button.dataset.numberDirection));
@@ -7457,7 +7654,7 @@
     on("#guideWeightInput", "blur", function () { this.value = Math.max(0, getNumericInputValue(this)).toFixed(1); captureGuideInputToState(); scheduleDraftSave(); });
     on("#guideRepsInput", "input", function () { captureGuideInputToState(); scheduleDraftSave(); });
     on("#guideSetMemo", "input", function () { captureGuideInputToState(); scheduleDraftSave(); });
-    ["#guideCardioDuration", "#guideCardioDistance", "#guideCardioIncline", "#guideCardioMemo"].forEach(function (selector) {
+    ["#guideCardioDuration", "#guideCardioDistance", "#guideCardioIncline", "#guideCardioWatts", "#guideCardioMemo"].forEach(function (selector) {
       on(selector, "input", function () { updateGuideCardioPreview(); captureGuideCardioInputToState(); scheduleDraftSave(); });
     });
     $$('[data-guide-number-target]').forEach(function (button) {
@@ -7832,6 +8029,11 @@
       normalizeBackupData: normalizeBackupData,
       getMonthlySummary: getMonthlySummary,
       calculateStrengthCaloriesForRecords: calculateStrengthCaloriesForRecords,
+      calculateStrengthCalories: calculateStrengthCalories,
+      deriveExerciseCalcAttrs: deriveExerciseCalcAttrs,
+      exerciseCalcAttrs: exerciseCalcAttrs,
+      cardioCalcMode: cardioCalcMode,
+      sessionTotalCaloriesValue: sessionTotalCaloriesValue,
       calculateDraftStrengthVolume: calculateDraftStrengthVolume,
       calculateCardio: calculateCardio,
       getAiExportDateRange: getAiExportDateRange,
