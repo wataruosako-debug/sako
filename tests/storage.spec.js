@@ -119,3 +119,27 @@ test("追加4: マイグレーション済みフラグがあれば2回目以降�
   expect(result.fromLocal).toBe(false);                       // localStorageはコピーされていない
   expect(result.prefsDataSessionId).toBe("sess-from-prefs");  // Preferencesは上書きされていない
 });
+
+// 指示書⑨ マージ前確認2-1: version 2→3 移行の前に、移行前データを別キーへ退避する
+test("追加5: version2→3の移行前に gymlog-pre-migration-v2 へ退避される", async ({ page }) => {
+  const legacy = JSON.stringify(buildLegacyData("sess-v2"));
+  await installNativeMock(page, {
+    prefsSeed: {},
+    localStorageSeed: { "gymlog-data-v1": legacy }
+  });
+  await page.goto("/");
+  await waitForTestApi(page);
+
+  const result = await page.evaluate(() => {
+    const backup = window.__MOCK_PREFS_STORE__["gymlog-pre-migration-v2"];
+    return {
+      hasBackup: !!backup,
+      backupIsOriginal: !!backup && JSON.parse(backup).version === 2 && JSON.parse(backup).sessions[0].id === "sess-v2",
+      migratedVersion: window.GymLog.__test__.getData().version
+    };
+  });
+
+  expect(result.hasBackup).toBe(true);          // 移行前データが退避されている
+  expect(result.backupIsOriginal).toBe(true);   // 退避内容は移行前(version 2)そのまま
+  expect(result.migratedVersion).toBe(3);       // 本体はversion 3へ移行済み
+});

@@ -969,6 +969,16 @@
     catch (error) { console.error("Failed to quarantine corrupt data", error); }
   }
 
+  // 指示書⑨ マージ前確認2-1: version移行は本番で一度きり・失敗すると確定するため、
+  // 移行前の生データを別キーへ退避する(corrupt退避と同じ作法)。移行が実際に走る時だけ、
+  // かつ未退避のときだけ書き込む(冪等)。退避失敗は移行自体を止めない(退避はあくまで保険)
+  function backupPreMigrationData(fromVersion, raw) {
+    var key = "gymlog-pre-migration-v" + fromVersion;
+    try {
+      if (!StorageService.getItem(key)) StorageService.setItem(key, raw);
+    } catch (error) { console.error("Failed to back up pre-migration data", error); }
+  }
+
   function migrateExercises(exercises) {
     var result = Array.isArray(exercises) ? exercises : [];
     var catalog = exerciseCatalog();
@@ -1035,6 +1045,8 @@
       var parsed = JSON.parse(saved);
       if (!isPlausibleDataRoot(parsed)) throw new Error("Invalid root data");
       var originalVersion = Number(parsed.version || 1);
+      // 移行が実際に走る場合のみ、移行前データを退避してから移行する(データ破損時の復旧用)
+      if (originalVersion < CURRENT_DATA_VERSION) backupPreMigrationData(originalVersion, saved);
       var migrated = migrateDataToCurrentVersion(parsed);
       if (!validateCurrentData(migrated)) throw new Error("Invalid migrated data");
       migrated.exercises = migrateExercises(migrated.exercises);
