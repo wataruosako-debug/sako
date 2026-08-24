@@ -3016,3 +3016,66 @@ button, input, select, textarea, .stat-card, .flow-card, .modal-sheet, .calendar
     transition-duration: .01ms !important;
   }
 }
+
+/* ===== 指示書⑨: ジムタグ・履歴パネル・日付変更 ===== */
+.gym-field { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-primary); font-size: var(--fs-caption); font-weight: 700; }
+.gym-select-button {
+  min-height: var(--btn-md);
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  color: var(--text-primary);
+  background: var(--surface-subtle);
+  font-weight: 700;
+}
+/* ガイド進行カードの常設チップ(日付・ジム)。全状態で同じ高さ=下のボタン位置は動かない */
+.guide-session-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.guide-session-meta button {
+  min-height: 34px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: var(--surface-subtle);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+}
+/* 履歴パネル: カード群の下で下方向にのみ展開。中身は領域内スクロール */
+.guide-history-section { padding: 10px 14px; }
+#guideHistoryToggle {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  min-height: var(--btn-md); border: 0; background: transparent;
+  color: var(--text-secondary); font-size: var(--fs-caption); font-weight: 700;
+}
+#guideHistoryToggle[aria-expanded="true"] em { transform: rotate(180deg); }
+#guideHistoryToggle em { font-style: normal; transition: transform .15s ease; }
+.guide-history-panel { max-height: 40vh; overflow-y: auto; -webkit-overflow-scrolling: touch; margin-top: 4px; display: grid; gap: 8px; }
+.guide-history-entry { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-button); background: var(--surface-subtle); }
+.guide-history-entry.is-other-gym { opacity: .62; }
+.guide-history-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 2px; font-size: var(--fs-caption); }
+.guide-history-gym { font-style: normal; color: var(--text-muted); font-size: var(--fs-micro); font-weight: 700; }
+.guide-history-gym--other { color: var(--brand-primary); }
+.guide-history-sets { color: var(--text-secondary); font-size: var(--fs-caption); font-weight: 600; overflow-wrap: anywhere; }
+.guide-history-empty { margin: 4px 0; color: var(--text-muted); font-size: var(--fs-caption); font-weight: 600; }
+/* ジム選択シート */
+.gym-picker-list { display: grid; gap: 8px; max-height: 46vh; overflow-y: auto; -webkit-overflow-scrolling: touch; margin: 10px 0; }
+.gym-picker-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-height: var(--btn-lg); padding: 10px 14px; text-align: left;
+  border: 1px solid var(--border); border-radius: var(--radius-button);
+  color: var(--text-primary); background: var(--surface-subtle);
+}
+.gym-picker-item.is-selected { border-color: color-mix(in srgb, var(--brand-primary) 45%, var(--border)); background: var(--brand-primary-soft); }
+.gym-picker-item em { font-style: normal; color: var(--brand-primary); font-size: var(--fs-micro); font-weight: 700; }
+/* 設定のジム一覧 */
+.settings-gym-list { display: grid; gap: 8px; margin-bottom: 10px; }
+.settings-gym-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-button); background: var(--surface-subtle);
+}
+.settings-gym-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.settings-gym-name small { color: var(--text-muted); font-size: var(--fs-micro); }
+.settings-gym-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+.settings-gym-actions button { min-height: 38px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-button); background: var(--surface); color: var(--text-secondary); font-size: var(--fs-micro); font-weight: 700; }
+/* 日別詳細のジム名 */
+.summary-gym-name { margin-left: 6px; color: var(--text-muted); font-size: var(--fs-micro); font-weight: 700; }

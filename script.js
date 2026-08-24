@@ -191,7 +191,7 @@
   })();
   window.GymLog.storageService = StorageService;
 
-  var DEFAULT_UI_SETTINGS = { appearance: "system", colorTheme: "urban-blue", restTimerEnabled: true, autoStartRestTimer: true, restTimerSound: false, restTimerVibration: true, guideModeEnabled: true, guideHelpSeen: false, keepScreenAwake: true, monthlyGoalDays: 12, weightSuggestionEnabled: true, promotionReps: 10, restTimerScale: 1 };
+  var DEFAULT_UI_SETTINGS = { appearance: "system", colorTheme: "urban-blue", restTimerEnabled: true, autoStartRestTimer: true, restTimerSound: false, restTimerVibration: true, guideModeEnabled: true, guideHelpSeen: false, keepScreenAwake: true, monthlyGoalDays: 12, weightSuggestionEnabled: true, promotionReps: 10, restTimerScale: 1, progressGymId: "all" };
   var PROMOTION_REPS_MIN = 1;
   var PROMOTION_REPS_MAX = 20;
   // 指示書③ A-3: タイマーのピンチ拡縮の下限/上限(小さすぎて読めない・画面占有しすぎを防ぐ)
@@ -203,7 +203,7 @@
   var COLOR_THEME_OPTIONS = ["urban-blue", "midnight", "graphite-lime"];
   var systemColorSchemeQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
   var systemAppearanceListenerBound = false;
-  var CURRENT_DATA_VERSION = 2;
+  var CURRENT_DATA_VERSION = 3;
   var CATEGORY_LABELS = {
     BARBELL: "バーベル",
     DUMBBELL: "ダンベル",
@@ -330,7 +330,9 @@
       monthlyGoalDays: normalizeMonthlyGoalDays(settings.monthlyGoalDays),
       weightSuggestionEnabled: Object.prototype.hasOwnProperty.call(settings, "weightSuggestionEnabled") ? !!settings.weightSuggestionEnabled : DEFAULT_UI_SETTINGS.weightSuggestionEnabled,
       promotionReps: normalizePromotionReps(settings.promotionReps),
-      restTimerScale: normalizeRestTimerScale(settings.restTimerScale)
+      restTimerScale: normalizeRestTimerScale(settings.restTimerScale),
+      // 指示書⑨-3-3: 成長グラフのジム絞り込み("all"または gymId)。存在確認は描画時に行う
+      progressGymId: typeof settings.progressGymId === "string" && settings.progressGymId ? settings.progressGymId : DEFAULT_UI_SETTINGS.progressGymId
     };
   }
   function normalizeRestTimerScale(value) {
@@ -801,9 +803,9 @@
     return Number(weightKg || 0) * (1 + Number(reps || 0) / 30);
   }
 
-  function normalizeVersion2Data(source) {
+  function normalizeVersion3Data(source) {
     var normalized = cloneData(source || {});
-    var arrays = ["exercises", "sessions", "records", "sets", "cardios", "recentExerciseIds", "routines", "scheduledRoutines", "pendingSuggestions"];
+    var arrays = ["exercises", "sessions", "records", "sets", "cardios", "recentExerciseIds", "routines", "scheduledRoutines", "pendingSuggestions", "gyms"];
     arrays.forEach(function (key) { if (!Array.isArray(normalized[key])) normalized[key] = []; });
     normalized.profile = normalized.profile && typeof normalized.profile === "object" && !Array.isArray(normalized.profile) ? normalized.profile : null;
     normalized.exercises = normalized.exercises.filter(function (exercise) { return exercise && exercise.id && exercise.name && exercise.category; }).map(function (exercise) {
@@ -820,6 +822,28 @@
       return entry && exerciseIds[entry.exerciseId] && Number.isFinite(Number(entry.fromWeight)) && Number.isFinite(Number(entry.toWeight)) && Number(entry.toWeight) > 0;
     });
     normalized.sessions = normalized.sessions.filter(function (session) { return session && session.id && /^\d{4}-\d{2}-\d{2}$/.test(session.date || "") && (session.locationType === "gym" || session.locationType === "home"); });
+    // 指示書⑨-1: ジム。壊れた項目を除去し、空なら「マイジム」を再生成する(冪等)
+    normalized.gyms = normalized.gyms.filter(function (gym) { return gym && gym.id && typeof gym.name === "string" && gym.name.trim(); }).map(function (gym) {
+      gym.name = String(gym.name).trim().slice(0, 20);
+      gym.createdAt = gym.createdAt || nowIso();
+      gym.updatedAt = gym.updatedAt || gym.createdAt;
+      return gym;
+    });
+    if (!normalized.gyms.length) {
+      var gymStamp = nowIso();
+      normalized.gyms.push({ id: makeId("gym"), name: "マイジム", createdAt: gymStamp, updatedAt: gymStamp });
+    }
+    var gymIds = {};
+    normalized.gyms.forEach(function (gym) { gymIds[gym.id] = true; });
+    var fallbackGym = normalized.gyms.slice().sort(function (a, b) { return String(a.createdAt || "").localeCompare(String(b.createdAt || "")); })[0];
+    // gymId未設定・存在しないidのセッションは最も古いジム(通常「マイジム」)へ冪等に補完する
+    normalized.sessions.forEach(function (session) {
+      if (!session.gymId || !gymIds[session.gymId]) session.gymId = fallbackGym.id;
+    });
+    // 承認済み重量提案もジム単位で消費するため、旧データにはジムidを補完する
+    normalized.pendingSuggestions.forEach(function (entry) {
+      if (!entry.gymId || !gymIds[entry.gymId]) entry.gymId = fallbackGym.id;
+    });
     var sessionIds = {};
     normalized.sessions.forEach(function (session) { sessionIds[session.id] = true; });
     normalized.records = normalized.records.filter(function (record) { return record && record.id && sessionIds[record.sessionId] && exerciseIds[record.exerciseId]; });
@@ -884,7 +908,21 @@
     return normalized;
   }
 
-  function migrateVersion1To2(source) { return normalizeVersion2Data(source); }
+  function migrateVersion1To2(source) { return source; }
+
+  // 指示書⑨-1-3: gyms配列を新設して「マイジム」を1件作成し、既存全セッションへそのidを付与する
+  function migrateVersion2To3(source) {
+    var migrated = cloneData(source || {});
+    if (!Array.isArray(migrated.gyms) || !migrated.gyms.length) {
+      var stamp = nowIso();
+      migrated.gyms = [{ id: makeId("gym"), name: "マイジム", createdAt: stamp, updatedAt: stamp }];
+    }
+    var defaultGym = migrated.gyms[0];
+    (Array.isArray(migrated.sessions) ? migrated.sessions : []).forEach(function (session) {
+      if (session && !session.gymId) session.gymId = defaultGym.id;
+    });
+    return migrated;
+  }
 
   function migrateDataToCurrentVersion(source) {
     var migrated = cloneData(source);
@@ -894,14 +932,17 @@
       if (version === 1) {
         migrated = migrateVersion1To2(migrated);
         version = 2;
+      } else if (version === 2) {
+        migrated = migrateVersion2To3(migrated);
+        version = 3;
       } else throw new Error("Unsupported data version");
     }
-    return normalizeVersion2Data(migrated);
+    return normalizeVersion3Data(migrated);
   }
 
   function validateCurrentData(candidate) {
     if (!candidate || Number(candidate.version) !== CURRENT_DATA_VERSION) return false;
-    var keys = ["exercises", "sessions", "records", "sets", "cardios", "recentExerciseIds", "routines", "scheduledRoutines"];
+    var keys = ["exercises", "sessions", "records", "sets", "cardios", "recentExerciseIds", "routines", "scheduledRoutines", "gyms"];
     if (!keys.every(function (key) { return Array.isArray(candidate[key]); })) return false;
     var exerciseIds = {}, sessionIds = {}, recordIds = {};
     candidate.exercises.forEach(function (exercise) { if (exercise && exercise.id) exerciseIds[exercise.id] = true; });
@@ -982,7 +1023,8 @@
 
   function blankData() {
     var exercises = seedExercises();
-    return { version: CURRENT_DATA_VERSION, profile: null, exercises: exercises, sessions: [], records: [], sets: [], cardios: [], recentExerciseIds: [], routines: presetRoutines(exercises), scheduledRoutines: [], pendingSuggestions: [] };
+    var stamp = nowIso();
+    return { version: CURRENT_DATA_VERSION, profile: null, exercises: exercises, sessions: [], records: [], sets: [], cardios: [], recentExerciseIds: [], routines: presetRoutines(exercises), scheduledRoutines: [], pendingSuggestions: [], gyms: [{ id: makeId("gym"), name: "マイジム", createdAt: stamp, updatedAt: stamp }] };
   }
 
   function loadData() {
@@ -1020,8 +1062,10 @@
         sessionsByDate: Object.create(null), sessionById: Object.create(null),
         recordsBySessionId: Object.create(null), recordById: Object.create(null), recordsByExerciseId: Object.create(null),
         setsByRecordId: Object.create(null), cardiosBySessionId: Object.create(null),
-        routineById: Object.create(null), scheduledRoutinesByDate: Object.create(null), exerciseById: Object.create(null)
+        routineById: Object.create(null), scheduledRoutinesByDate: Object.create(null), exerciseById: Object.create(null),
+        gymById: Object.create(null)
       };
+      (data.gyms || []).forEach(function (gym) { indexes.gymById[gym.id] = gym; });
       data.exercises.forEach(function (exercise) { indexes.exerciseById[exercise.id] = exercise; });
       data.sessions.forEach(function (session) {
         indexes.sessionById[session.id] = session;
@@ -1137,6 +1181,8 @@
       cardios: Array.isArray(options.cardios) ? options.cardios : [],
       pendingCardioTypes: Array.isArray(options.pendingCardioTypes) ? options.pendingCardioTypes : [],
       menuSource: options.menuSource || "manual",
+      // 指示書⑨-2-1: ジムの初期値は直近セッションのgymId(いつものジムならタップ不要)
+      gymId: options.gymId || defaultGymIdForNewSession(),
       createdAt: options.createdAt || nowIso()
     };
     if (options.guideState) result.guideState = options.guideState;
@@ -1664,6 +1710,80 @@
     if (dataIndexes) return (dataIndexes.cardiosBySessionId[sessionId] || []).slice();
     return data.cardios.filter(function (cardio) { return cardio.sessionId === sessionId; });
   }
+  /* 指示書⑨: ジムの実体と参照ヘルパー */
+  function getGym(gymId) {
+    if (!gymId) return null;
+    if (dataIndexes && dataIndexes.gymById) return dataIndexes.gymById[gymId] || null;
+    return (data.gyms || []).find(function (gym) { return gym.id === gymId; }) || null;
+  }
+  function gymName(gymId) {
+    var gym = getGym(gymId);
+    return gym ? gym.name : "";
+  }
+  function sortedGyms() {
+    return (data.gyms || []).slice().sort(function (a, b) { return String(a.createdAt || "").localeCompare(String(b.createdAt || "")); });
+  }
+  function oldestGymId() {
+    var gyms = sortedGyms();
+    return gyms.length ? gyms[0].id : null;
+  }
+  // 指示書⑨-2-1: 新規セッションのジム初期値は「直近のセッションで使われたgymId」
+  function defaultGymIdForNewSession() {
+    var latest = data.sessions.slice().sort(function (a, b) {
+      var dateOrder = String(b.date || "").localeCompare(String(a.date || ""));
+      if (dateOrder) return dateOrder;
+      return String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || ""));
+    })[0];
+    if (latest && getGym(latest.gymId)) return latest.gymId;
+    return oldestGymId();
+  }
+  // 現在編集中のセッションのジム(下書きがなければ新規セッション初期値と同じ)
+  function currentGymId() {
+    if (draft) {
+      if (!draft.gymId || !getGym(draft.gymId)) draft.gymId = defaultGymIdForNewSession();
+      return draft.gymId;
+    }
+    return defaultGymIdForNewSession();
+  }
+  function gymValidationIssue(name, excludeGymId) {
+    var trimmed = String(name || "").trim();
+    if (!trimmed) return "ジム名を入力してください";
+    if (trimmed.length > 20) return "ジム名は20文字以内で入力してください";
+    var duplicated = (data.gyms || []).some(function (gym) { return gym.name === trimmed && gym.id !== excludeGymId; });
+    if (duplicated) return "同じ名前のジムが既にあります";
+    return null;
+  }
+  function addGym(name) {
+    var issue = gymValidationIssue(name);
+    if (issue) { showToast(issue); return null; }
+    var stamp = nowIso();
+    var gym = { id: makeId("gym"), name: String(name).trim(), createdAt: stamp, updatedAt: stamp };
+    if (!runDataTransaction(function () { data.gyms.push(gym); })) return null;
+    return gym;
+  }
+  function renameGym(gymId, name) {
+    var gym = getGym(gymId);
+    if (!gym) return false;
+    var issue = gymValidationIssue(name, gymId);
+    if (issue) { showToast(issue); return false; }
+    return runDataTransaction(function () { gym.name = String(name).trim(); gym.updatedAt = nowIso(); });
+  }
+  function gymUsageCount(gymId) {
+    return data.sessions.filter(function (session) { return session.gymId === gymId; }).length;
+  }
+  // 指示書⑨-2-4: セッションが参照しているジムは削除不可
+  function deleteGym(gymId) {
+    var usage = gymUsageCount(gymId);
+    if (usage > 0) { showToast(usage + "件の記録で使用中のため削除できません"); return false; }
+    return runDataTransaction(function () {
+      data.gyms = data.gyms.filter(function (gym) { return gym.id !== gymId; });
+      if (!data.gyms.length) {
+        var stamp = nowIso();
+        data.gyms.push({ id: makeId("gym"), name: "マイジム", createdAt: stamp, updatedAt: stamp });
+      }
+    });
+  }
+
   function profileWeight() { return data.profile && Number(data.profile.weightKg) > 0 ? Number(data.profile.weightKg) : 60; }
 
   /* Training calculations */
@@ -2069,7 +2189,7 @@
     var lines = ["【ノビログ トレーニング記録】", "期間：" + formatDateForAiExport(options.startDate) + "〜" + formatDateForAiExport(options.endDate), "対象：" + getAiExportTargetLabel(options.target, options.exerciseId), "【サマリー】", "トレーニング日数：" + Object.keys(workoutDates).length + "日", "ジム：" + gymVisits + "回", "自宅：" + homeVisits + "回", "概算消費カロリー：" + Math.round(totalCalories).toLocaleString("ja-JP") + "kcal", "総ボリューム：" + formatDraftVolume(totalVolume) + "kg", "有酸素距離：" + cardioDistance.toLocaleString("ja-JP", { maximumFractionDigits: 1 }) + "km"];
     entries.forEach(function (entry) {
       lines.push("");
-      lines.push("【" + formatDateForAiExport(entry.session.date) + " " + locationLabelForAiExport(entry.session.locationType) + "】");
+      lines.push("【" + formatDateForAiExport(entry.session.date) + " " + locationLabelForAiExport(entry.session.locationType) + (gymName(entry.session.gymId) ? "・" + gymName(entry.session.gymId) : "") + "】");
       entry.records.forEach(function (record) { lines.push(formatStrengthRecordForAiExport(record)); });
       if (entry.cardios.length) {
         lines.push("有酸素");
@@ -2603,12 +2723,26 @@
   }
 
   /* Progress analysis and chart rendering */
+  // 指示書⑨-3-3: 成長グラフのジム絞り込み。"all"は全記録(現行挙動)、存在しないidは"all"扱い
+  function progressGymFilterId() {
+    var gymId = uiSettings && uiSettings.progressGymId;
+    if (!gymId || gymId === "all" || !getGym(gymId)) return null;
+    return gymId;
+  }
+  function sessionMatchesGymFilter(session, gymFilter) {
+    if (!gymFilter) return true;
+    if (!session) return false;
+    return (session.gymId || oldestGymId()) === gymFilter;
+  }
+
   function getStrengthProgress(exerciseId, metric) {
     var daily = {};
+    var gymFilter = progressGymFilterId();
     var records = dataIndexes ? (dataIndexes.recordsByExerciseId[exerciseId] || []) : data.records.filter(function (record) { return record.exerciseId === exerciseId; });
     records.forEach(function (record) {
       var session = getSession(record.sessionId);
       if (!session) return;
+      if (!sessionMatchesGymFilter(session, gymFilter)) return;
       var sets = getRecordSets(record.id);
       if (!sets.length) return;
       if (!daily[session.date]) daily[session.date] = [];
@@ -2637,11 +2771,13 @@
 
   function getCardioProgress(cardioType, metric) {
     var daily = {};
+    var gymFilter = progressGymFilterId();
     data.cardios.forEach(function (cardio) {
       var normalizedType = cardio.type === "傾斜ウォーク" ? "ウォーキング" : cardio.type;
       if (normalizedType !== cardioType) return;
       var session = getSession(cardio.sessionId);
       if (!session) return;
+      if (!sessionMatchesGymFilter(session, gymFilter)) return;
       if (!daily[session.date]) daily[session.date] = { distance: 0, duration: 0, calories: 0 };
       daily[session.date].distance += Number(cardio.distanceKm || 0);
       daily[session.date].duration += Number(cardio.durationMinutes || 0);
@@ -2658,7 +2794,9 @@
 
   function getOverallProgress(metric) {
     var daily = {};
+    var gymFilter = progressGymFilterId();
     data.sessions.forEach(function (session) {
+      if (!sessionMatchesGymFilter(session, gymFilter)) return;
       if (!daily[session.date]) daily[session.date] = { totalCalories: 0, totalVolume: 0 };
       // 指示書⑦-6: 成長グラフも保存値を正とする(月次集計と同じ経路)
       daily[session.date].totalCalories += sessionTotalCaloriesValue(session);
@@ -2916,7 +3054,20 @@
     if (tooltip) tooltip.classList.remove("is-visible");
   }
 
+  // 指示書⑨-3-3: 成長グラフのジム切替(すべて+登録済みジム)。選択はuiSettingsに保存して維持
+  function renderProgressGymSelect() {
+    var select = $("#progressGymSelect");
+    if (!select) return;
+    var current = progressGymFilterId() || "all";
+    select.innerHTML = '<option value="all">すべて</option>' + sortedGyms().map(function (gym) {
+      return '<option value="' + escapeHtml(gym.id) + '">' + escapeHtml(gym.name) + '</option>';
+    }).join("");
+    select.value = current;
+    if (select.value !== current) select.value = "all";
+  }
+
   function renderProgressPage() {
+    renderProgressGymSelect();
     var isOverall = progressState.tab === "overall";
     var isStrength = progressState.tab === "strength";
     $$('[data-progress-tab]').forEach(function (button) {
@@ -3007,7 +3158,10 @@
       $("#progressBestValue").textContent = formatProgressNumber(best.value, definition);
       $("#progressFirstDate").textContent = progressDateLabel(first.date);
       $("#progressLatestDate").textContent = progressDateLabel(latest.date);
-      $("#progressBestDate").textContent = progressDateLabel(best.date);
+      // 指示書⑨-4: 自己ベスト表示にジム名を併記(その日のセッションのジム)
+      var bestDaySessions = getSessionsForDate(best.date);
+      var bestGymLabel = bestDaySessions.length ? gymName(bestDaySessions[0].gymId) : "";
+      $("#progressBestDate").textContent = progressDateLabel(best.date) + (bestGymLabel ? "（" + bestGymLabel + "）" : "");
     }
     renderProgressChart(points, definition, chartTitle);
   }
@@ -3212,6 +3366,8 @@
       locationType: source.locationType,
       memo: keepSessionId ? (source.memo || "") : "",
       menuSource: keepSessionId ? "saved" : "copy",
+      // 保存済みの再編集は元のジムを維持。コピーは新規セッション扱いで直近ジムを初期値にする
+      gymId: keepSessionId ? (source.gymId || null) : null,
       createdAt: keepSessionId ? source.createdAt : nowIso()
     });
     appendRecordsAndCardiosToDraft(resultDraft, getSessionRecords(source.id), getSessionCardios(source.id), { cardioAsPending: !keepSessionId, blankMemos: !keepSessionId });
@@ -4147,6 +4303,8 @@
         : item ? "実施中"
         : "次の種目を選択");
     $("#guideProgressBadge").textContent = completedItems + "/" + items.length;
+    renderGuideSessionMeta();
+    updateGuideHistorySection(state, item);
     var showSet = !!item && state.status === "set";
     var showCardio = !!item && state.status === "cardio";
     var showFinished = !!item && state.status === "itemComplete";
@@ -5133,6 +5291,7 @@
     $("#locationBadge").classList.toggle("location-badge--home", !isGym);
     $("#workoutTitle").textContent = isGym ? "ジムトレーニング" : "自宅トレーニング";
     $("#sessionDate").value = draft.date;
+    if ($("#sessionGymButton")) $("#sessionGymButton").textContent = gymName(currentGymId()) || "ジムを選択";
     $("#sessionMemo").value = draft.memo || "";
     $("#finishWorkoutButton").textContent = draft.id ? "変更を保存" : "トレーニングを保存";
     $("#saveRoutineButton").textContent = routineEditingId ? "ルーティンを更新" : "ルーティンとして保存";
@@ -5181,8 +5340,22 @@
     saveDraftNow();
   }
 
-  function getLastHistoricalRecord(exerciseId) {
-    var records = (dataIndexes ? (dataIndexes.recordsByExerciseId[exerciseId] || []).slice() : data.records.filter(function (record) { return record.exerciseId === exerciseId; })).sort(function (a, b) {
+  // 指示書⑨-3: 前回参照は「選択中ジムの履歴」を対象にする(プリフィル・前回表示・重量提案の共通経路)。
+  // gymIdを省略すると現在のセッションのジムを使う
+  function historicalRecordsForExercise(exerciseId, gymId) {
+    var targetGymId = gymId === undefined ? currentGymId() : gymId;
+    var records = dataIndexes ? (dataIndexes.recordsByExerciseId[exerciseId] || []).slice() : data.records.filter(function (record) { return record.exerciseId === exerciseId; });
+    if (!targetGymId) return records;
+    var fallbackGymId = oldestGymId();
+    return records.filter(function (record) {
+      var session = getSession(record.sessionId);
+      if (!session) return false;
+      return (session.gymId || fallbackGymId) === targetGymId;
+    });
+  }
+
+  function getLastHistoricalRecord(exerciseId, gymId) {
+    var records = historicalRecordsForExercise(exerciseId, gymId).sort(function (a, b) {
       var sessionA = getSession(a.sessionId) || {};
       var sessionB = getSession(b.sessionId) || {};
       var dateOrder = String(sessionB.date || "").localeCompare(String(sessionA.date || ""));
@@ -5209,6 +5382,9 @@
     if (!exercise || exercise.category === "BODYWEIGHT" || exercise.category === "CARDIO") return null;
     var record = getLastHistoricalRecord(exerciseId);
     if (!record) return null;
+    // 指示書⑨-3-2: 選択中ジムでの履歴が2回未満なら提案しない(機種差の1回分では判断できない)
+    var gymHistoryCount = historicalRecordsForExercise(exerciseId).filter(function (entry) { return getRecordSets(entry.id).length > 0; }).length;
+    if (gymHistoryCount < 2) return null;
     var sets = getRecordSets(record.id);
     if (!sets.length) return null;
     var maxWeight = sets.reduce(function (max, set) { return Math.max(max, Number(set.weight || 0)); }, 0);
@@ -5244,7 +5420,9 @@
      承認内容はdata.pendingSuggestionsに保存し、その種目を次に保存した時点で消費する。 */
   function getPendingSuggestion(exerciseId) {
     if (!Array.isArray(data.pendingSuggestions)) return null;
-    return data.pendingSuggestions.find(function (entry) { return entry && entry.exerciseId === exerciseId; }) || null;
+    // 指示書⑨-3-2: 承認したジムと同じジムのセッションでのみ消費する
+    var gymId = currentGymId();
+    return data.pendingSuggestions.find(function (entry) { return entry && entry.exerciseId === exerciseId && (!entry.gymId || entry.gymId === gymId); }) || null;
   }
 
   function storePendingSuggestion(exerciseId) {
@@ -5253,7 +5431,7 @@
     return runDataTransaction(function () {
       if (!Array.isArray(data.pendingSuggestions)) data.pendingSuggestions = [];
       data.pendingSuggestions = data.pendingSuggestions.filter(function (entry) { return entry && entry.exerciseId !== exerciseId; });
-      data.pendingSuggestions.push({ exerciseId: exerciseId, fromWeight: suggestion.baseWeight, toWeight: suggestion.suggestedWeight, reason: suggestion.reason, createdAt: nowIso() });
+      data.pendingSuggestions.push({ exerciseId: exerciseId, gymId: currentGymId(), fromWeight: suggestion.baseWeight, toWeight: suggestion.suggestedWeight, reason: suggestion.reason, createdAt: nowIso() });
     });
   }
 
@@ -6777,7 +6955,9 @@
     personalBestShownKeys[notificationKey] = true;
     var banner = $("#personalBestBanner");
     if (!banner) return;
-    $("#personalBestMessage").textContent = result.exercise.name + "\n" + result.metric + " " + formatBestValue(result.value, result.decimals, result.unit) + "\n前回ベスト " + formatBestValue(result.previous, result.decimals, result.unit);
+    // 指示書⑨-4: 自己ベストは全ジム対象のまま、どのジムで出したかを併記する(機種差の誤解防止)
+    var bestGymName = gymName(currentGymId());
+    $("#personalBestMessage").textContent = result.exercise.name + (bestGymName ? "（" + bestGymName + "）" : "") + "\n" + result.metric + " " + formatBestValue(result.value, result.decimals, result.unit) + "\n前回ベスト " + formatBestValue(result.previous, result.decimals, result.unit);
     banner.classList.remove("hidden");
     clearTimeout(personalBestTimer);
     personalBestTimer = setTimeout(function () { banner.classList.add("hidden"); }, 5200);
@@ -7004,7 +7184,7 @@
         var cardio = prepared.cardio, result = prepared.result;
         data.cardios.push({ id: makeId("cardio"), sessionId: sessionId, type: cardio.type, distanceKm: Number(cardio.distanceKm || 0), durationMinutes: Number(cardio.durationMinutes), speedKmh: result.speedKmh, inclinePercent: Number(cardio.inclinePercent || 0), avgWatts: Number(cardio.avgWatts || 0), calories: result.calories, memo: cardio.memo || "", createdAt: stamp, updatedAt: stamp });
       });
-      data.sessions.push({ id: sessionId, date: draft.date, locationType: draft.locationType, totalCalories: totalCalories, memo: draft.memo, createdAt: oldSession ? oldSession.createdAt : stamp, updatedAt: stamp });
+      data.sessions.push({ id: sessionId, date: draft.date, locationType: draft.locationType, gymId: draft.gymId && getGym(draft.gymId) ? draft.gymId : defaultGymIdForNewSession(), totalCalories: totalCalories, memo: draft.memo, createdAt: oldSession ? oldSession.createdAt : stamp, updatedAt: stamp });
       if (draft.sourceScheduleId) data.scheduledRoutines = data.scheduledRoutines.filter(function (schedule) { return schedule.id !== draft.sourceScheduleId; });
       data.recentExerciseIds = usedExerciseIds.concat(data.recentExerciseIds.filter(function (id) { return usedExerciseIds.indexOf(id) < 0; })).slice(0, 12);
       // v4: 記録した種目の承認済み提案は消費する(次の保存後に新しい提案が出る)
@@ -7068,7 +7248,10 @@
       });
       if (session.memo) lines.push('<div class="summary-line"><strong>メモ</strong><span>' + escapeHtml(session.memo) + '</span></div>');
       var sessionLabel = session.locationType === "gym" ? "ジムトレーニング" : "自宅トレーニング";
-      var sessionActions = '<div class="summary-session-actions"><button type="button" data-copy-session="' + session.id + '">コピーして開始</button><button type="button" data-edit-session="' + session.id + '">編集</button><button class="danger-text" type="button" data-delete-session="' + session.id + '">削除</button></div>';
+      // 指示書⑨-7: どのジムで実施したかを表示し、後から変更もできるようにする
+      var sessionGymName = gymName(session.gymId || oldestGymId());
+      if (sessionGymName) sessionLabel += '<small class="summary-gym-name">📍' + escapeHtml(sessionGymName) + "</small>";
+      var sessionActions = '<div class="summary-session-actions"><button type="button" data-copy-session="' + session.id + '">コピーして開始</button><button type="button" data-edit-session="' + session.id + '">編集</button><button type="button" data-change-gym-session="' + session.id + '">ジム変更</button><button class="danger-text" type="button" data-delete-session="' + session.id + '">削除</button></div>';
       html += '<section class="summary-session"><div class="summary-session-head"><strong>' + sessionLabel + '</strong><div class="summary-session-head-actions"><span>' + Math.round(calculateSessionCalories(session.id)) + ' kcal</span></div></div><div class="summary-lines">' + (lines.length ? lines.join("") : '<div class="summary-line"><span>記録内容なし</span></div>') + '</div>' + sessionActions + '</section>';
     });
     if (schedules.length) html += '<p class="day-section-label day-section-label--planned">予定メニュー</p>';
@@ -7126,8 +7309,232 @@
     summaryEl.textContent = parts.join("・");
   }
 
+  /* ===== 指示書⑨: ジム選択・変更・履歴パネル・日付変更 ===== */
+  var pendingGymPickCallback = null;
+  var gymNameEditingId = null;
+  var gymNameSavedCallback = null;
+  var guideHistoryOpen = false;
+  var guideHistoryItemId = null;
+
+  function formatDateChipJa(value) {
+    var date = dateFromString(value);
+    var weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+    return (date.getMonth() + 1) + "/" + date.getDate() + "（" + weekdays[date.getDay()] + "）";
+  }
+
+  function renderGymPickerList() {
+    var list = $("#gymPickerList");
+    if (!list) return;
+    var activeGymId = currentGymId();
+    list.innerHTML = sortedGyms().map(function (gym) {
+      var isActive = gym.id === activeGymId;
+      return '<button type="button" role="listitem" class="gym-picker-item' + (isActive ? " is-selected" : "") + '" data-pick-gym="' + escapeHtml(gym.id) + '"><strong>' + escapeHtml(gym.name) + '</strong>' + (isActive ? "<em>選択中</em>" : "") + "</button>";
+    }).join("");
+  }
+
+  // 指示書⑨-2-3: ジム選択シート。選択・新規追加の結果をコールバックで返す
+  function openGymPicker(onSelect) {
+    pendingGymPickCallback = typeof onSelect === "function" ? onSelect : null;
+    renderGymPickerList();
+    openModal("gymPickerModal");
+  }
+
+  function openGymNameModal(options) {
+    options = options || {};
+    gymNameEditingId = options.gymId || null;
+    gymNameSavedCallback = typeof options.onSaved === "function" ? options.onSaved : null;
+    $("#gymNameTitle").textContent = gymNameEditingId ? "ジム名を変更" : "新しいジムを追加";
+    $("#gymNameInput").value = gymNameEditingId ? gymName(gymNameEditingId) : "";
+    openModal("gymNameModal");
+  }
+
+  function handleGymNameSave() {
+    var name = $("#gymNameInput").value;
+    if (gymNameEditingId) {
+      if (!renameGym(gymNameEditingId, name)) return;
+      closeModal("gymNameModal");
+      renderSettingsGyms();
+      renderAllGymLabels();
+      showToast("ジム名を変更しました");
+      if (gymNameSavedCallback) gymNameSavedCallback(gymNameEditingId);
+      return;
+    }
+    var gym = addGym(name);
+    if (!gym) return;
+    closeModal("gymNameModal");
+    renderSettingsGyms();
+    showToast("ジムを追加しました");
+    if (gymNameSavedCallback) gymNameSavedCallback(gym.id);
+  }
+
+  // 指示書⑨修正指示(D-2): ジム変更時、まだ記録されていない予定セットだけを
+  // 変更後ジムの履歴でプリフィルし直す。記録済みセットと有酸素の完了分は一切触らない
+  function rebuildGuidePlannedSetsForCurrentGym(state) {
+    if (!state) return;
+    guideItems(state).forEach(function (item) {
+      if (!item || item.type !== "strength") return;
+      var completedCount = guideItemCompletedSets(item).length;
+      var oldPlanned = guideItemPlannedSets(item);
+      var historySets = getPrefillSetsForExercise(item.exerciseId);
+      var totalPlanned = historySets.length ? Math.max(completedCount, historySets.length) : Math.max(completedCount, oldPlanned.length, 1);
+      var rebuilt = [];
+      for (var index = 0; index < totalPlanned; index += 1) {
+        if (index < completedCount && oldPlanned[index]) rebuilt.push(oldPlanned[index]);
+        else rebuilt.push(guideDefaultSetForExercise(item.exerciseId, index));
+      }
+      item.plannedSets = rebuilt;
+    });
+    // 進行中セットの入力欄も未記録なので、新しいプリフィルから読み直す
+    state.currentInput = null;
+  }
+
+  function applyDraftGymChange(gymId) {
+    if (!draft || !getGym(gymId)) return;
+    if (draft.gymId === gymId) return;
+    draft.gymId = gymId;
+    if (isGuideActive() && draft.guideState) {
+      rebuildGuidePlannedSetsForCurrentGym(draft.guideState);
+      renderGuideWorkout();
+    } else {
+      // 通常フロー: 前回表示・プリフィルは描画のたびに履歴から計算されるため再描画で追随する
+      renderWorkout();
+    }
+    saveDraftNow();
+    showToast("ジムを「" + gymName(gymId) + "」に変更しました");
+  }
+
+  function renderAllGymLabels() {
+    if (draft && $("#sessionGymButton")) $("#sessionGymButton").textContent = gymName(currentGymId()) || "ジムを選択";
+    var chip = $("#guideGymChip");
+    if (chip && draft) chip.textContent = "📍 " + (gymName(currentGymId()) || "ジムを選択");
+  }
+
+  // 指示書⑨-2-4: 設定画面のジム一覧(リネーム・削除)
+  function renderSettingsGyms() {
+    var list = $("#settingsGymList");
+    if (!list) return;
+    list.innerHTML = sortedGyms().map(function (gym) {
+      var usage = gymUsageCount(gym.id);
+      return '<div class="settings-gym-row"><span class="settings-gym-name"><strong>' + escapeHtml(gym.name) + '</strong><small>' + usage + '件の記録</small></span><span class="settings-gym-actions"><button type="button" data-rename-gym="' + escapeHtml(gym.id) + '">名前変更</button><button type="button" class="danger-text" data-delete-gym="' + escapeHtml(gym.id) + '"' + (usage > 0 ? ' aria-disabled="true"' : "") + '>削除</button></span></div>';
+    }).join("");
+  }
+
+  /* 指示書⑨-5: ガイド中の過去1ヶ月履歴。現在ジムの記録を上、他ジムは「参考」として淡色表示 */
+  function getExerciseHistoryEntries(exerciseId, gymId) {
+    var targetGymId = gymId === undefined ? currentGymId() : gymId;
+    var fallbackGymId = oldestGymId();
+    var since = new Date();
+    since.setDate(since.getDate() - 30);
+    var sinceString = since.getFullYear() + "-" + String(since.getMonth() + 1).padStart(2, "0") + "-" + String(since.getDate()).padStart(2, "0");
+    var records = dataIndexes ? (dataIndexes.recordsByExerciseId[exerciseId] || []).slice() : data.records.filter(function (record) { return record.exerciseId === exerciseId; });
+    var entries = [];
+    records.forEach(function (record) {
+      var session = getSession(record.sessionId);
+      if (!session || String(session.date || "") < sinceString) return;
+      var sets = getRecordSets(record.id);
+      if (!sets.length) return;
+      var entryGymId = session.gymId || fallbackGymId;
+      entries.push({
+        date: session.date,
+        gymId: entryGymId,
+        gymName: gymName(entryGymId),
+        isCurrentGym: entryGymId === targetGymId,
+        sets: sets.map(function (set) { return { weight: Number(set.weight || 0), reps: Number(set.reps || 0), rir: set.rir == null ? "" : String(set.rir) }; })
+      });
+    });
+    entries.sort(function (a, b) {
+      if (a.isCurrentGym !== b.isCurrentGym) return a.isCurrentGym ? -1 : 1;
+      return String(b.date).localeCompare(String(a.date));
+    });
+    return entries;
+  }
+
+  function guideHistorySetText(exercise, set) {
+    var weightText = exercise && exercise.category === "BODYWEIGHT" ? "自重" : (set.weight / 1000).toFixed(1) + "kg";
+    var rirText = set.rir ? "（RIR" + set.rir + "）" : "";
+    return weightText + "×" + set.reps + rirText;
+  }
+
+  function renderGuideHistoryPanel() {
+    var panel = $("#guideHistoryPanel");
+    var state = guideState();
+    var item = guideCurrentItem();
+    if (!panel || !state || !item || item.type !== "strength") return;
+    var exercise = guideItemExercise(item);
+    var entries = getExerciseHistoryEntries(item.exerciseId);
+    if (!entries.length) {
+      panel.innerHTML = '<p class="guide-history-empty">直近1ヶ月の記録はありません</p>';
+      return;
+    }
+    var currentGymEntries = entries.filter(function (entry) { return entry.isCurrentGym; });
+    var html = "";
+    if (!currentGymEntries.length) html += '<p class="guide-history-empty">このジムでの記録はありません</p>';
+    html += entries.map(function (entry) {
+      var setsText = entry.sets.map(function (set) { return guideHistorySetText(exercise, set); }).join(" / ");
+      var gymBadge = entry.isCurrentGym
+        ? '<em class="guide-history-gym">' + escapeHtml(entry.gymName) + "</em>"
+        : '<em class="guide-history-gym guide-history-gym--other">' + escapeHtml(entry.gymName) + "・参考</em>";
+      return '<div class="guide-history-entry' + (entry.isCurrentGym ? "" : " is-other-gym") + '" role="listitem"><div class="guide-history-head"><strong>' + formatDateChipJa(entry.date) + "</strong>" + gymBadge + '</div><span class="guide-history-sets">' + escapeHtml(setsText) + "</span></div>";
+    }).join("");
+    panel.innerHTML = html;
+  }
+
+  function updateGuideHistorySection(state, item) {
+    var section = $("#guideHistorySection");
+    if (!section) return;
+    var show = !!item && item.type === "strength" && (state.status === "set" || state.status === "itemComplete");
+    section.classList.toggle("hidden", !show);
+    if (!show) return;
+    // 種目が変わったら閉じる(別種目の記録と誤読しないため)
+    if (guideHistoryItemId !== item.id) {
+      guideHistoryItemId = item.id;
+      guideHistoryOpen = false;
+    }
+    var toggle = $("#guideHistoryToggle");
+    if (toggle) toggle.setAttribute("aria-expanded", guideHistoryOpen ? "true" : "false");
+    $("#guideHistoryPanel").classList.toggle("hidden", !guideHistoryOpen);
+    if (guideHistoryOpen) renderGuideHistoryPanel();
+  }
+
+  /* 指示書⑨-6: ガイド中の記録日変更(セッション全体が移動) */
+  function hasBlockingRecordOnDate(dateValue) {
+    var sessions = getSessionsForDate(dateValue).filter(function (session) { return !draft || session.id !== draft.id; });
+    if (sessions.length) return true;
+    // 保存前の別下書きとの衝突(通常は下書きは1つ=自分自身だが防御的に確認)
+    if (pendingSavedDraft && pendingSavedDraft.draft && pendingSavedDraft.draft.date === dateValue && (!draft || pendingSavedDraft.draft !== draft)) return true;
+    return false;
+  }
+
+  function requestGuideDateChange(newDate) {
+    if (!draft) return false;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(newDate || ""))) { showToast("日付を選択してください"); return false; }
+    if (newDate === draft.date) { closeModal("guideDateModal"); return false; }
+    // 修正指示C-1: max属性に頼らずJS側でも実行時に未来日付を弾く(日またぎ対策)
+    if (String(newDate) > todayString()) { showToast("未来の日付には変更できません"); return false; }
+    if (hasBlockingRecordOnDate(newDate)) { showToast("その日には既に記録があります"); return false; }
+    var fromLabel = formatDateChipJa(draft.date);
+    var toLabel = formatDateChipJa(newDate);
+    askConfirm(fromLabel + " → " + toLabel + " に変更しますか？この日の記録すべてが移動します", "変更する", function () {
+      draft.date = newDate;
+      closeModal("guideDateModal");
+      renderGuideWorkout();
+      renderWorkout();
+      saveDraftNow();
+      showToast("記録日を" + toLabel + "に変更しました");
+    });
+    return true;
+  }
+
+  function renderGuideSessionMeta() {
+    if (!draft) return;
+    var dateChip = $("#guideDateChip");
+    if (dateChip) dateChip.textContent = "📅 " + formatDateChipJa(draft.date);
+    renderAllGymLabels();
+  }
+
   function openSettingsScreen() {
     renderSettingsProfileSummary();
+    renderSettingsGyms();
     renderAppearanceSettings();
     showScreen("settings");
   }
@@ -7198,6 +7605,54 @@
     });
     on("#progressMetricSelect", "change", function () { progressState.metric = this.value; renderProgressPage(); });
     on("#progressRangeSelect", "change", function () { progressState.range = this.value; renderProgressPage(); });
+    on("#progressGymSelect", "change", function () {
+      uiSettings.progressGymId = this.value || "all";
+      saveUiSettings(uiSettings);
+      renderProgressPage();
+    });
+    // 指示書⑨: ジム選択・管理・ガイドの日付変更
+    on("#sessionGymButton", "click", function () { openGymPicker(applyDraftGymChange); });
+    on("#guideGymChip", "click", function () { openGymPicker(applyDraftGymChange); });
+    on("#guideDateChip", "click", function () {
+      if (!draft) return;
+      var input = $("#guideDateInput");
+      input.value = draft.date;
+      input.max = todayString();
+      openModal("guideDateModal");
+    });
+    on("#guideDateSaveButton", "click", function () { requestGuideDateChange($("#guideDateInput").value); });
+    on("#gymPickerList", "click", function (event) {
+      var button = event.target.closest("[data-pick-gym]");
+      if (!button) return;
+      closeModal("gymPickerModal");
+      if (pendingGymPickCallback) pendingGymPickCallback(button.dataset.pickGym);
+    });
+    on("#gymPickerAddButton", "click", function () {
+      openGymNameModal({ onSaved: function (gymId) {
+        closeModal("gymPickerModal");
+        if (pendingGymPickCallback) pendingGymPickCallback(gymId);
+      } });
+    });
+    on("#gymNameSaveButton", "click", handleGymNameSave);
+    on("#settingsAddGymButton", "click", function () { openGymNameModal({}); });
+    on("#settingsGymList", "click", function (event) {
+      var renameButton = event.target.closest("[data-rename-gym]");
+      if (renameButton) { openGymNameModal({ gymId: renameButton.dataset.renameGym }); return; }
+      var deleteButton = event.target.closest("[data-delete-gym]");
+      if (deleteButton) {
+        var deleteGymId = deleteButton.dataset.deleteGym;
+        if (gymUsageCount(deleteGymId) > 0) { showToast(gymUsageCount(deleteGymId) + "件の記録で使用中のため削除できません"); return; }
+        askConfirm("ジム「" + gymName(deleteGymId) + "」を削除しますか？", "削除する", function () {
+          if (deleteGym(deleteGymId)) { renderSettingsGyms(); showToast("ジムを削除しました"); }
+        });
+      }
+    });
+    on("#guideHistoryToggle", "click", function () {
+      guideHistoryOpen = !guideHistoryOpen;
+      this.setAttribute("aria-expanded", guideHistoryOpen ? "true" : "false");
+      $("#guideHistoryPanel").classList.toggle("hidden", !guideHistoryOpen);
+      if (guideHistoryOpen) renderGuideHistoryPanel();
+    });
     on("#applyProgressCustomRange", "click", function () {
       var start = $("#progressCustomStart").value;
       var end = $("#progressCustomEnd").value;
@@ -7831,6 +8286,19 @@
     var dayRoutine = event.target.closest("[data-day-routine-date]");
     if (dayRoutine) { closeModal("dayModal"); openRoutineList(dayRoutine.dataset.dayRoutineDate, "use"); }
     var edit = event.target.closest("[data-edit-session]"); if (edit) loadDraft(edit.dataset.editSession);
+    var changeGym = event.target.closest("[data-change-gym-session]");
+    if (changeGym) {
+      var gymTargetSessionId = changeGym.dataset.changeGymSession;
+      openGymPicker(function (gymId) {
+        var targetSession = getSession(gymTargetSessionId);
+        if (!targetSession || !getGym(gymId)) return;
+        if (runDataTransaction(function () { targetSession.gymId = gymId; targetSession.updatedAt = nowIso(); })) {
+          renderDaySummary(targetSession.date);
+          renderHome();
+          showToast("ジムを「" + gymName(gymId) + "」に変更しました");
+        }
+      });
+    }
     var copy = event.target.closest("[data-copy-session]"); if (copy) openCopyDestination(copy.dataset.copySession);
     var remove = event.target.closest("[data-delete-session]");
     if (remove) {
@@ -8030,6 +8498,19 @@
       getMonthlySummary: getMonthlySummary,
       calculateStrengthCaloriesForRecords: calculateStrengthCaloriesForRecords,
       calculateStrengthCalories: calculateStrengthCalories,
+      addGym: addGym,
+      renameGym: renameGym,
+      deleteGym: deleteGym,
+      gymUsageCount: gymUsageCount,
+      currentGymId: currentGymId,
+      defaultGymIdForNewSession: defaultGymIdForNewSession,
+      getLastHistoricalRecord: getLastHistoricalRecord,
+      getExerciseHistoryEntries: getExerciseHistoryEntries,
+      getStrengthProgress: getStrengthProgress,
+      getOverallProgress: getOverallProgress,
+      requestGuideDateChange: requestGuideDateChange,
+      applyDraftGymChange: applyDraftGymChange,
+      showPersonalBestBanner: showPersonalBestBanner,
       deriveExerciseCalcAttrs: deriveExerciseCalcAttrs,
       exerciseCalcAttrs: exerciseCalcAttrs,
       cardioCalcMode: cardioCalcMode,

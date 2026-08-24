@@ -194,6 +194,7 @@
           <section class="progress-controls" aria-label="分析内容を選択">
             <label id="progressExerciseField"><span id="progressExerciseLabel">種目</span><select id="progressExerciseSelect"></select></label>
             <label><span>見たい成長</span><select id="progressMetricSelect"></select></label>
+            <label id="progressGymField"><span>ジム</span><select id="progressGymSelect"></select></label>
             <label><span>期間</span><select id="progressRangeSelect"><option value="currentMonth">当月</option><option value="1m">1か月</option><option value="3m">3か月</option><option value="6m" selected>6か月</option><option value="1y">1年</option><option value="custom">任意期間</option><option value="all">すべて</option></select></label>
             <div id="progressCustomRange" class="progress-custom-range hidden">
               <label><span>開始日</span><input id="progressCustomStart" type="date"></label>
@@ -229,6 +230,8 @@
 
         <div class="workout-body">
           <label class="date-field"><span>記録日</span><input id="sessionDate" type="date"></label>
+          <!-- 指示書⑨-2-2: 記録中にジムを変更できる(タップで選択シート) -->
+          <div class="date-field gym-field"><span>ジム</span><button id="sessionGymButton" class="gym-select-button" type="button">マイジム</button></div>
 
           <section id="savedSetsSection" class="flow-card draft-menu-card">
             <div class="section-title-row draft-menu-title-row">
@@ -357,6 +360,11 @@
               
               <h2 id="guideCurrentTitle">次のセット</h2>
               <small id="guideProgressText">0 / 0種目</small>
+              <!-- 指示書⑨-2-2/6-4: 常設のチップ(全状態で同じ高さ=ボタン位置は動かない)。タップで変更 -->
+              <div class="guide-session-meta">
+                <button id="guideDateChip" type="button" aria-label="記録日を変更">--</button>
+                <button id="guideGymChip" type="button" aria-label="ジムを変更">--</button>
+              </div>
             </div>
             <button id="guideMenuListButton" class="outline-button guide-menu-button" type="button">メニュー一覧</button>
           </section>
@@ -502,6 +510,13 @@
               <button id="guideDetailBackButton" class="outline-button" type="button">戻る</button>
             </div>
           </section>
+
+          <!-- 指示書⑨-5: 種目の過去1ヶ月履歴。カード群の下に置き、開閉しても上のボタン位置は動かない。
+               中身はパネル内スクロール(ページ全体を押し広げない) -->
+          <section id="guideHistorySection" class="guide-card guide-history-section hidden">
+            <button id="guideHistoryToggle" type="button" aria-expanded="false"><span>この種目の記録（1ヶ月）</span><em aria-hidden="true">▾</em></button>
+            <div id="guideHistoryPanel" class="guide-history-panel hidden" role="list" aria-label="この種目の過去1ヶ月の記録"></div>
+          </section>
         </div>
       </section>
 
@@ -524,6 +539,13 @@
               <span class="settings-profile-info"><strong>AI分析用にテキスト出力</strong><small>期間を選んで、記録をコピーできます</small></span>
               <span class="settings-profile-chevron" aria-hidden="true">›</span>
             </button>
+          </section>
+
+          <!-- 指示書⑨-2-4: ジムの一覧・追加・リネーム・削除 -->
+          <section class="settings-group" aria-label="ジム">
+            <h2 class="settings-group-title">ジム</h2>
+            <div id="settingsGymList" class="settings-gym-list"></div>
+            <button id="settingsAddGymButton" class="outline-button outline-button--blue" type="button">＋新しいジムを追加</button>
           </section>
 
           <section class="settings-group" aria-label="トレーニング">
@@ -748,6 +770,38 @@
       <div class="routine-editor-head"><strong>追加済み種目</strong><button id="routineAddExerciseButton" type="button">種目を追加</button></div>
       <div id="routineEditorExerciseList" class="routine-editor-exercises"></div>
       <div class="modal-actions"><button id="confirmRoutineSave" class="finish-button" type="button">このルーティンを保存</button><button class="outline-button" type="button" data-cancel-routine-editor>キャンセル</button></div>
+    </section>
+  </div>
+
+  <div id="gymPickerModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="gymPickerModal"></div>
+    <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="gymPickerTitle">
+      <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="gymPickerModal" aria-label="閉じる">×</button>
+      <h2 id="gymPickerTitle">ジムを選択</h2>
+      <div id="gymPickerList" class="gym-picker-list" role="list" aria-label="登録済みのジム"></div>
+      <button id="gymPickerAddButton" class="outline-button outline-button--blue" type="button">＋新しいジムを追加</button>
+      <button class="outline-button" type="button" data-close-modal="gymPickerModal">キャンセル</button>
+    </section>
+  </div>
+
+  <div id="gymNameModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="gymNameModal"></div>
+    <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="gymNameTitle">
+      <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="gymNameModal" aria-label="閉じる">×</button>
+      <h2 id="gymNameTitle">新しいジムを追加</h2>
+      <label class="memo-field"><span>ジム名 <small>最大20文字</small></span><input id="gymNameInput" type="text" maxlength="20" placeholder="例: ○○フィットネス"></label>
+      <div class="modal-actions"><button id="gymNameSaveButton" class="finish-button" type="button">保存</button><button class="outline-button" type="button" data-close-modal="gymNameModal">キャンセル</button></div>
+    </section>
+  </div>
+
+  <div id="guideDateModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="guideDateModal"></div>
+    <section class="modal-sheet modal-sheet--confirm" role="dialog" aria-modal="true" aria-labelledby="guideDateTitle">
+      <div class="modal-handle"></div><button class="modal-close" type="button" data-close-modal="guideDateModal" aria-label="閉じる">×</button>
+      <h2 id="guideDateTitle">記録日を変更</h2>
+      <p class="modal-lead">この日の記録すべて（全種目・全セット・有酸素）が一緒に移動します。</p>
+      <label class="date-field"><span>記録日</span><input id="guideDateInput" type="date"></label>
+      <div class="modal-actions"><button id="guideDateSaveButton" class="finish-button" type="button">この日付に変更</button><button class="outline-button" type="button" data-close-modal="guideDateModal">キャンセル</button></div>
     </section>
   </div>
 

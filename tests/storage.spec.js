@@ -72,6 +72,10 @@ test("追加3: 重量提案が履歴を正しく参照する(オンザフライ�
     const now = new Date().toISOString();
     const sid = "sess-hist-1";
     const rid = "rec-hist-1";
+    // 指示書⑨-3-2: 提案は同一ジムの履歴が2回以上あるときだけ出るため、古い履歴も1件用意する
+    data.sessions.push({ id: "sess-hist-0", date: "2026-06-24", locationType: "gym", createdAt: "2026-06-24T00:00:00.000Z", updatedAt: "2026-06-24T00:00:00.000Z" });
+    data.records.push({ id: "rec-hist-0", sessionId: "sess-hist-0", exerciseId: bench.id, orderIndex: 0, createdAt: now, updatedAt: now });
+    data.sets.push({ id: "set-0", recordId: "rec-hist-0", setNumber: 1, weight: 47500, reps: 10, rir: "2-3", restSeconds: 90, createdAt: now, updatedAt: now });
     data.sessions.push({ id: sid, date: "2026-07-01", locationType: "gym", createdAt: now, updatedAt: now });
     data.records.push({ id: rid, sessionId: sid, exerciseId: bench.id, orderIndex: 0, createdAt: now, updatedAt: now });
     // メインセット2本とも 50kg(50000g) × 10回以上・RIRは限界(0)以外 → 昇格条件を満たす
