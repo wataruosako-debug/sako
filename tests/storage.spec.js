@@ -72,6 +72,10 @@ test("追加3: 重量提案が履歴を正しく参照する(オンザフライ�
     const now = new Date().toISOString();
     const sid = "sess-hist-1";
     const rid = "rec-hist-1";
+    // 指示書⑨-3-2: 提案は同一ジムの履歴が2回以上あるときだけ出るため、古い履歴も1件用意する
+    data.sessions.push({ id: "sess-hist-0", date: "2026-06-24", locationType: "gym", createdAt: "2026-06-24T00:00:00.000Z", updatedAt: "2026-06-24T00:00:00.000Z" });
+    data.records.push({ id: "rec-hist-0", sessionId: "sess-hist-0", exerciseId: bench.id, orderIndex: 0, createdAt: now, updatedAt: now });
+    data.sets.push({ id: "set-0", recordId: "rec-hist-0", setNumber: 1, weight: 47500, reps: 10, rir: "2-3", restSeconds: 90, createdAt: now, updatedAt: now });
     data.sessions.push({ id: sid, date: "2026-07-01", locationType: "gym", createdAt: now, updatedAt: now });
     data.records.push({ id: rid, sessionId: sid, exerciseId: bench.id, orderIndex: 0, createdAt: now, updatedAt: now });
     // メインセット2本とも 50kg(50000g) × 10回以上・RIRは限界(0)以外 → 昇格条件を満たす
@@ -114,4 +118,28 @@ test("追加4: マイグレーション済みフラグがあれば2回目以降�
   expect(result.fromPrefs).toBe(true);                        // Preferencesのデータが使われる
   expect(result.fromLocal).toBe(false);                       // localStorageはコピーされていない
   expect(result.prefsDataSessionId).toBe("sess-from-prefs");  // Preferencesは上書きされていない
+});
+
+// 指示書⑨ マージ前確認2-1: version 2→3 移行の前に、移行前データを別キーへ退避する
+test("追加5: version2→3の移行前に gymlog-pre-migration-v2 へ退避される", async ({ page }) => {
+  const legacy = JSON.stringify(buildLegacyData("sess-v2"));
+  await installNativeMock(page, {
+    prefsSeed: {},
+    localStorageSeed: { "gymlog-data-v1": legacy }
+  });
+  await page.goto("/");
+  await waitForTestApi(page);
+
+  const result = await page.evaluate(() => {
+    const backup = window.__MOCK_PREFS_STORE__["gymlog-pre-migration-v2"];
+    return {
+      hasBackup: !!backup,
+      backupIsOriginal: !!backup && JSON.parse(backup).version === 2 && JSON.parse(backup).sessions[0].id === "sess-v2",
+      migratedVersion: window.GymLog.__test__.getData().version
+    };
+  });
+
+  expect(result.hasBackup).toBe(true);          // 移行前データが退避されている
+  expect(result.backupIsOriginal).toBe(true);   // 退避内容は移行前(version 2)そのまま
+  expect(result.migratedVersion).toBe(3);       // 本体はversion 3へ移行済み
 });

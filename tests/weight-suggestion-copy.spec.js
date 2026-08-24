@@ -17,6 +17,10 @@ async function setupWithPending(page) {
     const data = api.blankData();
     const bench = data.exercises.find((e) => e.name === "ベンチプレス"); // 胸 → +2.5kg
     const now = "2026-07-04T10:00:00.000Z";
+    // 指示書⑨-3-2: 提案は同一ジムの履歴が2回以上あるときだけ出るため、履歴を2回分用意する
+    data.sessions.push({ id: "sO", date: "2026-06-27", locationType: "gym", createdAt: "2026-06-27T10:00:00.000Z", updatedAt: "2026-06-27T10:00:00.000Z" });
+    data.records.push({ id: "rO", sessionId: "sO", exerciseId: bench.id, orderIndex: 0, createdAt: now, updatedAt: now });
+    data.sets.push({ id: "s0", recordId: "rO", setNumber: 1, weight: 47500, reps: 12, rir: "2-3", restSeconds: 90, createdAt: now, updatedAt: now });
     data.sessions.push({ id: "sN", date: "2026-07-04", locationType: "gym", createdAt: now, updatedAt: now });
     data.records.push({ id: "rN", sessionId: "sN", exerciseId: bench.id, orderIndex: 0, createdAt: now, updatedAt: now });
     data.sets.push({ id: "s1", recordId: "rN", setNumber: 1, weight: 50000, reps: 12, rir: "2-3", restSeconds: 90, createdAt: now, updatedAt: now });
