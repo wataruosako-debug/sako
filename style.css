@@ -3079,3 +3079,10 @@ button, input, select, textarea, .stat-card, .flow-card, .modal-sheet, .calendar
 .settings-gym-actions button { min-height: 38px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-button); background: var(--surface); color: var(--text-secondary); font-size: var(--fs-micro); font-weight: 700; }
 /* 日別詳細のジム名 */
 .summary-gym-name { margin-left: 6px; color: var(--text-muted); font-size: var(--fs-micro); font-weight: 700; }
+
+/* 指示書⑪-3: 日付チップは「タップで変更できる」ことが伝わるよう枠線を強調する */
+.guide-session-meta .guide-chip--editable {
+  border-color: color-mix(in srgb, var(--brand-primary) 42%, var(--border));
+  color: var(--brand-primary);
+  background: var(--brand-primary-soft);
+}

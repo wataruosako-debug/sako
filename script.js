@@ -5126,11 +5126,38 @@
     openModal("guideMenuModal");
   }
 
+  /* 指示書⑪: ガイドの下書きを破棄して終了する(ガイドモード設定はONのまま)。
+     discardGuideAndDisableMode と同じ作法だが applyGuideModeEnabled(false) は呼ばない */
+  function discardGuideDraftAndExit() {
+    stopRestTimer();   // 予約済み通知のキャンセルも stopRestTimer 内で行われる
+    closeModal("guideExitModal");
+    clearSavedDraft();
+    draft = null;
+    resetWorkoutEditorState();
+    resetCardioForm();
+    renderHome();
+    showScreen("home");
+  }
+
+  // 指示書⑪-2-2: 記録がある状態での破棄は必ず確認を挟む
+  function requestGuideDiscard() {
+    askConfirm("記録した内容は保存されません。破棄しますか？", "破棄する", function () {
+      discardGuideDraftAndExit();
+      showToast("ガイド下書きを破棄しました");
+    }, "ガイドモードに戻る");
+  }
+
   function openGuideExit() {
     var state = guideState();
     if (!state) return;
+    // 指示書⑪-2-1: 1セットも記録していない(有酸素も無い)なら確認もモーダルも挟まず即終了する。
+    // 失われるものが無いため通知も出さない。3つの終了導線すべてがこの関数を通る
+    if (!guideHasAnyCompletedWork(state)) {
+      discardGuideDraftAndExit();
+      return;
+    }
     // 指示書⑥-2: 確認を開いただけではタイマーを止めない(キャンセルで戻れる)。
-    // 実際の保存(prepareGuideDraftForSave)・破棄(discardGuideAndDisableMode)側で停止する
+    // 実際の保存(prepareGuideDraftForSave)・破棄(discardGuideDraftAndExit)側で停止する
     captureGuideInputToState();
     clearGuideExtraSetMode(state);
     var lines = guideItems(state).map(function (item) {
@@ -7540,7 +7567,8 @@
   function renderGuideSessionMeta() {
     if (!draft) return;
     var dateChip = $("#guideDateChip");
-    if (dateChip) dateChip.textContent = "📅 " + formatDateChipJa(draft.date);
+    // 指示書⑪-3: タップで変更できることが分かるよう「▾」を添える(枠線はCSS側)
+    if (dateChip) dateChip.textContent = "📅 " + formatDateChipJa(draft.date) + " ▾";
     renderAllGymLabels();
   }
 
@@ -8105,6 +8133,7 @@
     on("#skipGuideCardioButton", "click", skipCurrentGuideItem);
     on("#guideExitFromSelectButton", "click", openGuideExit);
     on("#cancelGuideExit", "click", cancelGuideExitDialog);
+    on("#discardGuideDraftButton", "click", requestGuideDiscard);
     on("#saveGuideProgress", "click", function () { var button = this; runButtonLocked(button, saveGuideProgress); });
     on("#saveGuideAndDisableButton", "click", function () { var button = this; runButtonLocked(button, saveGuideAndDisableMode); });
     on("#discardGuideAndDisableButton", "click", function () { var button = this; runButtonLocked(button, discardGuideAndDisableMode); });
@@ -8521,6 +8550,10 @@
       getStrengthProgress: getStrengthProgress,
       getOverallProgress: getOverallProgress,
       requestGuideDateChange: requestGuideDateChange,
+      guideHasAnyCompletedWork: function () { return guideHasAnyCompletedWork(guideState()); },
+      openGuideExit: openGuideExit,
+      discardGuideDraftAndExit: discardGuideDraftAndExit,
+      requestGuideDiscard: requestGuideDiscard,
       applyDraftGymChange: applyDraftGymChange,
       showPersonalBestBanner: showPersonalBestBanner,
       deriveExerciseCalcAttrs: deriveExerciseCalcAttrs,
