@@ -362,7 +362,7 @@
               <small id="guideProgressText">0 / 0種目</small>
               <!-- 指示書⑨-2-2/6-4: 常設のチップ(全状態で同じ高さ=ボタン位置は動かない)。タップで変更 -->
               <div class="guide-session-meta">
-                <button id="guideDateChip" type="button" aria-label="記録日を変更">--</button>
+                <button id="guideDateChip" class="guide-chip--editable" type="button" aria-label="記録日を変更">--</button>
                 <button id="guideGymChip" type="button" aria-label="ジムを変更">--</button>
               </div>
             </div>
@@ -934,7 +934,8 @@
       <h2 id="guideExitTitle">今日のメニューを保存しますか？</h2>
       <p class="modal-lead">ここまで入力したセットは保存途中として残ります。</p>
       <div id="guideExitSummary" class="guide-exit-summary"></div>
-      <div class="modal-actions"><button id="saveGuideProgress" class="finish-button" type="button">保存して終了</button><button id="cancelGuideExit" class="outline-button" type="button">ガイドモードに戻る</button></div>
+      <!-- 指示書⑪-2-3: 破棄は最下部・赤文字のアウトラインで、保存ボタンと隣接させない(誤操作防止) -->
+      <div class="modal-actions"><button id="saveGuideProgress" class="finish-button" type="button">保存して終了</button><button id="cancelGuideExit" class="outline-button" type="button">ガイドモードに戻る</button><button id="discardGuideDraftButton" class="outline-button danger-text" type="button">保存せず破棄</button></div>
     </section>
   </div>
 
