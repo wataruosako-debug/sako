@@ -1174,13 +1174,6 @@
     return normalizeExerciseWeightStep(exercise.defaultWeightStep, exercise.category);
   }
 
-  function weightStepOptionHtml(selectedStep) {
-    selectedStep = Number(selectedStep || 0);
-    return WEIGHT_STEP_OPTIONS.map(function (step) {
-      return '<option value="' + step + '"' + (Math.abs(step - selectedStep) < 0.0001 ? " selected" : "") + '>' + formatNumberForInput(step, step) + 'kg</option>';
-    }).join("");
-  }
-
   function createWorkoutDraft(options) {
     options = options || {};
     var result = {
@@ -3555,26 +3548,6 @@
     commitWorkoutSave({ warningConfirmed: warningConfirmed, skipConflictCheck: true });
   }
 
-  function mergeDraftWithExistingSession(existingSession) {
-    if (!draft || !existingSession) return;
-    var sourceSessionId = draft.originalSessionId || draft.id || null;
-    var previousSessionId = sourceSessionId && sourceSessionId !== existingSession.id ? sourceSessionId : null;
-    var incomingRecords = draft.records;
-    var incomingCardios = draft.cardios;
-    var incomingMemo = draft.memo;
-    var incomingSourceScheduleId = draft.sourceScheduleId;
-    var mergedDraft = createDraftFromSession(existingSession.id, draft.date, true);
-    appendRecordsAndCardiosToDraft(mergedDraft, incomingRecords, incomingCardios);
-    mergedDraft.memo = incomingMemo || mergedDraft.memo;
-    if (incomingSourceScheduleId) mergedDraft.sourceScheduleId = incomingSourceScheduleId;
-    if (previousSessionId) mergedDraft.previousSessionIdToRemove = previousSessionId;
-    draft = mergedDraft;
-  }
-
-  function isPlannedDraftMenu() {
-    return !!(draft && (draft.menuSource === "routine" || draft.menuSource === "copy" || draft.menuSource === "scheduled"));
-  }
-
   function isGuideEligibleDraft(draftValue) {
     return !!(draftValue && (draftValue.menuSource === "routine" || draftValue.menuSource === "copy" || draftValue.menuSource === "scheduled"));
   }
@@ -3886,10 +3859,6 @@
     return lastCompleted ? Object.assign({}, lastCompleted, { id: makeId("guideset"), status: "planned", memo: "" }) : guideDefaultSetForExercise(item.exerciseId, index);
   }
 
-  function guideWeightStep(exercise) {
-    return exercise && exercise.category === "BODYWEIGHT" ? 0 : 1;
-  }
-
   function guideInputValues() {
     var item = guideCurrentItem();
     var exercise = guideItemExercise(item);
@@ -4097,13 +4066,6 @@
       notice.classList.add("hidden");
       notice.classList.remove("is-visible");
     }, 1600);
-  }
-
-  function guideRestTimerFinishedMessage() {
-    var item = guideCurrentItem();
-    if (!item) return "休憩終了";
-    var meta = guideSetMeta(item);
-    return "休憩終了 / " + meta.setNumber + "セット目を開始できます";
   }
 
   /* 指示書③ A-3: タイマー表示を2本指ピンチで無段階に拡大・縮小する。
@@ -4829,14 +4791,6 @@
     scheduleGuideCurrentSetScroll();
   }
 
-  function finishCurrentGuideItemAndSelectNext() {
-    var item = guideCurrentItem();
-    var state = guideState();
-    if (item && state) markGuideItemCompleted(item, state);
-    guideSetSaveLocked = false;
-    moveGuideToSelectNext();
-  }
-
   // 記録済みセットの修正モード(v5)。完了ボタンが「修正を保存」になり、
   // 保存/キャンセルで元いた画面(進行中セット or 完了種目の詳細)に戻る
   function enterGuideCompletedSetEdit(itemId, setIndex) {
@@ -5023,29 +4977,6 @@
     if (guideItemCompletedSets(item).length) markGuideItemCompleted(item, guideState());
     else item.status = "skipped";
     moveGuideToSelectNext();
-  }
-
-  function startNextGuideItem(preferDeferred) {
-    var next = findNextGuideItem(preferDeferred);
-    if (!next) {
-      openGuideExit();
-      return;
-    }
-    // 指示書⑥-2: メニュー内の種目へ切り替えてもタイマーを維持(メニュー外追加と同じ挙動に統一)
-    activateGuideItem(next.id, { keepRestTimer: true });
-  }
-
-  function startSelectedGuideItem() {
-    var state = guideState();
-    if (!state) return;
-    var item = guideItems(state).find(function (entry) { return entry.id === state.selectedNextItemId && entry.status !== "skipped"; });
-    if (!item) {
-      showToast("種目を選んでください");
-      renderGuideNextChoiceList(state);
-      return;
-    }
-    // 指示書⑥-2: メニュー内の種目へ切り替えてもタイマーを維持(メニュー外追加と同じ挙動に統一)
-    activateGuideItem(item.id, { keepRestTimer: true });
   }
 
   function handleGuideStrengthSetCompleted(item, state, newSet, plannedSet, setIndex, best) {
@@ -6799,10 +6730,6 @@
     }
   }
 
-  function playRestTimerSound() {
-    return playRestTimerEndSound();
-  }
-
   function tryRestTimerVibration() {
     if (!isRestTimerEnabled() || !uiSettings.restTimerVibration) return false;
     // ネイティブ(iOS等)は navigator.vibrate 非対応のため Haptics で振動する
@@ -7110,18 +7037,6 @@
   // ワークアウト保存完了時の表示はトーストから完了サマリーモーダル(showWorkoutSummary)に
   // 置き換わったため、commitWorkoutSaveからは呼ばれなくなった。
   // トースト形式の完了通知が必要なケースが再度出た場合に備えて実装は残している。
-  function workoutSavedToastText(oldSession, records, cardios, calories, volumeKg) {
-    var setCount = (records || []).reduce(function (sum, record) { return sum + record.sets.length; }, 0);
-    var cardioCount = (cardios || []).length;
-    var parts = [];
-    if (setCount) parts.push(setCount + "セット");
-    if (cardioCount) parts.push("有酸素" + cardioCount + "件");
-    if (Number(volumeKg || 0) > 0) parts.push(formatDraftVolume(volumeKg) + "kg");
-    if (Number(calories || 0) > 0) parts.push(Math.round(calories).toLocaleString("ja-JP") + "kcal");
-    var prefix = oldSession ? "トレーニングを更新しました" : "トレーニングを保存しました";
-    return prefix + "。おつかれさまでした" + (parts.length ? "（" + parts.join("・") + "）" : "");
-  }
-
   function showWorkoutSummary(summary) {
     workoutSummarySessionDate = summary.date || todayString();
     var aiCopyStatus = $("#workoutSummaryAiCopyStatus");
