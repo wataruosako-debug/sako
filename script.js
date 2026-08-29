@@ -248,6 +248,11 @@
     if (exercise && exercise.category === "BODYWEIGHT") return "自重";
     return (Number(weightGrams || 0) / 1000).toFixed(1) + "kg";
   }
+  // 有酸素の保存済みカロリー。有効な正の値のときだけ採用し、そうでなければnull(=呼び出し側で再計算)
+  function storedCardioCalories(source) {
+    var saved = Number(source && source.calories);
+    return Number.isFinite(saved) && saved > 0 ? saved : null;
+  }
   var STRENGTH_METRICS = {
     maxWeight: { label: "最大重量", unit: "kg", decimals: 1, help: "その日に扱った中で一番重い重量です。" },
     maxReps: { label: "最高回数", unit: "回", decimals: 0, help: "その日の1セットで一番多くできた回数です。" },
@@ -2164,8 +2169,8 @@
 
   function formatCardioForAiExport(cardio) {
     var result = calculateCardio(cardio);
-    var savedCalories = Number(cardio.calories);
-    var calories = Number.isFinite(savedCalories) && savedCalories > 0 ? savedCalories : result.calories;
+    var savedCalories = storedCardioCalories(cardio);
+    var calories = savedCalories === null ? result.calories : savedCalories;
     var parts = [];
     if (Number(cardio.durationMinutes || 0) > 0) parts.push(formatNumberForInput(Number(cardio.durationMinutes || 0), 1) + "分");
     if (Number(cardio.distanceKm || 0) > 0) parts.push(formatNumberForInput(Number(cardio.distanceKm || 0), 0.1) + "km");
@@ -2195,8 +2200,8 @@
       totalCalories += calculateStrengthCaloriesForRecords(entry.records);
       totalVolume += entry.records.reduce(function (sum, record) { return sum + calculateRecordStrengthVolume(record); }, 0);
       entry.cardios.forEach(function (cardio) {
-        var savedCalories = Number(cardio.calories);
-        totalCalories += Number.isFinite(savedCalories) && savedCalories > 0 ? savedCalories : calculateCardio(cardio).calories;
+        var savedCalories = storedCardioCalories(cardio);
+        totalCalories += savedCalories === null ? calculateCardio(cardio).calories : savedCalories;
         cardioDistance += Number(cardio.distanceKm || 0);
       });
     });
@@ -3698,9 +3703,9 @@
     var duration = Number(source.durationMinutes || 0);
     var incline = Number(source.inclinePercent || 0);
     var speed = distance > 0 && duration > 0 ? distance / (duration / 60) : 0;
-    var savedCalories = Number(source.calories);
+    var savedCalories = storedCardioCalories(source);
     var calculated = duration > 0 ? calculateCardio(source).calories : 0;
-    var calories = Number.isFinite(savedCalories) && savedCalories > 0 ? savedCalories : calculated;
+    var calories = savedCalories === null ? calculated : savedCalories;
     var details = [];
     if (duration > 0) details.push(formatNumberForInput(duration, 1) + "分");
     if (distance > 0) details.push(formatNumberForInput(distance, 0.1) + "km");
