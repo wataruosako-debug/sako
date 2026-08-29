@@ -239,6 +239,10 @@
   function cardioCalcMode(type) {
     return CARDIO_CALC_MODES[type] || "weightBearing";
   }
+  // 旧データの「傾斜ウォーク」は「ウォーキング」として扱う(表示・集計・比較で共通に使う正規化)
+  function normalizeCardioType(type) {
+    return type === "傾斜ウォーク" ? "ウォーキング" : type;
+  }
   var STRENGTH_METRICS = {
     maxWeight: { label: "最大重量", unit: "kg", decimals: 1, help: "その日に扱った中で一番重い重量です。" },
     maxReps: { label: "最高回数", unit: "回", decimals: 0, help: "その日の1セットで一番多くできた回数です。" },
@@ -2372,7 +2376,7 @@
   }
 
   function cardioExerciseId(type) {
-    var normalizedType = type === "傾斜ウォーク" ? "ウォーキング" : type;
+    var normalizedType = normalizeCardioType(type);
     var exercise = data.exercises.find(function (item) { return item.category === "CARDIO" && item.name === normalizedType; });
     return exercise ? exercise.id : "";
   }
@@ -2778,7 +2782,7 @@
     var daily = {};
     var gymFilter = progressGymFilterId();
     data.cardios.forEach(function (cardio) {
-      var normalizedType = cardio.type === "傾斜ウォーク" ? "ウォーキング" : cardio.type;
+      var normalizedType = normalizeCardioType(cardio.type);
       if (normalizedType !== cardioType) return;
       var session = getSession(cardio.sessionId);
       if (!session) return;
@@ -3235,7 +3239,7 @@
 
   function populateCardioForm(cardio) {
     if (!cardio) return;
-    var normalizedType = cardio.type === "傾斜ウォーク" ? "ウォーキング" : cardio.type;
+    var normalizedType = normalizeCardioType(cardio.type);
     var cardioExercise = data.exercises.find(function (exercise) {
       return exercise.category === "CARDIO" && exercise.name === normalizedType;
     });
@@ -3346,10 +3350,10 @@
     });
     (sourceCardios || []).forEach(function (sourceCardio) {
       if (options.cardioAsPending) {
-        var pendingType = sourceCardio.type === "傾斜ウォーク" ? "ウォーキング" : sourceCardio.type;
+        var pendingType = normalizeCardioType(sourceCardio.type);
         targetDraft.pendingCardioTypes = targetDraft.pendingCardioTypes || [];
         var alreadyPending = targetDraft.pendingCardioTypes.indexOf(pendingType) >= 0;
-        var alreadyRecorded = targetDraft.cardios.some(function (cardio) { return (cardio.type === "傾斜ウォーク" ? "ウォーキング" : cardio.type) === pendingType; });
+        var alreadyRecorded = targetDraft.cardios.some(function (cardio) { return normalizeCardioType(cardio.type) === pendingType; });
         if (!alreadyPending && !alreadyRecorded) targetDraft.pendingCardioTypes.push(pendingType);
         return;
       }
@@ -3658,7 +3662,7 @@
   }
 
   function guideDefaultCardioForType(type, sourceCardio) {
-    var normalizedType = type === "傾斜ウォーク" ? "ウォーキング" : type;
+    var normalizedType = normalizeCardioType(type);
     var source = sourceCardio || getLastHistoricalCardio(normalizedType) || {};
     // 指示書⑥-3: 今日の下書き由来(sourceCardio)のメモは保持し、過去履歴からのプリフィルでは引き継がない
     var memoValue = sourceCardio ? (sourceCardio.memo || "") : "";
@@ -5467,9 +5471,9 @@
   }
 
   function getLastHistoricalCardio(type) {
-    var normalizedType = type === "傾斜ウォーク" ? "ウォーキング" : type;
+    var normalizedType = normalizeCardioType(type);
     return data.cardios.slice().filter(function (cardio) {
-      return (cardio.type === "傾斜ウォーク" ? "ウォーキング" : cardio.type) === normalizedType;
+      return normalizeCardioType(cardio.type) === normalizedType;
     }).sort(function (a, b) {
       var sessionA = getSession(a.sessionId) || {};
       var sessionB = getSession(b.sessionId) || {};
