@@ -1578,7 +1578,7 @@
     selectedRest = Number(editorState.restSeconds || 90);
     pendingSavedDraft = null;
     if (draft.guideState && draft.guideState.active && !isGuideModeEnabled()) {
-      convertGuideDraftToNormalInput(false);
+      moveGuideSetsIntoDraftForEditing(false);
       closeModal("draftResumeModal");
       renderWorkout();
       showScreen("workout");
@@ -5102,7 +5102,7 @@
       return;
     }
     // 指示書⑥-2: 確認を開いただけではタイマーを止めない(キャンセルで戻れる)。
-    // 実際の保存(prepareGuideDraftForSave)・破棄(discardGuideDraftAndExit)側で停止する
+    // 実際の保存(moveGuideSetsIntoDraftForSave)・破棄(discardGuideDraftAndExit)側で停止する
     captureGuideInputToState();
     clearGuideExtraSetMode(state);
     var lines = guideItems(state).map(function (item) {
@@ -5138,7 +5138,7 @@
     });
   }
 
-  function prepareGuideDraftForSave() {
+  function moveGuideSetsIntoDraftForSave() {
     if (!isGuideActive()) return true;
     captureGuideInputToState();
     clearGuideExtraSetMode(draft.guideState);
@@ -5153,7 +5153,7 @@
     return true;
   }
 
-  function convertGuideDraftToNormalInput(captureCurrentInput) {
+  function moveGuideSetsIntoDraftForEditing(captureCurrentInput) {
     if (!isGuideActive()) return false;
     if (captureCurrentInput !== false) captureGuideInputToState();
     clearGuideExtraSetMode(draft.guideState);
@@ -5181,13 +5181,13 @@
   }
 
   function saveGuideProgress() {
-    if (!prepareGuideDraftForSave()) return;
+    if (!moveGuideSetsIntoDraftForSave()) return;
     closeModal("guideExitModal");
     requestWorkoutSave({ warningConfirmed: false });
   }
 
   function saveGuideAndDisableMode() {
-    if (isGuideActive() && !prepareGuideDraftForSave()) return;
+    if (isGuideActive() && !moveGuideSetsIntoDraftForSave()) return;
     closeModal("guideModeOffModal");
     closeModal("guideExitModal");
     applyGuideModeEnabled(false);
@@ -7029,7 +7029,7 @@
   function requestWorkoutSave(options) {
     options = options || {};
     if (!draft) return;
-    if (isGuideActive() && !prepareGuideDraftForSave()) return;
+    if (isGuideActive() && !moveGuideSetsIntoDraftForSave()) return;
     var setCount = draft.records.reduce(function (sum, record) { return sum + record.sets.length; }, 0);
     if (!setCount && !draft.cardios.length) { showToast("セットまたは有酸素運動を1件以上記録してください"); return; }
     draft.date = $("#sessionDate").value || todayString();
