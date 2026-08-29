@@ -243,6 +243,11 @@
   function normalizeCardioType(type) {
     return type === "傾斜ウォーク" ? "ウォーキング" : type;
   }
+  // セットの重量表示。自重種目は「自重」、それ以外はグラム単位の値をkg1桁で表示する
+  function formatSetWeightText(exercise, weightGrams) {
+    if (exercise && exercise.category === "BODYWEIGHT") return "自重";
+    return (Number(weightGrams || 0) / 1000).toFixed(1) + "kg";
+  }
   var STRENGTH_METRICS = {
     maxWeight: { label: "最大重量", unit: "kg", decimals: 1, help: "その日に扱った中で一番重い重量です。" },
     maxReps: { label: "最高回数", unit: "回", decimals: 0, help: "その日の1セットで一番多くできた回数です。" },
@@ -5465,7 +5470,7 @@
     if (!sets.length) return "前回の記録はありません";
     var sameSet = sets[setIndex] || null;
     var source = sameSet || sets[sets.length - 1];
-    var weight = exercise.category === "BODYWEIGHT" ? "自重" : (Number(source.weight || 0) / 1000).toFixed(1) + "kg";
+    var weight = formatSetWeightText(exercise, source.weight);
     var label = sameSet ? "前回の" + (setIndex + 1) + "セット目" : "前回の最終セット";
     return label + "：" + weight + " × " + Number(source.reps || 0) + "回（全" + sets.length + "セット）";
   }
@@ -5540,7 +5545,7 @@
     var inputSet = editingRef ? editingRef.set : lastSet;
     var nextNumber = record.sets.length + 1;
     var labelWeightGrams = inputSet ? (inputSet.prefillOriginalWeight != null ? inputSet.prefillOriginalWeight : inputSet.weight) : 0;
-    var previousWeight = exercise.category === "BODYWEIGHT" ? "自重" : (inputSet ? (Number(labelWeightGrams || 0) / 1000).toFixed(1) + "kg" : "--");
+    var previousWeight = exercise.category === "BODYWEIGHT" ? "自重" : (inputSet ? formatSetWeightText(exercise, labelWeightGrams) : "--");
     var suggestionNote = !editingRef && inputSet && inputSet.prefillOriginalWeight != null ? "（提案を反映 → " + formatSuggestionKg(inputSet.weight) + "）" : "";
     // どのセットの数字を参照しているかが分かるラベル(プリフィル元と必ず一致させる)
     var previousLabel = "前回の記録";
@@ -6174,7 +6179,7 @@
       var exerciseName = escapeHtml(exercise ? exercise.name : "不明な種目");
       var isExpanded = expandedDraftExerciseId === record.exerciseId;
       var setRows = record.sets.map(function (set) {
-        var weightText = exercise && exercise.category === "BODYWEIGHT" ? "自重" : (Number(set.weight) / 1000).toFixed(1) + "kg";
+        var weightText = formatSetWeightText(exercise, set.weight);
         var editingClass = set.tempId === editingSetTempId ? " is-editing" : "";
         var recentClass = set.tempId === recentlySavedSetTempId ? " is-recently-saved" : "";
         return '<div class="saved-item saved-item--editable' + editingClass + recentClass + '" data-edit-set="' + set.tempId + '"><button class="saved-item-main" type="button" aria-label="セット' + set.setNumber + 'を編集"><span class="set-index">' + set.setNumber + '</span><span class="saved-item-text"><strong>' + weightText + ' × ' + set.reps + '回</strong><small>' + RIR_LABELS[set.rir || ""] + '・休憩' + set.restSeconds + '秒' + (set.memo ? '・' + escapeHtml(set.memo) : '') + '</small></span><span class="edit-cue">編集</span></button><button class="delete-mini" type="button" data-delete-set="' + set.tempId + '" aria-label="セットを削除">×</button></div>';
@@ -7198,7 +7203,7 @@
       getSessionRecords(session.id).forEach(function (record) {
         var exercise = getExercise(record.exerciseId);
         var sets = getRecordSets(record.id);
-        var detail = sets.map(function (set) { return (exercise && exercise.category === "BODYWEIGHT" ? "自重" : (Number(set.weight) / 1000).toFixed(1) + "kg") + "×" + set.reps + "回"; }).join(" / ");
+        var detail = sets.map(function (set) { return formatSetWeightText(exercise, set.weight) + "×" + set.reps + "回"; }).join(" / ");
         lines.push('<div class="summary-line"><strong>' + escapeHtml(exercise ? exercise.name : "不明な種目") + '</strong><span>' + detail + '</span></div>');
       });
       getSessionCardios(session.id).forEach(function (cardio) {
@@ -7408,7 +7413,7 @@
   }
 
   function guideHistorySetText(exercise, set) {
-    var weightText = exercise && exercise.category === "BODYWEIGHT" ? "自重" : (set.weight / 1000).toFixed(1) + "kg";
+    var weightText = formatSetWeightText(exercise, set.weight);
     var rirText = set.rir ? "（RIR" + set.rir + "）" : "";
     return weightText + "×" + set.reps + rirText;
   }
