@@ -5511,6 +5511,20 @@
     return null;
   }
 
+  /* v4: Nセット目の入力には前回セッションのNセット目をプリフィルする。
+     前回のセット数を超えたら今日の最後のセット、履歴がなければ既定値。
+     どのセットを参照したか(historicalSet)は表示ラベルの決定にも使う */
+  function resolvePrefillSetForNextInput(exercise, record, editingRef) {
+    var historicalSets = getPrefillSetsForExercise(exercise.id);
+    var historicalSet = historicalSets[record.sets.length] || null;
+    var lastSet = historicalSet || (record.sets.length ? record.sets[record.sets.length - 1] : (historicalSets.length ? historicalSets[historicalSets.length - 1] : null));
+    return {
+      historicalSets: historicalSets,
+      historicalSet: historicalSet,
+      inputSet: editingRef ? editingRef.set : lastSet
+    };
+  }
+
   function renderSelectedExercise() {
     var exercise = getExercise(selectedExerciseId);
     var hasExercise = !!exercise;
@@ -5542,12 +5556,10 @@
       editingSetTempId = null;
       editingRef = null;
     }
-    // v4: Nセット目の入力には前回セッションのNセット目をプリフィルする。
-    // 前回のセット数を超えたら今日の最後のセット、履歴がなければ既定値
-    var historicalSets = getPrefillSetsForExercise(exercise.id);
-    var historicalSet = historicalSets[record.sets.length] || null;
-    var lastSet = historicalSet || (record.sets.length ? record.sets[record.sets.length - 1] : (historicalSets.length ? historicalSets[historicalSets.length - 1] : null));
-    var inputSet = editingRef ? editingRef.set : lastSet;
+    var prefill = resolvePrefillSetForNextInput(exercise, record, editingRef);
+    var historicalSets = prefill.historicalSets;
+    var historicalSet = prefill.historicalSet;
+    var inputSet = prefill.inputSet;
     var nextNumber = record.sets.length + 1;
     var labelWeightGrams = inputSet ? (inputSet.prefillOriginalWeight != null ? inputSet.prefillOriginalWeight : inputSet.weight) : 0;
     var previousWeight = exercise.category === "BODYWEIGHT" ? "自重" : (inputSet ? formatSetWeightText(exercise, labelWeightGrams) : "--");
@@ -7188,6 +7200,22 @@
     return '<button class="finish-button" type="button" data-day-start="gym" data-day-date="' + dateValue + '">ジムトレーニングを記録</button><button class="outline-button" type="button" data-day-start="home" data-day-date="' + dateValue + '">自宅トレーニングを記録</button><button class="outline-button outline-button--blue" type="button" data-day-routine-date="' + dateValue + '">ルーティンから登録</button><button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
   }
 
+  // 日別詳細の1セッション分の明細行(筋トレ・有酸素・メモ)をHTML断片の配列で返す
+  function buildDaySummaryLines(session) {
+    var lines = [];
+    getSessionRecords(session.id).forEach(function (record) {
+      var exercise = getExercise(record.exerciseId);
+      var sets = getRecordSets(record.id);
+      var detail = sets.map(function (set) { return formatSetWeightText(exercise, set.weight) + "×" + set.reps + "回"; }).join(" / ");
+      lines.push('<div class="summary-line"><strong>' + escapeHtml(exercise ? exercise.name : "不明な種目") + '</strong><span>' + detail + '</span></div>');
+    });
+    getSessionCardios(session.id).forEach(function (cardio) {
+      lines.push('<div class="summary-line"><strong>' + escapeHtml(cardio.type) + '</strong><span>' + escapeHtml(cardioMetricSummary(cardio, "距離・時間は記録時に入力")) + '</span></div>');
+    });
+    if (session.memo) lines.push('<div class="summary-line"><strong>メモ</strong><span>' + escapeHtml(session.memo) + '</span></div>');
+    return lines;
+  }
+
   function renderDaySummary(dateValue) {
     var sessions = getSessionsForDate(dateValue);
     var schedules = data.scheduledRoutines.filter(function (schedule) { return schedule.date === dateValue; });
@@ -7204,17 +7232,7 @@
       html += '<div class="day-total"><span>概算消費カロリー</span><strong>' + Math.round(dayTotal) + ' kcal</strong></div><p class="day-section-label">実績</p>';
     }
     sessions.forEach(function (session) {
-      var lines = [];
-      getSessionRecords(session.id).forEach(function (record) {
-        var exercise = getExercise(record.exerciseId);
-        var sets = getRecordSets(record.id);
-        var detail = sets.map(function (set) { return formatSetWeightText(exercise, set.weight) + "×" + set.reps + "回"; }).join(" / ");
-        lines.push('<div class="summary-line"><strong>' + escapeHtml(exercise ? exercise.name : "不明な種目") + '</strong><span>' + detail + '</span></div>');
-      });
-      getSessionCardios(session.id).forEach(function (cardio) {
-        lines.push('<div class="summary-line"><strong>' + escapeHtml(cardio.type) + '</strong><span>' + escapeHtml(cardioMetricSummary(cardio, "距離・時間は記録時に入力")) + '</span></div>');
-      });
-      if (session.memo) lines.push('<div class="summary-line"><strong>メモ</strong><span>' + escapeHtml(session.memo) + '</span></div>');
+      var lines = buildDaySummaryLines(session);
       var sessionLabel = session.locationType === "gym" ? "ジムトレーニング" : "自宅トレーニング";
       // 指示書⑨-7: どのジムで実施したかを表示し、後から変更もできるようにする
       var sessionGymName = gymName(session.gymId || oldestGymId());
