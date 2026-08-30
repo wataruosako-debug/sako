@@ -1200,7 +1200,7 @@ body.is-keyboard-focus .workout-body {
 .draft-stat--calories strong { color: var(--calorie-color); }
 .draft-stat--volume { border-color: color-mix(in srgb, var(--brand-primary) 24%, var(--border)); background: var(--brand-primary-soft); }
 .draft-stat--volume strong { color: var(--brand-primary); }
-.draft-menu-add-button, .saved-set-add-button, .empty-draft-actions button, .draft-menu-edit-actions button, .planned-routine button, .summary-session-actions button {
+.saved-set-add-button, .empty-draft-actions button, .draft-menu-edit-actions button, .planned-routine button, .summary-session-actions button {
   border: 1px solid color-mix(in srgb, var(--brand-primary) 28%, var(--border));
   border-radius: var(--radius-input);
   color: var(--brand-primary);
@@ -1209,16 +1209,6 @@ body.is-keyboard-focus .workout-body {
   font-weight: 800;
   letter-spacing: -.02em;
 }
-.draft-menu-add-button { flex: 0 0 auto; min-height: var(--btn-md); padding: 0 12px; white-space: nowrap; }
-.draft-menu-add-button--bottom {
-  display: block;
-  width: 100%;
-  min-height: var(--btn-md);
-  margin-top: 10px;
-  padding: 0 12px;
-  font-size: var(--fs-body);
-}
-.draft-menu-add-button--bottom.hidden { display: none; }
 .empty-draft-menu {
   padding: 14px 10px;
   border: 1px dashed var(--border-strong);

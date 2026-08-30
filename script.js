@@ -239,6 +239,20 @@
   function cardioCalcMode(type) {
     return CARDIO_CALC_MODES[type] || "weightBearing";
   }
+  // 旧データの「傾斜ウォーク」は「ウォーキング」として扱う(表示・集計・比較で共通に使う正規化)
+  function normalizeCardioType(type) {
+    return type === "傾斜ウォーク" ? "ウォーキング" : type;
+  }
+  // セットの重量表示。自重種目は「自重」、それ以外はグラム単位の値をkg1桁で表示する
+  function formatSetWeightText(exercise, weightGrams) {
+    if (exercise && exercise.category === "BODYWEIGHT") return "自重";
+    return (Number(weightGrams || 0) / 1000).toFixed(1) + "kg";
+  }
+  // 有酸素の保存済みカロリー。有効な正の値のときだけ採用し、そうでなければnull(=呼び出し側で再計算)
+  function storedCardioCalories(source) {
+    var saved = Number(source && source.calories);
+    return Number.isFinite(saved) && saved > 0 ? saved : null;
+  }
   var STRENGTH_METRICS = {
     maxWeight: { label: "最大重量", unit: "kg", decimals: 1, help: "その日に扱った中で一番重い重量です。" },
     maxReps: { label: "最高回数", unit: "回", decimals: 0, help: "その日の1セットで一番多くできた回数です。" },
@@ -1174,13 +1188,6 @@
     return normalizeExerciseWeightStep(exercise.defaultWeightStep, exercise.category);
   }
 
-  function weightStepOptionHtml(selectedStep) {
-    selectedStep = Number(selectedStep || 0);
-    return WEIGHT_STEP_OPTIONS.map(function (step) {
-      return '<option value="' + step + '"' + (Math.abs(step - selectedStep) < 0.0001 ? " selected" : "") + '>' + formatNumberForInput(step, step) + 'kg</option>';
-    }).join("");
-  }
-
   function createWorkoutDraft(options) {
     options = options || {};
     var result = {
@@ -1571,7 +1578,7 @@
     selectedRest = Number(editorState.restSeconds || 90);
     pendingSavedDraft = null;
     if (draft.guideState && draft.guideState.active && !isGuideModeEnabled()) {
-      convertGuideDraftToNormalInput(false);
+      moveGuideSetsIntoDraftForEditing(false);
       closeModal("draftResumeModal");
       renderWorkout();
       showScreen("workout");
@@ -2162,8 +2169,8 @@
 
   function formatCardioForAiExport(cardio) {
     var result = calculateCardio(cardio);
-    var savedCalories = Number(cardio.calories);
-    var calories = Number.isFinite(savedCalories) && savedCalories > 0 ? savedCalories : result.calories;
+    var savedCalories = storedCardioCalories(cardio);
+    var calories = savedCalories === null ? result.calories : savedCalories;
     var parts = [];
     if (Number(cardio.durationMinutes || 0) > 0) parts.push(formatNumberForInput(Number(cardio.durationMinutes || 0), 1) + "分");
     if (Number(cardio.distanceKm || 0) > 0) parts.push(formatNumberForInput(Number(cardio.distanceKm || 0), 0.1) + "km");
@@ -2193,8 +2200,8 @@
       totalCalories += calculateStrengthCaloriesForRecords(entry.records);
       totalVolume += entry.records.reduce(function (sum, record) { return sum + calculateRecordStrengthVolume(record); }, 0);
       entry.cardios.forEach(function (cardio) {
-        var savedCalories = Number(cardio.calories);
-        totalCalories += Number.isFinite(savedCalories) && savedCalories > 0 ? savedCalories : calculateCardio(cardio).calories;
+        var savedCalories = storedCardioCalories(cardio);
+        totalCalories += savedCalories === null ? calculateCardio(cardio).calories : savedCalories;
         cardioDistance += Number(cardio.distanceKm || 0);
       });
     });
@@ -2379,7 +2386,7 @@
   }
 
   function cardioExerciseId(type) {
-    var normalizedType = type === "傾斜ウォーク" ? "ウォーキング" : type;
+    var normalizedType = normalizeCardioType(type);
     var exercise = data.exercises.find(function (item) { return item.category === "CARDIO" && item.name === normalizedType; });
     return exercise ? exercise.id : "";
   }
@@ -2785,7 +2792,7 @@
     var daily = {};
     var gymFilter = progressGymFilterId();
     data.cardios.forEach(function (cardio) {
-      var normalizedType = cardio.type === "傾斜ウォーク" ? "ウォーキング" : cardio.type;
+      var normalizedType = normalizeCardioType(cardio.type);
       if (normalizedType !== cardioType) return;
       var session = getSession(cardio.sessionId);
       if (!session) return;
@@ -3242,7 +3249,7 @@
 
   function populateCardioForm(cardio) {
     if (!cardio) return;
-    var normalizedType = cardio.type === "傾斜ウォーク" ? "ウォーキング" : cardio.type;
+    var normalizedType = normalizeCardioType(cardio.type);
     var cardioExercise = data.exercises.find(function (exercise) {
       return exercise.category === "CARDIO" && exercise.name === normalizedType;
     });
@@ -3353,10 +3360,10 @@
     });
     (sourceCardios || []).forEach(function (sourceCardio) {
       if (options.cardioAsPending) {
-        var pendingType = sourceCardio.type === "傾斜ウォーク" ? "ウォーキング" : sourceCardio.type;
+        var pendingType = normalizeCardioType(sourceCardio.type);
         targetDraft.pendingCardioTypes = targetDraft.pendingCardioTypes || [];
         var alreadyPending = targetDraft.pendingCardioTypes.indexOf(pendingType) >= 0;
-        var alreadyRecorded = targetDraft.cardios.some(function (cardio) { return (cardio.type === "傾斜ウォーク" ? "ウォーキング" : cardio.type) === pendingType; });
+        var alreadyRecorded = targetDraft.cardios.some(function (cardio) { return normalizeCardioType(cardio.type) === pendingType; });
         if (!alreadyPending && !alreadyRecorded) targetDraft.pendingCardioTypes.push(pendingType);
         return;
       }
@@ -3555,26 +3562,6 @@
     commitWorkoutSave({ warningConfirmed: warningConfirmed, skipConflictCheck: true });
   }
 
-  function mergeDraftWithExistingSession(existingSession) {
-    if (!draft || !existingSession) return;
-    var sourceSessionId = draft.originalSessionId || draft.id || null;
-    var previousSessionId = sourceSessionId && sourceSessionId !== existingSession.id ? sourceSessionId : null;
-    var incomingRecords = draft.records;
-    var incomingCardios = draft.cardios;
-    var incomingMemo = draft.memo;
-    var incomingSourceScheduleId = draft.sourceScheduleId;
-    var mergedDraft = createDraftFromSession(existingSession.id, draft.date, true);
-    appendRecordsAndCardiosToDraft(mergedDraft, incomingRecords, incomingCardios);
-    mergedDraft.memo = incomingMemo || mergedDraft.memo;
-    if (incomingSourceScheduleId) mergedDraft.sourceScheduleId = incomingSourceScheduleId;
-    if (previousSessionId) mergedDraft.previousSessionIdToRemove = previousSessionId;
-    draft = mergedDraft;
-  }
-
-  function isPlannedDraftMenu() {
-    return !!(draft && (draft.menuSource === "routine" || draft.menuSource === "copy" || draft.menuSource === "scheduled"));
-  }
-
   function isGuideEligibleDraft(draftValue) {
     return !!(draftValue && (draftValue.menuSource === "routine" || draftValue.menuSource === "copy" || draftValue.menuSource === "scheduled"));
   }
@@ -3685,7 +3672,7 @@
   }
 
   function guideDefaultCardioForType(type, sourceCardio) {
-    var normalizedType = type === "傾斜ウォーク" ? "ウォーキング" : type;
+    var normalizedType = normalizeCardioType(type);
     var source = sourceCardio || getLastHistoricalCardio(normalizedType) || {};
     // 指示書⑥-3: 今日の下書き由来(sourceCardio)のメモは保持し、過去履歴からのプリフィルでは引き継がない
     var memoValue = sourceCardio ? (sourceCardio.memo || "") : "";
@@ -3716,9 +3703,9 @@
     var duration = Number(source.durationMinutes || 0);
     var incline = Number(source.inclinePercent || 0);
     var speed = distance > 0 && duration > 0 ? distance / (duration / 60) : 0;
-    var savedCalories = Number(source.calories);
+    var savedCalories = storedCardioCalories(source);
     var calculated = duration > 0 ? calculateCardio(source).calories : 0;
-    var calories = Number.isFinite(savedCalories) && savedCalories > 0 ? savedCalories : calculated;
+    var calories = savedCalories === null ? calculated : savedCalories;
     var details = [];
     if (duration > 0) details.push(formatNumberForInput(duration, 1) + "分");
     if (distance > 0) details.push(formatNumberForInput(distance, 0.1) + "km");
@@ -3884,10 +3871,6 @@
     if (index < planned.length) return planned[index];
     var lastCompleted = completedSets[completedCount - 1];
     return lastCompleted ? Object.assign({}, lastCompleted, { id: makeId("guideset"), status: "planned", memo: "" }) : guideDefaultSetForExercise(item.exerciseId, index);
-  }
-
-  function guideWeightStep(exercise) {
-    return exercise && exercise.category === "BODYWEIGHT" ? 0 : 1;
   }
 
   function guideInputValues() {
@@ -4097,13 +4080,6 @@
       notice.classList.add("hidden");
       notice.classList.remove("is-visible");
     }, 1600);
-  }
-
-  function guideRestTimerFinishedMessage() {
-    var item = guideCurrentItem();
-    if (!item) return "休憩終了";
-    var meta = guideSetMeta(item);
-    return "休憩終了 / " + meta.setNumber + "セット目を開始できます";
   }
 
   /* 指示書③ A-3: タイマー表示を2本指ピンチで無段階に拡大・縮小する。
@@ -4829,14 +4805,6 @@
     scheduleGuideCurrentSetScroll();
   }
 
-  function finishCurrentGuideItemAndSelectNext() {
-    var item = guideCurrentItem();
-    var state = guideState();
-    if (item && state) markGuideItemCompleted(item, state);
-    guideSetSaveLocked = false;
-    moveGuideToSelectNext();
-  }
-
   // 記録済みセットの修正モード(v5)。完了ボタンが「修正を保存」になり、
   // 保存/キャンセルで元いた画面(進行中セット or 完了種目の詳細)に戻る
   function enterGuideCompletedSetEdit(itemId, setIndex) {
@@ -5025,29 +4993,6 @@
     moveGuideToSelectNext();
   }
 
-  function startNextGuideItem(preferDeferred) {
-    var next = findNextGuideItem(preferDeferred);
-    if (!next) {
-      openGuideExit();
-      return;
-    }
-    // 指示書⑥-2: メニュー内の種目へ切り替えてもタイマーを維持(メニュー外追加と同じ挙動に統一)
-    activateGuideItem(next.id, { keepRestTimer: true });
-  }
-
-  function startSelectedGuideItem() {
-    var state = guideState();
-    if (!state) return;
-    var item = guideItems(state).find(function (entry) { return entry.id === state.selectedNextItemId && entry.status !== "skipped"; });
-    if (!item) {
-      showToast("種目を選んでください");
-      renderGuideNextChoiceList(state);
-      return;
-    }
-    // 指示書⑥-2: メニュー内の種目へ切り替えてもタイマーを維持(メニュー外追加と同じ挙動に統一)
-    activateGuideItem(item.id, { keepRestTimer: true });
-  }
-
   function handleGuideStrengthSetCompleted(item, state, newSet, plannedSet, setIndex, best) {
     var completed = guideItemCompletedSets(item);
     completed.push(newSet);
@@ -5157,7 +5102,7 @@
       return;
     }
     // 指示書⑥-2: 確認を開いただけではタイマーを止めない(キャンセルで戻れる)。
-    // 実際の保存(prepareGuideDraftForSave)・破棄(discardGuideDraftAndExit)側で停止する
+    // 実際の保存(moveGuideSetsIntoDraftForSave)・破棄(discardGuideDraftAndExit)側で停止する
     captureGuideInputToState();
     clearGuideExtraSetMode(state);
     var lines = guideItems(state).map(function (item) {
@@ -5193,7 +5138,7 @@
     });
   }
 
-  function prepareGuideDraftForSave() {
+  function moveGuideSetsIntoDraftForSave() {
     if (!isGuideActive()) return true;
     captureGuideInputToState();
     clearGuideExtraSetMode(draft.guideState);
@@ -5208,7 +5153,7 @@
     return true;
   }
 
-  function convertGuideDraftToNormalInput(captureCurrentInput) {
+  function moveGuideSetsIntoDraftForEditing(captureCurrentInput) {
     if (!isGuideActive()) return false;
     if (captureCurrentInput !== false) captureGuideInputToState();
     clearGuideExtraSetMode(draft.guideState);
@@ -5236,13 +5181,13 @@
   }
 
   function saveGuideProgress() {
-    if (!prepareGuideDraftForSave()) return;
+    if (!moveGuideSetsIntoDraftForSave()) return;
     closeModal("guideExitModal");
     requestWorkoutSave({ warningConfirmed: false });
   }
 
   function saveGuideAndDisableMode() {
-    if (isGuideActive() && !prepareGuideDraftForSave()) return;
+    if (isGuideActive() && !moveGuideSetsIntoDraftForSave()) return;
     closeModal("guideModeOffModal");
     closeModal("guideExitModal");
     applyGuideModeEnabled(false);
@@ -5530,15 +5475,15 @@
     if (!sets.length) return "前回の記録はありません";
     var sameSet = sets[setIndex] || null;
     var source = sameSet || sets[sets.length - 1];
-    var weight = exercise.category === "BODYWEIGHT" ? "自重" : (Number(source.weight || 0) / 1000).toFixed(1) + "kg";
+    var weight = formatSetWeightText(exercise, source.weight);
     var label = sameSet ? "前回の" + (setIndex + 1) + "セット目" : "前回の最終セット";
     return label + "：" + weight + " × " + Number(source.reps || 0) + "回（全" + sets.length + "セット）";
   }
 
   function getLastHistoricalCardio(type) {
-    var normalizedType = type === "傾斜ウォーク" ? "ウォーキング" : type;
+    var normalizedType = normalizeCardioType(type);
     return data.cardios.slice().filter(function (cardio) {
-      return (cardio.type === "傾斜ウォーク" ? "ウォーキング" : cardio.type) === normalizedType;
+      return normalizeCardioType(cardio.type) === normalizedType;
     }).sort(function (a, b) {
       var sessionA = getSession(a.sessionId) || {};
       var sessionB = getSession(b.sessionId) || {};
@@ -5564,6 +5509,20 @@
       }
     }
     return null;
+  }
+
+  /* v4: Nセット目の入力には前回セッションのNセット目をプリフィルする。
+     前回のセット数を超えたら今日の最後のセット、履歴がなければ既定値。
+     どのセットを参照したか(historicalSet)は表示ラベルの決定にも使う */
+  function resolvePrefillSetForNextInput(exercise, record, editingRef) {
+    var historicalSets = getPrefillSetsForExercise(exercise.id);
+    var historicalSet = historicalSets[record.sets.length] || null;
+    var lastSet = historicalSet || (record.sets.length ? record.sets[record.sets.length - 1] : (historicalSets.length ? historicalSets[historicalSets.length - 1] : null));
+    return {
+      historicalSets: historicalSets,
+      historicalSet: historicalSet,
+      inputSet: editingRef ? editingRef.set : lastSet
+    };
   }
 
   function renderSelectedExercise() {
@@ -5597,15 +5556,13 @@
       editingSetTempId = null;
       editingRef = null;
     }
-    // v4: Nセット目の入力には前回セッションのNセット目をプリフィルする。
-    // 前回のセット数を超えたら今日の最後のセット、履歴がなければ既定値
-    var historicalSets = getPrefillSetsForExercise(exercise.id);
-    var historicalSet = historicalSets[record.sets.length] || null;
-    var lastSet = historicalSet || (record.sets.length ? record.sets[record.sets.length - 1] : (historicalSets.length ? historicalSets[historicalSets.length - 1] : null));
-    var inputSet = editingRef ? editingRef.set : lastSet;
+    var prefill = resolvePrefillSetForNextInput(exercise, record, editingRef);
+    var historicalSets = prefill.historicalSets;
+    var historicalSet = prefill.historicalSet;
+    var inputSet = prefill.inputSet;
     var nextNumber = record.sets.length + 1;
     var labelWeightGrams = inputSet ? (inputSet.prefillOriginalWeight != null ? inputSet.prefillOriginalWeight : inputSet.weight) : 0;
-    var previousWeight = exercise.category === "BODYWEIGHT" ? "自重" : (inputSet ? (Number(labelWeightGrams || 0) / 1000).toFixed(1) + "kg" : "--");
+    var previousWeight = exercise.category === "BODYWEIGHT" ? "自重" : (inputSet ? formatSetWeightText(exercise, labelWeightGrams) : "--");
     var suggestionNote = !editingRef && inputSet && inputSet.prefillOriginalWeight != null ? "（提案を反映 → " + formatSuggestionKg(inputSet.weight) + "）" : "";
     // どのセットの数字を参照しているかが分かるラベル(プリフィル元と必ず一致させる)
     var previousLabel = "前回の記録";
@@ -6239,7 +6196,7 @@
       var exerciseName = escapeHtml(exercise ? exercise.name : "不明な種目");
       var isExpanded = expandedDraftExerciseId === record.exerciseId;
       var setRows = record.sets.map(function (set) {
-        var weightText = exercise && exercise.category === "BODYWEIGHT" ? "自重" : (Number(set.weight) / 1000).toFixed(1) + "kg";
+        var weightText = formatSetWeightText(exercise, set.weight);
         var editingClass = set.tempId === editingSetTempId ? " is-editing" : "";
         var recentClass = set.tempId === recentlySavedSetTempId ? " is-recently-saved" : "";
         return '<div class="saved-item saved-item--editable' + editingClass + recentClass + '" data-edit-set="' + set.tempId + '"><button class="saved-item-main" type="button" aria-label="セット' + set.setNumber + 'を編集"><span class="set-index">' + set.setNumber + '</span><span class="saved-item-text"><strong>' + weightText + ' × ' + set.reps + '回</strong><small>' + RIR_LABELS[set.rir || ""] + '・休憩' + set.restSeconds + '秒' + (set.memo ? '・' + escapeHtml(set.memo) : '') + '</small></span><span class="edit-cue">編集</span></button><button class="delete-mini" type="button" data-delete-set="' + set.tempId + '" aria-label="セットを削除">×</button></div>';
@@ -6799,10 +6756,6 @@
     }
   }
 
-  function playRestTimerSound() {
-    return playRestTimerEndSound();
-  }
-
   function tryRestTimerVibration() {
     if (!isRestTimerEnabled() || !uiSettings.restTimerVibration) return false;
     // ネイティブ(iOS等)は navigator.vibrate 非対応のため Haptics で振動する
@@ -7088,7 +7041,7 @@
   function requestWorkoutSave(options) {
     options = options || {};
     if (!draft) return;
-    if (isGuideActive() && !prepareGuideDraftForSave()) return;
+    if (isGuideActive() && !moveGuideSetsIntoDraftForSave()) return;
     var setCount = draft.records.reduce(function (sum, record) { return sum + record.sets.length; }, 0);
     if (!setCount && !draft.cardios.length) { showToast("セットまたは有酸素運動を1件以上記録してください"); return; }
     draft.date = $("#sessionDate").value || todayString();
@@ -7110,18 +7063,6 @@
   // ワークアウト保存完了時の表示はトーストから完了サマリーモーダル(showWorkoutSummary)に
   // 置き換わったため、commitWorkoutSaveからは呼ばれなくなった。
   // トースト形式の完了通知が必要なケースが再度出た場合に備えて実装は残している。
-  function workoutSavedToastText(oldSession, records, cardios, calories, volumeKg) {
-    var setCount = (records || []).reduce(function (sum, record) { return sum + record.sets.length; }, 0);
-    var cardioCount = (cardios || []).length;
-    var parts = [];
-    if (setCount) parts.push(setCount + "セット");
-    if (cardioCount) parts.push("有酸素" + cardioCount + "件");
-    if (Number(volumeKg || 0) > 0) parts.push(formatDraftVolume(volumeKg) + "kg");
-    if (Number(calories || 0) > 0) parts.push(Math.round(calories).toLocaleString("ja-JP") + "kcal");
-    var prefix = oldSession ? "トレーニングを更新しました" : "トレーニングを保存しました";
-    return prefix + "。おつかれさまでした" + (parts.length ? "（" + parts.join("・") + "）" : "");
-  }
-
   function showWorkoutSummary(summary) {
     workoutSummarySessionDate = summary.date || todayString();
     var aiCopyStatus = $("#workoutSummaryAiCopyStatus");
@@ -7259,6 +7200,22 @@
     return '<button class="finish-button" type="button" data-day-start="gym" data-day-date="' + dateValue + '">ジムトレーニングを記録</button><button class="outline-button" type="button" data-day-start="home" data-day-date="' + dateValue + '">自宅トレーニングを記録</button><button class="outline-button outline-button--blue" type="button" data-day-routine-date="' + dateValue + '">ルーティンから登録</button><button class="outline-button" type="button" data-close-modal="dayModal">閉じる</button>';
   }
 
+  // 日別詳細の1セッション分の明細行(筋トレ・有酸素・メモ)をHTML断片の配列で返す
+  function buildDaySummaryLines(session) {
+    var lines = [];
+    getSessionRecords(session.id).forEach(function (record) {
+      var exercise = getExercise(record.exerciseId);
+      var sets = getRecordSets(record.id);
+      var detail = sets.map(function (set) { return formatSetWeightText(exercise, set.weight) + "×" + set.reps + "回"; }).join(" / ");
+      lines.push('<div class="summary-line"><strong>' + escapeHtml(exercise ? exercise.name : "不明な種目") + '</strong><span>' + detail + '</span></div>');
+    });
+    getSessionCardios(session.id).forEach(function (cardio) {
+      lines.push('<div class="summary-line"><strong>' + escapeHtml(cardio.type) + '</strong><span>' + escapeHtml(cardioMetricSummary(cardio, "距離・時間は記録時に入力")) + '</span></div>');
+    });
+    if (session.memo) lines.push('<div class="summary-line"><strong>メモ</strong><span>' + escapeHtml(session.memo) + '</span></div>');
+    return lines;
+  }
+
   function renderDaySummary(dateValue) {
     var sessions = getSessionsForDate(dateValue);
     var schedules = data.scheduledRoutines.filter(function (schedule) { return schedule.date === dateValue; });
@@ -7275,17 +7232,7 @@
       html += '<div class="day-total"><span>概算消費カロリー</span><strong>' + Math.round(dayTotal) + ' kcal</strong></div><p class="day-section-label">実績</p>';
     }
     sessions.forEach(function (session) {
-      var lines = [];
-      getSessionRecords(session.id).forEach(function (record) {
-        var exercise = getExercise(record.exerciseId);
-        var sets = getRecordSets(record.id);
-        var detail = sets.map(function (set) { return (exercise && exercise.category === "BODYWEIGHT" ? "自重" : (Number(set.weight) / 1000).toFixed(1) + "kg") + "×" + set.reps + "回"; }).join(" / ");
-        lines.push('<div class="summary-line"><strong>' + escapeHtml(exercise ? exercise.name : "不明な種目") + '</strong><span>' + detail + '</span></div>');
-      });
-      getSessionCardios(session.id).forEach(function (cardio) {
-        lines.push('<div class="summary-line"><strong>' + escapeHtml(cardio.type) + '</strong><span>' + escapeHtml(cardioMetricSummary(cardio, "距離・時間は記録時に入力")) + '</span></div>');
-      });
-      if (session.memo) lines.push('<div class="summary-line"><strong>メモ</strong><span>' + escapeHtml(session.memo) + '</span></div>');
+      var lines = buildDaySummaryLines(session);
       var sessionLabel = session.locationType === "gym" ? "ジムトレーニング" : "自宅トレーニング";
       // 指示書⑨-7: どのジムで実施したかを表示し、後から変更もできるようにする
       var sessionGymName = gymName(session.gymId || oldestGymId());
@@ -7489,7 +7436,7 @@
   }
 
   function guideHistorySetText(exercise, set) {
-    var weightText = exercise && exercise.category === "BODYWEIGHT" ? "自重" : (set.weight / 1000).toFixed(1) + "kg";
+    var weightText = formatSetWeightText(exercise, set.weight);
     var rirText = set.rir ? "（RIR" + set.rir + "）" : "";
     return weightText + "×" + set.reps + rirText;
   }
