@@ -8,6 +8,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const stampAssets = require("./stamp-assets.js");
 
 const root = path.resolve(__dirname, "..");
 const outDir = path.join(root, "www");
@@ -23,6 +24,9 @@ function rmDirContents(dir) {
 }
 
 function main() {
+  // キャッシュバスターを最新のハッシュへ更新してからコピーする(ルートのindex.htmlが本番配信対象)
+  stampAssets.stampIndexHtml();
+
   fs.mkdirSync(outDir, { recursive: true });
   rmDirContents(outDir);
 
