@@ -7,7 +7,8 @@
     "build": "node scripts/build.js",
     "serve": "node scripts/serve.js",
     "test": "playwright test",
-    "cap:sync": "npm run build && npx cap sync ios"
+    "cap:sync": "npm run build && npx cap sync ios",
+    "stamp": "node scripts/stamp-assets.js"
   },
   "dependencies": {
     "@capacitor/core": "^6.2.0",
